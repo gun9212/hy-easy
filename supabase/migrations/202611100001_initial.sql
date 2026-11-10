@@ -136,24 +136,24 @@ create function public.release_collector_lock(p_owner uuid) returns void languag
 $$;
 
 create function public.sync_posting(p_document jsonb,p_content_hash text,p_classification_hash text) returns boolean language plpgsql security definer set search_path = '' as $$
-declare c uuid; existing public.postings%rowtype; posting_id uuid; changed boolean;
+declare c uuid; existing public.postings%rowtype; v_posting_id uuid; changed boolean;
 begin
   insert into public.companies(name) values(p_document->>'company') on conflict(name) do update set name=excluded.name returning id into c;
   select * into existing from public.postings where source_id=p_document->>'sourceId' for update;
   changed := existing.id is null or existing.content_hash <> p_content_hash;
   if existing.id is null then
     insert into public.postings(source_id,company_id,document,content_hash,classification_hash)
-      values(p_document->>'sourceId',c,p_document,p_content_hash,p_classification_hash) returning id into posting_id;
+      values(p_document->>'sourceId',c,p_document,p_content_hash,p_classification_hash) returning id into v_posting_id;
   else
-    posting_id := existing.id;
+    v_posting_id := existing.id;
     update public.postings set company_id=c,document=p_document,content_hash=p_content_hash,classification_hash=p_classification_hash,
-      updated_at=case when changed then now() else updated_at end,last_checked_at=now() where id=posting_id;
+      updated_at=case when changed then now() else updated_at end,last_checked_at=now() where id=v_posting_id;
   end if;
   if changed then
-    insert into public.posting_versions(posting_id,document,content_hash) values(posting_id,p_document,p_content_hash);
+    insert into public.posting_versions(posting_id,document,content_hash) values(v_posting_id,p_document,p_content_hash);
   end if;
   if existing.id is null or existing.classification_hash <> p_classification_hash then
-    insert into public.classification_queue(posting_id,input_hash) values(posting_id,p_classification_hash)
+    insert into public.classification_queue(posting_id,input_hash) values(v_posting_id,p_classification_hash)
       on conflict(posting_id) do update set input_hash=excluded.input_hash,attempts=0,last_error=null,updated_at=now();
   end if;
   return changed;
