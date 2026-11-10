@@ -21,3 +21,34 @@ jobs:
           sudo systemctl start postgresql.service
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'create database hy_easy_test'
           sudo -u postgres psql -v ON_ERROR_STOP=1 -d hy_easy_test -f tests/database-bootstrap.sql -f supabase/migrations/202611100001_initial.sql -f supabase/migrations/202611100002_list_sync.sql -f tests/database-policies.sql
+
+  # Production deploy to Vercel, only from main and only after every check above passed.
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: vercel-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://hy-easy.vercel.app
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check deploy settings
+        run: |
+          for name in VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_TOKEN; do
+            [ -n "${!name}" ] || { echo "::error::$name is not set in the repository settings"; exit 1; }
+          done
+      - run: npm install --global vercel@54.12.2
+      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - run: vercel build --prod --token="$VERCEL_TOKEN"
+      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
