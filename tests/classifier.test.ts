@@ -13,12 +13,24 @@ function response(stop = "end_turn", classification = result) {
     usage: { input_tokens: 3000, output_tokens: 500 },
   };
 }
-it("Haiku는 thinking 비활성화·구조화 출력·도구 없음", () => {
-  const payload = modelPayload("claude", input);
-  assert.equal(payload.thinking?.type, "disabled");
-  assert.equal(payload.output_config?.format.type, "json_schema");
-  assert.equal("tools" in payload, false);
-  assert.equal("temperature" in payload, false);
+for (const provider of ["claude", "anthropic"] as const) {
+  it(`Haiku(${provider})는 thinking 비활성화·구조화 출력·도구 없음`, () => {
+    const payload = modelPayload(provider, input);
+    assert.ok("thinking" in payload && "output_config" in payload);
+    assert.equal(payload.thinking.type, "disabled");
+    assert.equal(payload.output_config.format.type, "json_schema");
+    assert.equal("tools" in payload, false);
+    assert.equal("temperature" in payload, false);
+  });
+}
+it("Vertex 경로만 anthropic_version을 붙이고 직접 호출은 붙이지 않음", () => {
+  assert.equal("anthropic_version" in modelPayload("claude", input), true);
+  assert.equal("anthropic_version" in modelPayload("anthropic", input), false);
+});
+it("직접 호출 응답도 같은 검증(거절·잘림 차단)을 거침", () => {
+  assert.deepEqual(parseModelResponse("anthropic", input, response()).classification, result);
+  assert.throws(() => parseModelResponse("anthropic", input, response("refusal")));
+  assert.equal(estimateCost("anthropic", 3000, 500), estimateCost("claude", 3000, 500));
 });
 it("text 블록을 타입으로 찾아 분류 결과 파싱", () =>
   assert.deepEqual(parseModelResponse("claude", input, response()).classification, result));

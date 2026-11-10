@@ -21,6 +21,7 @@
     "format:check": "prettier --check src worker scripts tests"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.7.0",
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.101.1",
     "google-auth-library": "10.5.0",

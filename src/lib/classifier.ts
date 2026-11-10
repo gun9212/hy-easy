@@ -1,7 +1,12 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { GoogleAuth } from "google-auth-library";
 import { z } from "zod";
 import { assertEvidence, classificationSchema, type ClassificationInput, type Classification } from "./domain";
-export type Provider = "claude" | "gemini";
+/** "claude": Claude on Vertex AI (GCP auth). "anthropic": Claude via the Anthropic API (ANTHROPIC_API_KEY). "gemini": Gemini on Vertex AI. */
+export type Provider = "claude" | "anthropic" | "gemini";
+const isClaude = (provider: Provider) => provider === "claude" || provider === "anthropic";
+const MAX_OUTPUT_TOKENS = 4096;
+const REQUEST_TIMEOUT_MS = 30_000;
 export const PROMPT_VERSION = "2026-11-10.1",
   TAXONOMY_VERSION = "1";
 export const SYSTEM_PROMPT = `한양대 현장실습 공고를 업무 내용으로 직군 분류하는 도우미입니다.
@@ -14,7 +19,7 @@ evidence에는 해당 필드에서 그대로 복사한 원문 구절을 넣으�
 const outputSchema = z.toJSONSchema(classificationSchema, { target: "draft-7" });
 delete outputSchema.$schema;
 export function modelFor(provider: Provider) {
-  return provider === "claude"
+  return isClaude(provider)
     ? process.env.CLAUDE_MODEL || "claude-haiku-5-5"
     : process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 }
@@ -22,15 +27,9 @@ export function modelPayload(provider: Provider, input: ClassificationInput) {
   const text = JSON.stringify(input);
   if (!Object.values(input).some(v => v.trim()) || Buffer.byteLength(text) > 80_000)
     throw new Error("INPUT_REQUIRES_REVIEW");
+  if (provider === "anthropic") return claudeBody(text);
   return provider === "claude"
-    ? {
-        anthropic_version: "vertex-2023-10-16",
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        thinking: { type: "disabled" },
-        output_config: { effort: "low", format: { type: "json_schema", schema: outputSchema } },
-        messages: [{ role: "user", content: [{ type: "text", text }] }],
-      }
+    ? { anthropic_version: "vertex-2023-10-16", ...claudeBody(text) }
     : {
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: "user", parts: [{ text }] }],
@@ -42,8 +41,18 @@ export function modelPayload(provider: Provider, input: ClassificationInput) {
         },
       };
 }
+/** Shared Claude request body. Haiku 5.5 accepts disabled thinking at effort high or below. */
+function claudeBody(text: string) {
+  return {
+    max_tokens: MAX_OUTPUT_TOKENS,
+    system: SYSTEM_PROMPT,
+    thinking: { type: "disabled" as const },
+    output_config: { effort: "low" as const, format: { type: "json_schema" as const, schema: outputSchema } },
+    messages: [{ role: "user" as const, content: [{ type: "text" as const, text }] }],
+  };
+}
 export function estimateCost(provider: Provider, inputTokens: number, outputTokens: number) {
-  const [a, b] = provider === "claude" ? (inputTokens > 100_000 ? [0.5, 2.5] : [0.1, 0.5]) : [0.3, 2.5];
+  const [a, b] = isClaude(provider) ? (inputTokens > 100_000 ? [0.5, 2.5] : [0.1, 0.5]) : [0.3, 2.5];
   return (inputTokens * a + outputTokens * b) / 1_000_000;
 }
 const claudeResponse = z.object({
@@ -70,7 +79,7 @@ const geminiResponse = z.object({
 });
 export function parseModelResponse(provider: Provider, input: ClassificationInput, data: unknown) {
   let text: string, inputTokens: number, outputTokens: number;
-  if (provider === "claude") {
+  if (isClaude(provider)) {
     const result = claudeResponse.parse(data);
     if (result.stop_reason !== "end_turn") throw new Error(`MODEL_STOP_${result.stop_reason}`);
     text = result.content
@@ -103,7 +112,25 @@ export type ClassificationResult = {
   promptVersion: string;
   taxonomyVersion: string;
 };
+async function callAnthropicApi(input: ClassificationInput, model: string): Promise<unknown> {
+  // Reads ANTHROPIC_API_KEY. The SDK retries 429/5xx/connection errors itself.
+  const client = new Anthropic({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 2 });
+  return client.messages.create({ model, ...claudeBody(JSON.stringify(input)) });
+}
+
 export async function classify(input: ClassificationInput, provider: Provider): Promise<ClassificationResult> {
+  if (provider === "anthropic") {
+    const model = modelFor(provider);
+    modelPayload(provider, input); // input validation (empty / oversized) shared with the other providers
+    const message = await callAnthropicApi(input, model);
+    return {
+      ...parseModelResponse(provider, input, message),
+      provider,
+      model,
+      promptVersion: PROMPT_VERSION,
+      taxonomyVersion: TAXONOMY_VERSION,
+    };
+  }
   const data = modelPayload(provider, input),
     project = process.env.GOOGLE_CLOUD_PROJECT,
     location = process.env.MODEL_LOCATION || "global",

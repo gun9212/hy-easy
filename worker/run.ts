@@ -189,7 +189,9 @@ try {
     errorCode ??= "CHECKPOINT_SAVED";
   }
   if (process.env.AI_CLASSIFICATION_ENABLED === "true") {
-    const provider = z.enum(["claude", "gemini"]).parse(process.env.MODEL_PROVIDER || "claude") as Provider;
+    const provider = z
+      .enum(["claude", "anthropic", "gemini"])
+      .parse(process.env.MODEL_PROVIDER || "claude") as Provider;
     const queue =
       check(await db.from("classification_queue").select("*").lt("attempts", 3).order("updated_at").limit(5)).data ??
       [];
