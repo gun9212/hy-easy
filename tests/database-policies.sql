@@ -18,6 +18,11 @@ select pg_temp.assert(not public.acquire_collector_lock('00000000-0000-4000-8000
 select public.release_collector_lock('00000000-0000-4000-8000-000000000002');
 select pg_temp.assert((select count(*)=1 from public.collector_locks),'another worker cannot release lock');
 select public.release_collector_lock('00000000-0000-4000-8000-000000000001');
+select pg_temp.assert(public.touch_postings('[{"source_id":"one","applicants":5},{"source_id":"missing","applicants":1}]')=1,'touch updates only listed known postings');
+select pg_temp.assert((select (document->>'applicants')::int=5 from public.postings where source_id='one'),'touch stores live applicant count');
+select pg_temp.assert((select count(*)=2 from public.posting_versions),'applicant churn creates no version');
+select public.mark_detail_checked('one','listhash1');
+select pg_temp.assert((select list_hash='listhash1' and detail_checked_at is not null from public.postings where source_id='one'),'detail check recorded');
 reset role;
 
 set local role anon;
@@ -46,6 +51,7 @@ select pg_temp.assert((select count(*)=0 from public.applications),'other user a
 select pg_temp.assert((select count(*)=0 from public.application_events),'other user event isolation');
 select pg_temp.assert((select count(*)=0 from public.favorites),'other user favorites isolation');
 do $$ begin begin perform public.acquire_collector_lock('00000000-0000-4000-8000-000000000002'); raise exception 'school worker access unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+do $$ begin begin perform public.touch_postings('[]'); raise exception 'school touch access unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
 
 insert into public.admins values('00000000-0000-4000-8000-000000000001');

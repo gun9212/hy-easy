@@ -9,6 +9,8 @@ import { classify, type Provider } from "../src/lib/classifier";
 import type { Posting } from "../src/lib/domain";
 import { dismissDialogs, parseScheduleOverride, readDetail, readListPage, readScheduleUrls, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
 import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
+import { listRowHash } from "./hywep-fields";
+import { planListSync } from "./list-sync";
 
 const MAX_LOGIN_FAILURES=3;
 
@@ -16,7 +18,7 @@ const config=z.object({NEXT_PUBLIC_SUPABASE_URL:z.url(),SUPABASE_SERVICE_ROLE_KE
 const selectors=selectorsSchema.parse(JSON.parse(await readFile(config.HYWEP_SELECTORS_FILE,"utf8")));
 if(!selectors.verified)throw new Error("SELECTORS_NOT_VERIFIED: 실제 로그인 화면에서 선택자를 검증한 뒤 verified=true로 설정하세요.");
 const startUrl=sourceUrl(config.HYWEP_LIST_URL),db=createClient(config.NEXT_PUBLIC_SUPABASE_URL,config.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-const owner=randomUUID(),deadline=Date.now()+210_000;
+const startedAt=Date.now(),owner=randomUUID(),deadline=startedAt+210_000;
 const check=<T extends {error:unknown}>(result:T):T=>{if(result.error)throw result.error;return result;};
 const lock=check(await db.rpc("acquire_collector_lock",{p_owner:owner}));
 if(!lock.data){console.log("Another collection is running; skipped.");process.exit(0);}
@@ -25,7 +27,7 @@ const runId=owner;check(await db.from("collector_runs").insert({id:runId}));
 const pendingSchema=z.object({id:z.string(),url:z.string(),fields:z.record(z.string(),z.string())});
 const stateSchema=z.object({schedulesLoaded:z.boolean(),queue:z.array(z.string()),pending:z.array(pendingSchema),seenPages:z.array(z.string()),seenIds:z.array(z.string())});
 type State=z.infer<typeof stateSchema>;
-let checked=0,changed=0,status="success",errorCode:string|null=null,leaseLost=false;
+let checked=0,changed=0,detailsRead=0,status="success",errorCode:string|null=null,leaseLost=false;
 const heartbeat=setInterval(()=>{void db.from("collector_locks").update({expires_at:new Date(Date.now()+480_000).toISOString()}).eq("name","hywep").eq("owner",owner).select("owner").then(r=>{if(r.error||!r.data?.length)leaseLost=true;});},30_000);
 let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
 let state:State={schedulesLoaded:false,queue:[],pending:[],seenPages:[],seenIds:[]};
@@ -56,7 +58,8 @@ try{
         const posting=await readDetail(page,selectors,link);
         if(leaseLost)throw new Error("COLLECTOR_LEASE_LOST");
         const result=check(await db.rpc("sync_posting",{p_document:posting,p_content_hash:sourceHash(posting),p_classification_hash:stableHash(classificationInput(posting))}));
-        checked++;if(result.data)changed++;
+        check(await db.rpc("mark_detail_checked",{p_source_id:link.id,p_list_hash:listRowHash(link.fields)}));
+        checked++;detailsRead++;if(result.data)changed++;
       }catch(e){if(e instanceof SessionExpired||leaseLost)throw e;status="partial";errorCode="DETAIL_READ_FAILED";}
       state.pending.shift();visited.add(link.id);state.seenIds=[...visited];
     }else if(state.queue.length){
@@ -64,7 +67,13 @@ try{
       await page.goto(url,{waitUntil:"domcontentloaded",timeout:25_000});
       const result=await readListPage(page,selectors);state.seenPages.push(url);
       state.queue=[...(result.nextUrl?[result.nextUrl]:[]),...state.queue.slice(1)];
-      state.pending=result.rows.filter(r=>!visited.has(r.id));
+      // Only new, list-changed or stale (>24h) rows open a detail page; the rest just refresh counts.
+      const rows=result.rows.filter(r=>!visited.has(r.id));
+      const known=check(await db.from("postings").select("source_id,list_hash,detail_checked_at").in("source_id",rows.map(r=>r.id))).data??[];
+      const plan=planListSync(rows,new Map(known.map(k=>[k.source_id,{listHash:k.list_hash,detailCheckedAt:k.detail_checked_at}])));
+      if(plan.touch.length){check(await db.rpc("touch_postings",{p_items:plan.touch}));checked+=plan.touch.length;}
+      for(const t of plan.touch)visited.add(t.source_id);state.seenIds=[...visited];
+      state.pending=plan.detail.map(d=>d.row);
     }else if(!state.schedulesLoaded){
       // The list page shows one card per open term (schedule); each term is paged separately.
       await page.goto(startUrl,{waitUntil:"domcontentloaded",timeout:25_000});
@@ -100,6 +109,6 @@ try{
   clearInterval(heartbeat);await browser?.close();
   const final=await db.from("collector_runs").update({status,finished_at:new Date().toISOString(),checked,changed,error_code:errorCode}).eq("id",runId);
   const released=await db.rpc("release_collector_lock",{p_owner:owner});
-  console.log(JSON.stringify({status,checked,changed,errorCode,recorded:!final.error,released:!released.error}));
+  console.log(JSON.stringify({status,checked,changed,detailsRead,elapsedSec:Math.round((Date.now()-startedAt)/1000),errorCode,recorded:!final.error,released:!released.error}));
 }
 if(status==="failed"||status==="session_expired")process.exitCode=1;
