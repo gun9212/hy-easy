@@ -41,13 +41,27 @@ export function modelPayload(provider: Provider, input: ClassificationInput) {
         },
       };
 }
+// Anthropic structured outputs reject some JSON Schema bounds (e.g. maxItems). The model gets the schema without
+// them; the same bounds are still enforced afterwards by classificationSchema.parse in parseModelResponse.
+const UNSUPPORTED_SCHEMA_KEYWORDS = new Set(["maxItems", "minItems", "maxLength", "minLength"]);
+function withoutUnsupportedKeywords(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutUnsupportedKeywords);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !UNSUPPORTED_SCHEMA_KEYWORDS.has(key))
+      .map(([key, inner]) => [key, withoutUnsupportedKeywords(inner)]),
+  );
+}
+const claudeOutputSchema = withoutUnsupportedKeywords(outputSchema) as Record<string, unknown>;
+
 /** Shared Claude request body. Haiku 5.5 accepts disabled thinking at effort high or below. */
 function claudeBody(text: string) {
   return {
     max_tokens: MAX_OUTPUT_TOKENS,
     system: SYSTEM_PROMPT,
     thinking: { type: "disabled" as const },
-    output_config: { effort: "low" as const, format: { type: "json_schema" as const, schema: outputSchema } },
+    output_config: { effort: "low" as const, format: { type: "json_schema" as const, schema: claudeOutputSchema } },
     messages: [{ role: "user" as const, content: [{ type: "text" as const, text }] }],
   };
 }
