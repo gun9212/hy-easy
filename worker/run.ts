@@ -7,7 +7,7 @@ import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
 import { classify, type Provider } from "../src/lib/classifier";
 import type { Posting } from "../src/lib/domain";
-import { dismissDialogs, readDetail, readListPage, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
+import { dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
 
 const config=z.object({NEXT_PUBLIC_SUPABASE_URL:z.url(),SUPABASE_SERVICE_ROLE_KEY:z.string().min(1),HYWEP_LIST_URL:z.url(),HYWEP_SELECTORS_FILE:z.string().min(1)}).parse(process.env);
 const selectors=selectorsSchema.parse(JSON.parse(await readFile(config.HYWEP_SELECTORS_FILE,"utf8")));
@@ -20,12 +20,12 @@ if(!lock.data){console.log("Another collection is running; skipped.");process.ex
 const runId=owner;check(await db.from("collector_runs").insert({id:runId}));
 // A pending item keeps its list row: status, deadline and counts only exist on the list page.
 const pendingSchema=z.object({id:z.string(),url:z.string(),fields:z.record(z.string(),z.string())});
-const stateSchema=z.object({nextUrl:z.string().nullable(),pending:z.array(pendingSchema),seenPages:z.array(z.string()),seenIds:z.array(z.string())});
+const stateSchema=z.object({schedulesLoaded:z.boolean(),queue:z.array(z.string()),pending:z.array(pendingSchema),seenPages:z.array(z.string()),seenIds:z.array(z.string())});
 type State=z.infer<typeof stateSchema>;
 let checked=0,changed=0,status="success",errorCode:string|null=null,leaseLost=false;
 const heartbeat=setInterval(()=>{void db.from("collector_locks").update({expires_at:new Date(Date.now()+480_000).toISOString()}).eq("name","hywep").eq("owner",owner).select("owner").then(r=>{if(r.error||!r.data?.length)leaseLost=true;});},30_000);
 let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
-let state:State={nextUrl:startUrl,pending:[],seenPages:[],seenIds:[]};
+let state:State={schedulesLoaded:false,queue:[],pending:[],seenPages:[],seenIds:[]};
 try{
   const stored=check(await db.from("collector_state").select("value").eq("name","hywep").maybeSingle()).data;
   if(stored?.value&&Object.keys(stored.value).length)state=stateSchema.parse(stored.value);
@@ -52,16 +52,22 @@ try{
         checked++;if(result.data)changed++;
       }catch(e){if(e instanceof SessionExpired||leaseLost)throw e;status="partial";errorCode="DETAIL_READ_FAILED";}
       state.pending.shift();visited.add(link.id);state.seenIds=[...visited];
-    }else if(state.nextUrl){
-      const url=sourceUrl(state.nextUrl);if(state.seenPages.includes(url))throw new Error("PAGINATION_LOOP");
+    }else if(state.queue.length){
+      const url=sourceUrl(state.queue[0]);if(state.seenPages.includes(url))throw new Error("PAGINATION_LOOP");
       await page.goto(url,{waitUntil:"domcontentloaded",timeout:25_000});
-      const result=await readListPage(page,selectors);state.seenPages.push(url);state.nextUrl=result.nextUrl;state.pending=result.rows.filter(r=>!visited.has(r.id));
+      const result=await readListPage(page,selectors);state.seenPages.push(url);
+      state.queue=[...(result.nextUrl?[result.nextUrl]:[]),...state.queue.slice(1)];
+      state.pending=result.rows.filter(r=>!visited.has(r.id));
+    }else if(!state.schedulesLoaded){
+      // The list page shows one card per open term (schedule); each term is paged separately.
+      await page.goto(startUrl,{waitUntil:"domcontentloaded",timeout:25_000});
+      state.queue=await readScheduleUrls(page,selectors);state.schedulesLoaded=true;
     }else break;
     // A posting missing from the list is never interpreted as closure; it is simply left unchanged.
     // Checkpoint after every successful list/detail operation, before process termination.
     check(await db.from("collector_state").upsert({name:"hywep",value:state}));
   }
-  const complete=!state.pending.length&&!state.nextUrl;
+  const complete=state.schedulesLoaded&&!state.pending.length&&!state.queue.length;
   check(await db.from("collector_state").upsert({name:"hywep",value:complete?{}:state}));
   if(!complete){status="partial";errorCode??="CHECKPOINT_SAVED";}
   if(process.env.AI_CLASSIFICATION_ENABLED==="true"){

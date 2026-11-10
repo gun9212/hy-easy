@@ -73,6 +73,27 @@ export function extractSourceId(attribute: string | null, pattern: string): stri
   return id;
 }
 
+/** Replaces `{key}` placeholders with URL-encoded values. Throws on an unfilled placeholder. */
+export function fillTemplate(template: string, values: Record<string, string | number>): string {
+  const filled = template.replace(/\{(\w+)\}/g, (_, key: string) => {
+    if (values[key] === undefined) throw new Error(`TEMPLATE_VALUE_MISSING: ${key}`);
+    return encodeURIComponent(String(values[key]));
+  });
+  return filled;
+}
+
+/** HY-WEP list pages are zero-based (`pg=0` is page 1). A missing `pg` means the first page. */
+export function pageNumber(url: string): number {
+  const value = Number(new URL(url).searchParams.get("pg") ?? 0);
+  return Number.isInteger(value) && value >= 0 ? value : 0;
+}
+
+/** True when the paging links (e.g. `javaScript:Paging(3)`) offer the page after `current`. */
+export function hasNextPage(pagingHrefs: readonly (string | null)[], current: number, pattern: string): boolean {
+  const regex = new RegExp(pattern);
+  return pagingHrefs.some(href => Number(href?.match(regex)?.[1]) === current + 1);
+}
+
 export function recruitmentStatus(raw: string | undefined): Posting["recruitment"] {
   const text = raw?.trim() ?? "";
   if (OPEN_STATUS.test(text)) return "open";

@@ -1,9 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { detailUrl, selectorsSchema, sourceUrl } from "../worker/adapter";
+import { readFileSync } from "node:fs";
+import { detailUrl, listUrl, selectorsSchema, sourceUrl } from "../worker/adapter";
 import {
-  columnIndex, extractSourceId, listFields, listRowHash, normalizeDetail, recruitmentStatus, termName,
-  type DetailFields, type ListRow,
+  columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, listRowHash, normalizeDetail, pageNumber,
+  recruitmentStatus, termName, type DetailFields, type ListRow,
 } from "../worker/hywep-fields";
 
 // Header texts as measured on the HY-WEP list page (fictional values below).
@@ -109,6 +110,35 @@ describe("HY-WEP 상세 정규화", () => {
   it("업무·자격이 모두 비면 수집 실패", () => {
     assert.throws(() => normalizeDetail({ ...DETAIL, 실습내용: "", 자격사항: "" }, row()), /DETAIL_REQUIRED_FIELDS_MISSING/);
   });
+});
+
+describe("목록 페이지 이동 (실측: GET list.do?schedule=&pg=, 0부터 시작)", () => {
+  const template = "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule={schedule}&status=1137&pg={page}";
+  it("회차·페이지로 목록 URL 생성", () => {
+    assert.equal(listUrl(template, "119", 0), "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule=119&status=1137&pg=0");
+  });
+  it("pg 없으면 첫 페이지(0)", () => {
+    assert.equal(pageNumber("https://hywep.hanyang.ac.kr/compjoinsearch/list.do"), 0);
+    assert.equal(pageNumber("https://hywep.hanyang.ac.kr/compjoinsearch/list.do?pg=3"), 3);
+  });
+  it("Paging(n) 링크로 다음 페이지 존재 판단", () => {
+    const links = ["javascript:;", "javaScript:Paging(1)", "javaScript:Paging(2)", null];
+    assert.equal(hasNextPage(links, 0, "Paging\\((\\d+)\\)"), true);
+    assert.equal(hasNextPage(links, 2, "Paging\\((\\d+)\\)"), false);
+  });
+  it("템플릿 값이 빠지면 실패", () => assert.throws(() => fillTemplate("a?{schedule}&{page}", { schedule: 1 }), /TEMPLATE_VALUE_MISSING/));
+});
+
+describe("실측 선택자 파일", () => {
+  const selectors = selectorsSchema.parse(JSON.parse(readFileSync("worker/selectors.example.json", "utf8")));
+  it("실제 속성 형식에서 ID·회차를 추출", () => {
+    assert.equal(extractSourceId("javascript:goView('22253');", selectors.sourceIdPattern), "22253");
+    assert.equal(extractSourceId("schedule(119);", selectors.schedulePattern), "119");
+  });
+  it("상세 URL은 jid_seq GET", () => {
+    assert.equal(detailUrl(selectors.detailUrlTemplate, "22253"), "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=22253");
+  });
+  it("검증 플래그는 실제 실행 확인 전까지 false", () => assert.equal(selectors.verified, false));
 });
 
 describe("수집기 설정", () => {

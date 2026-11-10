@@ -1,9 +1,10 @@
 // Playwright access to HY-WEP. Parsing lives in ./hywep-fields.ts so it can be tested without a browser.
+// Page structure measured on 2026-11-10: docs/HYWEP-STRUCTURE.md.
 import { z } from "zod";
 import type { Locator, Page } from "playwright";
 import type { Posting } from "../src/lib/domain";
 import {
-  columnIndex, extractSourceId, listFields, normalizeDetail, normalizeLabel,
+  columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, normalizeDetail, normalizeLabel, pageNumber,
   type DetailFields, type ListRow,
 } from "./hywep-fields";
 
@@ -11,23 +12,29 @@ const HYWEP_HOST = "hywep.hanyang.ac.kr";
 const HYWEP_ORIGIN = `https://${HYWEP_HOST}/`;
 const NAVIGATION_TIMEOUT_MS = 25_000;
 
+const templateWith = (...keys: string[]) =>
+  z.string().refine(value => keys.every(key => value.includes(`{${key}}`)), `must contain ${keys.join(", ")}`);
+
 export const selectorsSchema = z.object({
   verified: z.boolean(),
   authenticated: z.string().min(1),
+  /** Term cards on the list page, e.g. onclick="schedule(119);". */
+  scheduleLink: z.string().min(1),
+  scheduleAttribute: z.string().min(1),
+  schedulePattern: z.string().min(1),
+  /** GET list URL. `{page}` is zero-based. */
+  listUrlTemplate: templateWith("schedule", "page"),
   listReady: z.string().min(1),
   emptyList: z.string().min(1),
   listHeader: z.string().min(1),
   listRow: z.string().min(1),
   listCell: z.string().min(1),
+  pagingLink: z.string().min(1),
+  pagingPattern: z.string().min(1),
   detailLink: z.string().min(1),
-  /** Attribute on detailLink that carries the posting ID, e.g. "onclick" or "href". */
   sourceIdAttribute: z.string().min(1),
-  /** Regex with exactly one capture group for the ID inside that attribute. */
   sourceIdPattern: z.string().min(1),
-  /** The detail page has no query string in the browser; this template must be verified to work with GET. */
-  detailUrlTemplate: z.string().includes("{id}"),
-  nextPage: z.string().min(1),
-  nextDisabled: z.string().min(1),
+  detailUrlTemplate: templateWith("id"),
   detailReady: z.string().min(1),
   detailRows: z.string().min(1),
   label: z.string().min(1),
@@ -48,7 +55,11 @@ export function sourceUrl(raw: string, base = HYWEP_ORIGIN): string {
 }
 
 export function detailUrl(template: string, id: string): string {
-  return sourceUrl(template.replaceAll("{id}", encodeURIComponent(id)));
+  return sourceUrl(fillTemplate(template, { id }));
+}
+
+export function listUrl(template: string, schedule: string, page: number): string {
+  return sourceUrl(fillTemplate(template, { schedule, page }));
 }
 
 /** The portal shows a JS alert (e.g. password-change notice) during login; dismiss it. */
@@ -60,6 +71,19 @@ export async function assertSession(page: Page, s: Selectors): Promise<void> {
   if (!await page.locator(s.authenticated).count()) throw new SessionExpired();
 }
 
+async function attributes(locator: Locator, name: string): Promise<(string | null)[]> {
+  return locator.evaluateAll((elements, attr) => elements.map(el => el.getAttribute(attr)), name);
+}
+
+/** Reads the open terms (schedule IDs) from the list page and returns each term's first list page. */
+export async function readScheduleUrls(page: Page, s: Selectors): Promise<string[]> {
+  await assertSession(page, s);
+  const values = await attributes(page.locator(s.scheduleLink), s.scheduleAttribute);
+  const ids = [...new Set(values.map(value => extractSourceId(value, s.schedulePattern)))];
+  if (!ids.length) throw new Error("SCHEDULES_NOT_FOUND");
+  return ids.map(id => listUrl(s.listUrlTemplate, id, 0));
+}
+
 async function readRow(row: Locator, s: Selectors, index: ReturnType<typeof columnIndex>): Promise<ListRow> {
   const cells = await row.locator(s.listCell).allInnerTexts();
   const attribute = await row.locator(s.detailLink).first().getAttribute(s.sourceIdAttribute);
@@ -67,13 +91,12 @@ async function readRow(row: Locator, s: Selectors, index: ReturnType<typeof colu
   return { id, url: detailUrl(s.detailUrlTemplate, id), fields: listFields(cells, index) };
 }
 
-async function nextPageUrl(page: Page, s: Selectors): Promise<string | null> {
-  const next = page.locator(s.nextPage).first();
-  if (!await next.count()) return null;
-  if (await next.evaluate((el, selector) => el.matches(selector), s.nextDisabled)) return null;
-  const href = await next.getAttribute("href");
-  if (!href) throw new Error("NEXT_PAGE_LINK_MISSING");
-  return sourceUrl(href, page.url());
+function nextListUrl(currentUrl: string, pagingHrefs: (string | null)[], s: Selectors): string | null {
+  const current = pageNumber(currentUrl);
+  if (!hasNextPage(pagingHrefs, current, s.pagingPattern)) return null;
+  const schedule = new URL(currentUrl).searchParams.get("schedule");
+  if (!schedule) throw new Error("SCHEDULE_PARAM_MISSING");
+  return listUrl(s.listUrlTemplate, schedule, current + 1);
 }
 
 /** Reads every posting row on the current list page. An empty list must be confirmed explicitly. */
@@ -89,7 +112,8 @@ export async function readListPage(page: Page, s: Selectors): Promise<{ rows: Li
   const index = columnIndex(await page.locator(s.listHeader).allInnerTexts());
   const rows: ListRow[] = [];
   for (let i = 0; i < count; i++) rows.push(await readRow(rowLocator.nth(i), s, index));
-  return { rows, nextUrl: await nextPageUrl(page, s) };
+  const pagingHrefs = await attributes(page.locator(s.pagingLink), "href");
+  return { rows, nextUrl: nextListUrl(page.url(), pagingHrefs, s) };
 }
 
 async function readDetailFields(page: Page, s: Selectors): Promise<DetailFields> {

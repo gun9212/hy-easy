@@ -82,7 +82,22 @@
 ## 5. 코드 반영 현황
 
 2026-11-10 반영 완료: 아래 표의 항목은 `src/lib/normalize.ts`, `worker/hywep-fields.ts`(순수 매핑), `worker/adapter.ts`(Playwright)에 반영했다.
-남은 것은 **실제 DOM에서 확인할 값** 두 가지다: 부서 링크의 ID 속성·패턴(`sourceIdAttribute`, `sourceIdPattern`), 그리고 그 ID로 상세를 GET으로 열 수 있는 URL(`detailUrlTemplate`). `worker/selectors.example.json`의 값은 추정치다.
+DOM 실측(2026-11-10, Safari Web Inspector)으로 `worker/selectors.example.json`의 모든 값을 확정했다. 남은 것은 Playwright로 로그인부터 끝까지 한 번 실행해 보고 `verified: true`로 바꾸는 것뿐이다.
+
+## 6. DOM 실측 결과
+
+| 항목 | 값 |
+|---|---|
+| 목록 URL | `GET /compjoinsearch/list.do?schedule={회차}&status=1137&pg={0부터}` (POST와 같은 결과) |
+| 회차(schedule) | 목록 상단 카드 `onclick="schedule(119);"` — 진행중 회차 4개 |
+| 페이지 | 페이지당 50행, `.paging a[href="javaScript:Paging(n)"]` (n은 0부터) |
+| 목록 표 | `table.list.grid_header`, `thead th` 17개, 데이터 행은 `td` 17개 |
+| 공고 ID | 기관명·부서 링크 `href="javascript:goView('22253');"` |
+| 상세 | 원래는 `hiddenForm`(`jid_seq`) POST 팝업. **`GET /compjoinmanage/view_stu.do?jid_seq={id}`로도 동일 내용** |
+| 상세 표 | `h4.sec_tit` "실습기관 정보" 아래 `table.write`, 행마다 `th`/`td` 쌍 |
+| 로그인 확인 | `a[href="/logout.do"]` |
+
+선택자 CSS 부분을 실제 페이지에 대조한 결과: 로그아웃 1, 회차 4, 목록 헤더 17, 데이터 행 50, 페이지 링크 6, 상세 행 22·라벨 29 — 모두 일치.
 
 ### 반영 전 불일치 목록
 
