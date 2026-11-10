@@ -19,7 +19,8 @@
     "evaluate": "node --import tsx --env-file-if-exists=.env.local scripts/evaluate.ts",
     "format": "prettier --write src worker scripts tests",
     "format:check": "prettier --check src worker scripts tests",
-    "classify:preview": "node --import tsx --env-file-if-exists=.env.local scripts/classify-preview.ts"
+    "classify:preview": "node --import tsx --env-file-if-exists=.env.local scripts/classify-preview.ts",
+    "classify:queue": "node --import tsx --env-file-if-exists=.env.local scripts/classify-queue.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.7.0",

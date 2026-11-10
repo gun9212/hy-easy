@@ -178,8 +178,20 @@ export function assertEvidence(input: ClassificationInput, result: Classificatio
   )
     throw new Error("직군이 중복되었습니다.");
   for (const e of result.evidence)
-    if (!input[e.field].includes(e.quote)) throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
+    if (!collapseWhitespace(input[e.field]).includes(collapseWhitespace(e.quote)))
+      throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
   return result;
+}
+
+/**
+ * Quotes are compared ignoring line breaks, repeated spaces and invisible control/format characters
+ * (HY-WEP text contains stray ones such as U+009F that models drop when quoting). Visible words must match exactly.
+ */
+function collapseWhitespace(text: string): string {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/[\p{Cc}\p{Cf}]/gu, "")
+    .trim();
 }
 
 export type Filters = {

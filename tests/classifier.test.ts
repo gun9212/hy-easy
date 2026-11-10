@@ -1,6 +1,7 @@
-import { it } from "node:test";
+import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { modelPayload, parseModelResponse, estimateCost } from "../src/lib/classifier";
+import { modelPayload, parseModelResponse, estimateCost, trimToLimits } from "../src/lib/classifier";
+import { assertEvidence } from "../src/lib/domain";
 import { samplePostings } from "../src/lib/sample";
 import { classificationInput } from "../src/lib/normalize";
 const p = samplePostings[0],
@@ -71,4 +72,30 @@ it("정가와 긴 입력 구간 비용 계산", () => {
   assert.equal(estimateCost("claude", 3000000, 500000), 2.75);
   assert.equal(estimateCost("claude", 3000, 500), 0.00055);
   assert.equal(estimateCost("gemini", 3000, 500), 0.00215);
+});
+
+describe("모델 출력 정리 (스키마 제한 미지원 대응)", () => {
+  it("보조 직군: 중복·주 직군 제거 후 최대 2개", () => {
+    const raw = { ...result, primaryRole: "영업", secondaryRoles: ["영업", "마케팅", "마케팅", "기획", "디자인"] };
+    assert.deepEqual((trimToLimits(raw) as typeof result).secondaryRoles, ["마케팅", "기획"]);
+  });
+  it("근거는 최대 5개", () => {
+    const evidence = Array.from({ length: 7 }, () => result.evidence[0]);
+    assert.equal((trimToLimits({ ...result, evidence }) as typeof result).evidence.length, 5);
+  });
+  it("원문 근거는 줄바꿈·연속 공백 차이를 무시하고 대조, 단어가 다르면 거절", () => {
+    const multiline = { ...input, tasks: "서비스 API를\n  개발하고 테스트 코드를 작성합니다." };
+    const quoted = { ...result, evidence: [{ field: "tasks" as const, quote: "서비스 API를 개발하고 테스트" }] };
+    assert.doesNotThrow(() => assertEvidence(multiline, quoted));
+    const wrong = { ...result, evidence: [{ field: "tasks" as const, quote: "서비스 API를 설계하고" }] };
+    assert.throws(() => assertEvidence(multiline, wrong));
+  });
+  it("원문의 보이지 않는 제어 문자(U+009F)는 무시", () => {
+    const withControl = { ...input, tasks: "이미지\u009f영상기사 등 콘텐츠 기획 및 제작" };
+    const quoted = {
+      ...result,
+      evidence: [{ field: "tasks" as const, quote: "이미지영상기사 등 콘텐츠 기획 및 제작" }],
+    };
+    assert.doesNotThrow(() => assertEvidence(withControl, quoted));
+  });
 });

@@ -104,6 +104,24 @@ const geminiResponse = z.object({
     thoughtsTokenCount: z.number().default(0),
   }),
 });
+const MAX_SECONDARY_ROLES = 2;
+const MAX_EVIDENCE = 5;
+
+/**
+ * The Claude schema omits array bounds (unsupported there), so trim lists the prompt already limits:
+ * secondary roles lose duplicates and the primary role, then keep the first two; evidence keeps the first five.
+ * Everything else is still validated strictly by classificationSchema.
+ */
+export function trimToLimits(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const value = raw as Record<string, unknown>;
+  const secondary = Array.isArray(value.secondaryRoles)
+    ? [...new Set(value.secondaryRoles)].filter(role => role !== value.primaryRole).slice(0, MAX_SECONDARY_ROLES)
+    : value.secondaryRoles;
+  const evidence = Array.isArray(value.evidence) ? value.evidence.slice(0, MAX_EVIDENCE) : value.evidence;
+  return { ...value, secondaryRoles: secondary, evidence };
+}
+
 export function parseModelResponse(provider: Provider, input: ClassificationInput, data: unknown) {
   let text: string, inputTokens: number, outputTokens: number;
   if (isClaude(provider)) {
@@ -126,7 +144,7 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
     inputTokens = result.usageMetadata.promptTokenCount;
     outputTokens = result.usageMetadata.candidatesTokenCount + result.usageMetadata.thoughtsTokenCount;
   }
-  const classification = assertEvidence(input, classificationSchema.parse(JSON.parse(text)));
+  const classification = assertEvidence(input, classificationSchema.parse(trimToLimits(JSON.parse(text))));
   return { classification, inputTokens, outputTokens, costUsd: estimateCost(provider, inputTokens, outputTokens) };
 }
 export type ClassificationResult = {
