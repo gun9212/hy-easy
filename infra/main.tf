@@ -1,16 +1,11 @@
 terraform {
-
   required_version = ">= 1.6"
   required_providers {
-
     google = {
-      source = "hashicorp/google", version = "~> 6.0"
+      source  = "hashicorp/google"
+      version = "~> 6.0"
     }
-
-
   }
-
-
 }
 
 provider "google" {
@@ -24,11 +19,12 @@ variable "project_id" {
 
 variable "region" {
   type    = string
-  default = "asia-northeast1"
+  default = "asia-northeast1" # Tokyo: Tier 1 pricing, close to Seoul (Supabase, HY-WEP).
 }
 
 variable "collector_image" {
-  type = string
+  type        = string
+  description = "Full image reference, e.g. asia-northeast1-docker.pkg.dev/<project>/hy-easy/collector:<tag>"
 }
 
 variable "supabase_url" {
@@ -36,31 +32,65 @@ variable "supabase_url" {
 }
 
 variable "hywep_list_url" {
-  type = string
+  type    = string
+  default = "https://hywep.hanyang.ac.kr/compjoinsearch/list.do"
 }
 
 variable "model_provider" {
   type    = string
-  default = "claude"
+  default = "anthropic"
 }
 
 variable "ai_enabled" {
   type    = bool
-  default = false
+  default = true
+}
+
+variable "schedules_paused" {
+  type        = bool
+  default     = true
+  description = "Keep the 5-minute schedule paused until one manual run of the job succeeds."
 }
 
 locals {
+  services = toset([
+    "run.googleapis.com",
+    "cloudscheduler.googleapis.com",
+    "secretmanager.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "storage.googleapis.com",
+  ])
 
-  services = toset(["run.googleapis.com", "cloudscheduler.googleapis.com", "secretmanager.googleapis.com", "aiplatform.googleapis.com", "artifactregistry.googleapis.com", "storage.googleapis.com"])
+  # Secret Manager secret id => container environment variable. Values are added outside Terraform
+  # (scripts/push-secrets.sh) so they never enter Terraform state.
+  secrets = {
+    "hy-easy-supabase-service-role" = "SUPABASE_SERVICE_ROLE_KEY"
+    "hy-easy-hywep-id"              = "HYWEP_ID"
+    "hy-easy-hywep-pw"              = "HYWEP_PW"
+    "hy-easy-anthropic-api-key"     = "ANTHROPIC_API_KEY"
+  }
 
+  plain_env = {
+    NEXT_PUBLIC_SUPABASE_URL  = var.supabase_url
+    HYWEP_LIST_URL            = var.hywep_list_url
+    HYWEP_SELECTORS_FILE      = "worker/selectors.verified.json"
+    HYWEP_SESSION_BUCKET      = google_storage_bucket.session.name
+    HYWEP_SESSION_OBJECT      = "hywep-state.json"
+    MODEL_PROVIDER            = var.model_provider
+    AI_CLASSIFICATION_ENABLED = tostring(var.ai_enabled)
+  }
+
+  schedules = {
+    daytime = "*/5 9-17 * * 1-5"
+    final   = "0 18 * * 1-5"
+  }
 }
 
 resource "google_project_service" "api" {
-
   for_each           = local.services
   service            = each.value
   disable_on_destroy = false
-
 }
 
 resource "google_service_account" "collector" {
@@ -73,200 +103,115 @@ resource "google_service_account" "scheduler" {
   display_name = "HY-Easy scheduler"
 }
 
-resource "google_storage_bucket" "session" {
+resource "google_artifact_registry_repository" "images" {
+  repository_id = "hy-easy"
+  location      = var.region
+  format        = "DOCKER"
+  depends_on    = [google_project_service.api]
+}
 
+# Operator session cookies (reused between runs to avoid a portal login every 5 minutes).
+resource "google_storage_bucket" "session" {
   name                        = "${var.project_id}-hy-easy-session"
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
   force_destroy               = false
-
 }
 
-resource "google_storage_bucket_iam_member" "session_reader" {
-
+resource "google_storage_bucket_iam_member" "session_rw" {
   bucket = google_storage_bucket.session.name
-  role   = "roles/storage.objectViewer"
+  role   = "roles/storage.objectUser"
   member = "serviceAccount:${google_service_account.collector.email}"
-
 }
 
-resource "google_secret_manager_secret" "supabase" {
-
-  secret_id = "hy-easy-supabase-service-role"
+resource "google_secret_manager_secret" "collector" {
+  for_each  = local.secrets
+  secret_id = each.key
   replication {
-    auto {
-
-    }
-
+    auto {}
   }
-
   depends_on = [google_project_service.api]
-
 }
 
-resource "google_secret_manager_secret_iam_member" "key_reader" {
-
-  secret_id = google_secret_manager_secret.supabase.secret_id
+resource "google_secret_manager_secret_iam_member" "collector_reader" {
+  for_each  = local.secrets
+  secret_id = google_secret_manager_secret.collector[each.key].secret_id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.collector.email}"
-
-}
-
-resource "google_project_iam_member" "model_caller" {
-
-  project = var.project_id
-  role    = "roles/aiplatform.user"
-  member  = "serviceAccount:${google_service_account.collector.email}"
-
-}
-
-resource "google_artifact_registry_repository" "images" {
-
-  repository_id = "hy-easy"
-  location      = var.region
-  format        = "DOCKER"
-  depends_on    = [google_project_service.api]
-
 }
 
 resource "google_cloud_run_v2_job" "collector" {
-
   name                = "hy-easy-collector"
   location            = var.region
   deletion_protection = true
-  template {
 
+  template {
     task_count  = 1
     parallelism = 1
     template {
-
       timeout         = "240s"
       max_retries     = 0
       service_account = google_service_account.collector.email
       containers {
-
         image = var.collector_image
         resources {
-          limits = {
-            cpu = "1", memory = "2Gi"
+          limits = { cpu = "1", memory = "2Gi" }
+        }
+        dynamic "env" {
+          for_each = local.plain_env
+          content {
+            name  = env.key
+            value = env.value
           }
-
         }
-
-        env {
-          name  = "NEXT_PUBLIC_SUPABASE_URL"
-          value = var.supabase_url
-        }
-
-        env {
-          name = "SUPABASE_SERVICE_ROLE_KEY"
-          value_source {
-            secret_key_ref {
-              secret  = google_secret_manager_secret.supabase.secret_id
-              version = "latest"
+        dynamic "env" {
+          for_each = local.secrets
+          content {
+            name = env.value
+            value_source {
+              secret_key_ref {
+                secret  = google_secret_manager_secret.collector[env.key].secret_id
+                version = "latest"
+              }
             }
-
           }
-
         }
-
-        env {
-          name  = "GOOGLE_CLOUD_PROJECT"
-          value = var.project_id
-        }
-
-        env {
-          name  = "HYWEP_LIST_URL"
-          value = var.hywep_list_url
-        }
-
-        env {
-          name  = "HYWEP_SELECTORS_FILE"
-          value = "worker/selectors.verified.json"
-        }
-
-        env {
-          name  = "HYWEP_SESSION_BUCKET"
-          value = google_storage_bucket.session.name
-        }
-
-        env {
-          name  = "HYWEP_SESSION_OBJECT"
-          value = "hywep-state.json"
-        }
-
-        env {
-          name  = "MODEL_PROVIDER"
-          value = var.model_provider
-        }
-
-        env {
-          name  = "MODEL_LOCATION"
-          value = "global"
-        }
-
-        env {
-          name  = "AI_CLASSIFICATION_ENABLED"
-          value = tostring(var.ai_enabled)
-        }
-
-
       }
-
-
     }
-
-
   }
 
-  depends_on = [google_project_service.api, google_secret_manager_secret_iam_member.key_reader]
-
+  depends_on = [google_project_service.api, google_secret_manager_secret_iam_member.collector_reader]
 }
 
 resource "google_cloud_run_v2_job_iam_member" "invoke" {
-
   name     = google_cloud_run_v2_job.collector.name
   location = var.region
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.scheduler.email}"
-
 }
 
 resource "google_cloud_scheduler_job" "poll" {
-
-  for_each = {
-    daytime = "*/5 9-17 * * 1-5", final = "0 18 * * 1-5"
-  }
-
+  for_each  = local.schedules
   name      = "hy-easy-${each.key}"
   region    = var.region
   schedule  = each.value
   time_zone = "Asia/Seoul"
-  paused    = true # Enable only after one successful authenticated end-to-end collection.
+  paused    = var.schedules_paused
   retry_config {
     retry_count = 0
   }
-
   http_target {
-
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.collector.name}:run"
     http_method = "POST"
     body        = base64encode("{}")
-    headers = {
-      "Content-Type" = "application/json"
-    }
-
+    headers     = { "Content-Type" = "application/json" }
     oauth_token {
       service_account_email = google_service_account.scheduler.email
       scope                 = "https://www.googleapis.com/auth/cloud-platform"
     }
-
-
   }
-
   depends_on = [google_project_service.api, google_cloud_run_v2_job_iam_member.invoke]
-
 }
 
 output "session_bucket" {
@@ -280,4 +225,3 @@ output "collector_service_account" {
 output "image_repository" {
   value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }
-

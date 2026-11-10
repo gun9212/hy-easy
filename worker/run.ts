@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleAuth } from "google-auth-library";
 import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
 import { classify, type Provider } from "../src/lib/classifier";
@@ -18,6 +17,7 @@ import {
   sourceUrl,
 } from "./adapter";
 import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
+import { loadSession, saveSession, sessionLocation } from "./session-store";
 import { listRowHash } from "./hywep-fields";
 import { planListSync } from "./list-sync";
 
@@ -84,22 +84,11 @@ let state: State = { schedulesLoaded: false, queue: [], pending: [], seenPages: 
 try {
   const stored = check(await db.from("collector_state").select("value").eq("name", "hywep").maybeSingle()).data;
   if (stored?.value && Object.keys(stored.value).length) state = stateSchema.parse(stored.value);
-  let storageState: string | Parameters<Awaited<ReturnType<typeof chromium.launch>>["newContext"]>[0];
-  const bucket = process.env.HYWEP_SESSION_BUCKET;
-  if (bucket) {
-    const auth = new GoogleAuth({ scopes: ["https://www.googleapis.com/auth/devstorage.read_only"] }),
-      client = await auth.getClient();
-    const result = await client.request({
-      url: `https://storage.googleapis.com/storage/v1/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(process.env.HYWEP_SESSION_OBJECT || "hywep-state.json")}?alt=media`,
-      timeout: 15_000,
-    });
-    storageState = result.data as Parameters<Awaited<ReturnType<typeof chromium.launch>>["newContext"]>[0];
-  } else storageState = process.env.HYWEP_STORAGE_STATE || ".secrets/hywep-state.json";
+  const sessionAt = sessionLocation();
+  const storedSession = await loadSession(sessionAt);
   browser = await chromium.launch({ headless: true });
   // Storage state contains cookies/localStorage only and is never logged.
-  const context = await browser.newContext({
-    storageState: storageState as Exclude<Parameters<typeof browser.newContext>[0], undefined>["storageState"],
-  });
+  const context = await browser.newContext(storedSession ? { storageState: storedSession } : {});
   const page = await context.newPage();
   page.setDefaultTimeout(15_000);
   dismissDialogs(page);
@@ -114,7 +103,8 @@ try {
         .limit(MAX_LOGIN_FAILURES),
     ).data ?? [];
   const loginBlocked = recent.length === MAX_LOGIN_FAILURES && recent.every(r => r.error_code === "LOGIN_FAILED");
-  await ensureSession(page, selectors, startUrl, loginBlocked ? null : credentialsFromEnv());
+  const session = await ensureSession(page, selectors, startUrl, loginBlocked ? null : credentialsFromEnv());
+  if (session === "logged_in") await saveSession(sessionAt, await context.storageState());
   const visited = new Set(state.seenIds);
   while (Date.now() < deadline - 30_000) {
     if (leaseLost) throw new Error("COLLECTOR_LEASE_LOST");

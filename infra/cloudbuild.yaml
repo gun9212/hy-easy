@@ -1,0 +1,9 @@
+# Builds the collector image from the repository root with Cloud Build (no local Docker needed).
+# Usage: gcloud builds submit --project hy-easy --config infra/cloudbuild.yaml --substitutions=_IMAGE=<image:tag> .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "worker/Dockerfile", "-t", "${_IMAGE}", "."]
+images:
+  - ${_IMAGE}
+options:
+  logging: CLOUD_LOGGING_ONLY

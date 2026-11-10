@@ -1,0 +1,14 @@
+# Files uploaded to Cloud Build. Secrets and local state must never leave this machine.
+.git
+.gitignore
+node_modules
+.next
+.env*
+.secrets
+.vercel
+output
+infra/*.tfstate*
+infra/.terraform
+infra/*.tfvars
+tsconfig.tsbuildinfo
+.claude
