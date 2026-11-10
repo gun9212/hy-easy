@@ -18,6 +18,8 @@ export type ClassificationInput = { practiceInfo: string; qualifications: string
 export type Posting = {
   id: string; sourceId: string; sourceUrl: string; company: string; department: string; title: string;
   term: string; location: string; period: string; headcount: number | null;
+  /** Live applicant count from the HY-WEP list. Excluded from change history. */
+  applicants: number | null; programType: string; majors: string;
   stipend: { amount: number | null; unit: "month" | "hour" | "total" | "unknown"; raw: string };
   deadline: { raw: string; at: string | null; date: string | null; precision: "minute" | "date" | "unknown" };
   recruitment: "open" | "closed" | "unknown";

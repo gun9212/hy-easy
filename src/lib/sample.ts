@@ -22,6 +22,7 @@ export const samplePostings: Posting[] = seeds.map((s, i) => {
   return {
     id: `sample-${i + 1}`, sourceId: `sample-${i + 1}`, sourceUrl: "https://hywep.hanyang.ac.kr/", company: s[0], department: s[1], title: s[2],
     term: i % 4 === 0 ? "2027-1학기" : "2026-겨울", location: s[5], period: i % 4 === 0 ? "2027.03 – 2027.06 · 4개월" : "2027.01 – 2027.02 · 2개월", headcount: i % 3 + 1,
+    applicants: (i * 5) % 13, programType: "직무체험형", majors: "전공 무관",
     stipend: { amount: s[4], unit: s[4] === null ? "unknown" : "month", raw: s[4] === null ? "원문 미기재" : `월 ${(s[4] / 10000).toLocaleString("ko-KR")}만원` },
     deadline: { raw: `${date} ${i === 7 ? "(시간 미기재)" : "18:00"}`, at: i === 7 ? null : `${date}T18:00:00+09:00`, date, precision: i === 7 ? "date" : "minute" },
     recruitment: i === 12 ? "closed" : "open", practiceInfo: s[7], qualifications: s[8], tasks: s[9], benefits: "점심 식대 지원 · 실습 지도 담당자 배정",

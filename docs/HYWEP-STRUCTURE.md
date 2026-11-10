@@ -79,7 +79,12 @@
 로그인 직후 화면. 본인 지원 내역 표(지원차수, 실습기관, 부서, 면접/선발여부 `심사전` 등)가 있다.
 → 향후 "내 지원 상태 자동 동기화"의 근거가 될 수 있으나, **운영자 계정의 개인 정보이므로 수집 대상이 아니다.** 사용자별 동기화는 별도 설계가 필요하다.
 
-## 5. 현재 코드와 어긋나는 점 (수정 필요)
+## 5. 코드 반영 현황
+
+2026-11-10 반영 완료: 아래 표의 항목은 `src/lib/normalize.ts`, `worker/hywep-fields.ts`(순수 매핑), `worker/adapter.ts`(Playwright)에 반영했다.
+남은 것은 **실제 DOM에서 확인할 값** 두 가지다: 부서 링크의 ID 속성·패턴(`sourceIdAttribute`, `sourceIdPattern`), 그리고 그 ID로 상세를 GET으로 열 수 있는 URL(`detailUrlTemplate`). `worker/selectors.example.json`의 값은 추정치다.
+
+### 반영 전 불일치 목록
 
 | 위치 | 현재 가정 | 실제 | 조치 |
 |---|---|---|---|
