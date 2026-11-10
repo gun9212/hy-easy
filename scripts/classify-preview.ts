@@ -1,5 +1,6 @@
 // Read-only preview: classifies a few open postings and prints the result. Writes nothing to the database.
 // Usage: npm run classify:preview -- [count]
+//        npm run classify:preview -- --titles "회사 / 제목;회사2 / 제목2"   (fixed set, for before/after comparisons)
 import { createClient } from "@supabase/supabase-js";
 import { classify, type Provider } from "../src/lib/classifier";
 import { classificationInput } from "../src/lib/normalize";
@@ -14,15 +15,32 @@ function requireEnv(name: string): string {
   return value;
 }
 
-async function loadSample(count: number): Promise<Posting[]> {
-  const db = createClient(requireEnv("NEXT_PUBLIC_SUPABASE_URL"), requireEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+function database() {
+  return createClient(requireEnv("NEXT_PUBLIC_SUPABASE_URL"), requireEnv("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await db
+}
+
+/** Loads postings whose "company / title" exactly matches one of the given labels, in the given order. */
+async function loadByTitles(labels: string[]): Promise<Posting[]> {
+  const { data, error } = await database().from("postings").select("document");
+  if (error) throw error;
+  const byLabel = new Map<string, Posting>(
+    (data ?? []).map(row => {
+      const p = row.document as Posting;
+      return [`${p.company} / ${p.title}`, p];
+    }),
+  );
+  return labels.map(label => byLabel.get(label)).filter((p): p is Posting => Boolean(p));
+}
+
+async function loadSample(count: number): Promise<Posting[]> {
+  const { data, error } = await database()
     .from("postings")
     .select("document")
     .eq("document->>recruitment", "open")
     .order("first_seen_at")
+    .order("source_id")
     .limit(POOL_SIZE);
   if (error) throw error;
   const pool = (data ?? []).map(row => row.document as Posting);
@@ -31,10 +49,21 @@ async function loadSample(count: number): Promise<Posting[]> {
 }
 
 async function main(): Promise<void> {
-  const count = Number(process.argv[2]) || DEFAULT_COUNT;
+  const titlesFlag = process.argv.indexOf("--titles");
+  const labels =
+    titlesFlag >= 0
+      ? (process.argv[titlesFlag + 1] ?? "")
+          .split(";")
+          .map(s => s.trim())
+          .filter(Boolean)
+      : [];
+  const postings = labels.length
+    ? await loadByTitles(labels)
+    : await loadSample(Number(process.argv[2]) || DEFAULT_COUNT);
+  if (labels.length && postings.length !== labels.length) console.log(`(일치 ${postings.length}/${labels.length}건)`);
   const provider = (process.env.MODEL_PROVIDER || "anthropic") as Provider;
   let totalUsd = 0;
-  for (const posting of await loadSample(count)) {
+  for (const posting of postings) {
     console.log(`\n■ ${posting.company} / ${posting.title}`);
     try {
       const result = await classify(classificationInput(posting), provider);
