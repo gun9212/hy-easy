@@ -133,9 +133,18 @@ async function readDetailFields(page: Page, s: Selectors): Promise<DetailFields>
   return fields;
 }
 
+/**
+ * The detail page is a popup layout without the logout link, so the list-page session check does not apply.
+ * An expired session redirects away from the detail path instead.
+ */
+export function redirectedAway(requestedUrl: string, actualUrl: string): boolean {
+  return new URL(actualUrl).pathname !== new URL(requestedUrl).pathname;
+}
+
 export async function readDetail(page: Page, s: Selectors, row: ListRow): Promise<Posting> {
-  await page.goto(sourceUrl(row.url), { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
-  await assertSession(page, s);
+  const url = sourceUrl(row.url);
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
+  if (redirectedAway(url, page.url())) throw new SessionExpired();
   if (!await page.locator(s.detailReady).count()) throw new Error("DETAIL_STRUCTURE_CHANGED");
   return normalizeDetail(await readDetailFields(page, s), row);
 }

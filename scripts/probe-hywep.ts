@@ -1,0 +1,61 @@
+// Read-only end-to-end check of the HY-WEP adapter with a saved operator session.
+// Opens the list, one list page and one detail page. Writes nothing to any database.
+// Usage: npm run collector:probe
+import { readFile } from "node:fs/promises";
+import { chromium } from "playwright";
+import {
+  dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema, sourceUrl,
+} from "../worker/adapter";
+
+const LIST_URL = process.env.HYWEP_LIST_URL || "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
+const SELECTORS_FILE = process.env.HYWEP_SELECTORS_FILE || "worker/selectors.example.json";
+const STORAGE_STATE = process.env.HYWEP_STORAGE_STATE || ".secrets/hywep-state.json";
+const NAVIGATION_TIMEOUT_MS = 25_000;
+
+function preview(text: string, length = 40): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  return flat.length > length ? `${flat.slice(0, length)}…` : flat;
+}
+
+async function main(): Promise<void> {
+  const selectors = selectorsSchema.parse(JSON.parse(await readFile(SELECTORS_FILE, "utf8")));
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({ storageState: STORAGE_STATE });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
+    dismissDialogs(page);
+
+    const started = Date.now();
+    await page.goto(sourceUrl(LIST_URL), { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
+    const scheduleUrls = await readScheduleUrls(page, selectors);
+    console.log(`회차 ${scheduleUrls.length}개`);
+
+    await page.goto(scheduleUrls[0], { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
+    const { rows, nextUrl } = await readListPage(page, selectors);
+    console.log(`첫 회차 1페이지: ${rows.length}행, 다음 페이지 ${nextUrl ? "있음" : "없음"}`);
+    for (const row of rows.slice(0, 3)) {
+      const f = row.fields;
+      console.log(`  #${row.id} ${f.company} / ${f.department} | ${f.status} | ${f.deadlineDate} ${f.deadlineTime} | ${f.stipend} | ${f.headcount}명 모집, ${f.applicants}명 지원`);
+    }
+
+    const target = rows.find(row => row.fields.status === "접수중") ?? rows[0];
+    if (!target) throw new Error("LIST_EMPTY");
+    const posting = await readDetail(page, selectors, target);
+    console.log(`상세 #${posting.sourceId}`);
+    console.log(`  제목: ${posting.title} | 학기: ${posting.term} | 상태: ${posting.recruitment}`);
+    console.log(`  마감: ${posting.deadline.at ?? posting.deadline.raw} (${posting.deadline.precision})`);
+    console.log(`  지원금: ${posting.stipend.amount ?? "미확정"} (${posting.stipend.unit}) | 인원: ${posting.headcount} / 지원 ${posting.applicants}`);
+    console.log(`  실습내용: ${preview(posting.tasks)}`);
+    console.log(`  자격사항: ${preview(posting.qualifications)}`);
+    console.log(`  실습정보: ${preview(posting.practiceInfo, 80)}`);
+    console.log(`소요 ${((Date.now() - started) / 1000).toFixed(1)}초`);
+  } finally {
+    await browser.close();
+  }
+}
+
+main().catch((error: unknown) => {
+  console.error(`PROBE_FAILED: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+});

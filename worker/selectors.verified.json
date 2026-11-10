@@ -1,0 +1,23 @@
+{
+  "verified": true,
+  "authenticated": "a[href='/logout.do']",
+  "scheduleLink": "[onclick*='schedule(']",
+  "scheduleAttribute": "onclick",
+  "schedulePattern": "schedule\\((\\d+)\\)",
+  "listUrlTemplate": "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule={schedule}&status=1137&pg={page}",
+  "listReady": "table.list.grid_header",
+  "emptyList": "table.list.grid_header tbody td:has-text('없습니다')",
+  "listHeader": "table.list.grid_header thead th",
+  "listRow": "table.list.grid_header tbody tr:has(a[href*='goView'])",
+  "listCell": "td",
+  "pagingLink": ".paging a",
+  "pagingPattern": "Paging\\((\\d+)\\)",
+  "detailLink": "a[href*='goView']",
+  "sourceIdAttribute": "href",
+  "sourceIdPattern": "goView\\('(\\d+)'\\)",
+  "detailUrlTemplate": "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq={id}",
+  "detailReady": "h4.sec_tit:has-text('실습기관 정보')",
+  "detailRows": "table.write tr",
+  "label": "th",
+  "value": "td"
+}

@@ -15,6 +15,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "collector": "node --import tsx --env-file-if-exists=.env.local worker/run.ts",
     "collector:login": "node --import tsx --env-file-if-exists=.env.local worker/login.ts",
+    "collector:probe": "node --import tsx --env-file-if-exists=.env.local scripts/probe-hywep.ts",
     "evaluate": "node --import tsx --env-file-if-exists=.env.local scripts/evaluate.ts"
   },
   "dependencies": {

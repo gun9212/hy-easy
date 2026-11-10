@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { detailUrl, listUrl, selectorsSchema, sourceUrl } from "../worker/adapter";
+import { detailUrl, listUrl, redirectedAway, selectorsSchema, sourceUrl } from "../worker/adapter";
 import {
   columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, listRowHash, normalizeDetail, pageNumber,
   recruitmentStatus, termName, type DetailFields, type ListRow,
@@ -139,6 +139,12 @@ describe("실측 선택자 파일", () => {
     assert.equal(detailUrl(selectors.detailUrlTemplate, "22253"), "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=22253");
   });
   it("검증 플래그는 실제 실행 확인 전까지 false", () => assert.equal(selectors.verified, false));
+  it("상세 페이지에서 다른 경로로 이동하면 세션 만료로 판단", () => {
+    const detail = "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=1";
+    assert.equal(redirectedAway(detail, detail), false);
+    assert.equal(redirectedAway(detail, "https://hywep.hanyang.ac.kr/index.do"), true);
+    assert.equal(redirectedAway(detail, "https://api.hanyang.ac.kr/oauth/login"), true);
+  });
 });
 
 describe("수집기 설정", () => {
