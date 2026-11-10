@@ -1,7 +1,12 @@
 // Pure mapping from HY-WEP list rows and detail tables to Posting.
 // Field labels were measured on 2026-11-10; see docs/HYWEP-STRUCTURE.md.
 import {
-  combineDeadline, parseCount, parseSelectionInfo, parseStipend, splitInstitution, stableHash,
+  combineDeadline,
+  parseCount,
+  parseSelectionInfo,
+  parseStipend,
+  splitInstitution,
+  stableHash,
 } from "../src/lib/normalize";
 import type { Posting } from "../src/lib/domain";
 
@@ -111,7 +116,10 @@ function jobTitle(tasks: string): string {
 }
 
 function labelled(pairs: readonly [string, string | undefined][]): string {
-  return pairs.filter(([, value]) => value?.trim()).map(([label, value]) => `${label}: ${value?.trim()}`).join("\n");
+  return pairs
+    .filter(([, value]) => value?.trim())
+    .map(([label, value]) => `${label}: ${value?.trim()}`)
+    .join("\n");
 }
 
 function institution(detail: DetailFields, list: ListFields) {
@@ -139,25 +147,41 @@ export function normalizeDetail(detail: DetailFields, row: ListRow, checkedAt = 
   const programType = list.programType || detail["유형"]?.trim() || "";
   const majors = list.majors || detail["선발대상"]?.trim() || "";
   return {
-    id: "", sourceId: row.id, sourceUrl: row.url, company, department,
+    id: "",
+    sourceId: row.id,
+    sourceUrl: row.url,
+    company,
+    department,
     title: jobTitle(tasks) || department || company,
     term: termName(detail["현장실습명"] ?? ""),
     location: list.location || detail["소재지"]?.trim() || "",
     period: (detail["실습기간"] || list.period || "").replace(/\s+/g, " ").trim(),
     headcount: parseCount(list.headcount ?? "") ?? selection.headcount,
     applicants: parseCount(list.applicants ?? ""),
-    programType, majors,
+    programType,
+    majors,
     stipend: parseStipend(detail["기관지원금"] || list.stipend || ""),
     deadline: deadline(detail, list),
     recruitment: recruitmentStatus(list.status),
-    practiceInfo: labelled([["유형", programType], ["선발대상", majors], ["학년", selection.grade]]),
-    qualifications, tasks,
+    practiceInfo: labelled([
+      ["유형", programType],
+      ["선발대상", majors],
+      ["학년", selection.grade],
+    ]),
+    qualifications,
+    tasks,
     benefits: labelled([
-      ["근무시간", detail["근무시간"]], ["근무요일", detail["근무요일"]],
-      ["숙식제공", detail["숙식제공여부"]], ["지원금 지급일", detail["기관지원금지급일"]],
+      ["근무시간", detail["근무시간"]],
+      ["근무요일", detail["근무요일"]],
+      ["숙식제공", detail["숙식제공여부"]],
+      ["지원금 지급일", detail["기관지원금지급일"]],
     ]),
     events: detail["면접정보"]?.trim() ? [{ label: "면접정보", raw: detail["면접정보"].trim() }] : [],
-    firstSeenAt: checkedAt, updatedAt: checkedAt, lastCheckedAt: checkedAt,
-    classification: null, classificationSource: null, classificationStale: false,
+    firstSeenAt: checkedAt,
+    updatedAt: checkedAt,
+    lastCheckedAt: checkedAt,
+    classification: null,
+    classificationSource: null,
+    classificationStale: false,
   };
 }

@@ -12,11 +12,13 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "check": "npm run lint && npm run typecheck && npm test",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test",
     "collector": "node --import tsx --env-file-if-exists=.env.local worker/run.ts",
     "collector:login": "node --import tsx --env-file-if-exists=.env.local worker/login.ts",
     "collector:probe": "node --import tsx --env-file-if-exists=.env.local scripts/probe-hywep.ts",
-    "evaluate": "node --import tsx --env-file-if-exists=.env.local scripts/evaluate.ts"
+    "evaluate": "node --import tsx --env-file-if-exists=.env.local scripts/evaluate.ts",
+    "format": "prettier --write src worker scripts tests",
+    "format:check": "prettier --check src worker scripts tests"
   },
   "dependencies": {
     "@supabase/ssr": "0.10.0",
@@ -35,6 +37,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.1.7",
+    "prettier": "3.6.2",
     "tsx": "4.21.0",
     "typescript": "5.9.3"
   },

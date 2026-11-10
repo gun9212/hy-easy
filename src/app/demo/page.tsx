@@ -6,5 +6,16 @@ import type { Filters } from "@/lib/domain";
 export const dynamic = "force-dynamic";
 export default async function Demo({ searchParams }: { searchParams: Promise<Filters> }) {
   if (!demoEnabled()) notFound();
-  return <Workspace mode="demo" postings={samplePostings} initialFavorites={[]} initialApplications={[]} initialFilters={await searchParams} initialNow={DEMO_NOW} userLabel="둘러보는 한양인" isAdmin={false}/>;
+  return (
+    <Workspace
+      mode="demo"
+      postings={samplePostings}
+      initialFavorites={[]}
+      initialApplications={[]}
+      initialFilters={await searchParams}
+      initialNow={DEMO_NOW}
+      userLabel="둘러보는 한양인"
+      isAdmin={false}
+    />
+  );
 }

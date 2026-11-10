@@ -25,7 +25,9 @@ function detailReason(row: ListRow, known: KnownPosting | undefined, now: number
 }
 
 export function planListSync(
-  rows: readonly ListRow[], known: ReadonlyMap<string, KnownPosting>, now = Date.now(),
+  rows: readonly ListRow[],
+  known: ReadonlyMap<string, KnownPosting>,
+  now = Date.now(),
 ): SyncPlan {
   const plan: SyncPlan = { detail: [], touch: [] };
   for (const row of rows) {

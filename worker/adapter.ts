@@ -4,8 +4,16 @@ import { z } from "zod";
 import type { Locator, Page } from "playwright";
 import type { Posting } from "../src/lib/domain";
 import {
-  columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, normalizeDetail, normalizeLabel, pageNumber,
-  type DetailFields, type ListRow,
+  columnIndex,
+  extractSourceId,
+  fillTemplate,
+  hasNextPage,
+  listFields,
+  normalizeDetail,
+  normalizeLabel,
+  pageNumber,
+  type DetailFields,
+  type ListRow,
 } from "./hywep-fields";
 
 const HYWEP_HOST = "hywep.hanyang.ac.kr";
@@ -15,36 +23,40 @@ const NAVIGATION_TIMEOUT_MS = 25_000;
 const templateWith = (...keys: string[]) =>
   z.string().refine(value => keys.every(key => value.includes(`{${key}}`)), `must contain ${keys.join(", ")}`);
 
-export const selectorsSchema = z.object({
-  verified: z.boolean(),
-  authenticated: z.string().min(1),
-  /**
-   * Hidden input holding the term (schedule) HY-WEP selects by default: the term currently recruiting.
-   * The term cards also list past terms (closed long ago), which are not collected.
-   */
-  currentSchedule: z.string().min(1),
-  /** GET list URL. `{page}` is zero-based. */
-  listUrlTemplate: templateWith("schedule", "page"),
-  listReady: z.string().min(1),
-  emptyList: z.string().min(1),
-  listHeader: z.string().min(1),
-  listRow: z.string().min(1),
-  listCell: z.string().min(1),
-  pagingLink: z.string().min(1),
-  pagingPattern: z.string().min(1),
-  detailLink: z.string().min(1),
-  sourceIdAttribute: z.string().min(1),
-  sourceIdPattern: z.string().min(1),
-  detailUrlTemplate: templateWith("id"),
-  detailReady: z.string().min(1),
-  detailRows: z.string().min(1),
-  label: z.string().min(1),
-  value: z.string().min(1),
-}).strict();
+export const selectorsSchema = z
+  .object({
+    verified: z.boolean(),
+    authenticated: z.string().min(1),
+    /**
+     * Hidden input holding the term (schedule) HY-WEP selects by default: the term currently recruiting.
+     * The term cards also list past terms (closed long ago), which are not collected.
+     */
+    currentSchedule: z.string().min(1),
+    /** GET list URL. `{page}` is zero-based. */
+    listUrlTemplate: templateWith("schedule", "page"),
+    listReady: z.string().min(1),
+    emptyList: z.string().min(1),
+    listHeader: z.string().min(1),
+    listRow: z.string().min(1),
+    listCell: z.string().min(1),
+    pagingLink: z.string().min(1),
+    pagingPattern: z.string().min(1),
+    detailLink: z.string().min(1),
+    sourceIdAttribute: z.string().min(1),
+    sourceIdPattern: z.string().min(1),
+    detailUrlTemplate: templateWith("id"),
+    detailReady: z.string().min(1),
+    detailRows: z.string().min(1),
+    label: z.string().min(1),
+    value: z.string().min(1),
+  })
+  .strict();
 export type Selectors = z.infer<typeof selectorsSchema>;
 
 export class SessionExpired extends Error {
-  constructor() { super("SESSION_EXPIRED"); }
+  constructor() {
+    super("SESSION_EXPIRED");
+  }
 }
 
 export function sourceUrl(raw: string, base = HYWEP_ORIGIN): string {
@@ -65,11 +77,13 @@ export function listUrl(template: string, schedule: string, page: number): strin
 
 /** The portal shows a JS alert (e.g. password-change notice) during login; dismiss it. */
 export function dismissDialogs(page: Page): void {
-  page.on("dialog", dialog => { void dialog.dismiss().catch(() => undefined); });
+  page.on("dialog", dialog => {
+    void dialog.dismiss().catch(() => undefined);
+  });
 }
 
 export async function assertSession(page: Page, s: Selectors): Promise<void> {
-  if (!await page.locator(s.authenticated).count()) throw new SessionExpired();
+  if (!(await page.locator(s.authenticated).count())) throw new SessionExpired();
 }
 
 async function attributes(locator: Locator, name: string): Promise<(string | null)[]> {
@@ -78,7 +92,10 @@ async function attributes(locator: Locator, name: string): Promise<(string | nul
 
 /** Parses an explicit term list such as "119,120". Returns null when unset. */
 export function parseScheduleOverride(raw: string | undefined): string[] | null {
-  const ids = (raw ?? "").split(",").map(id => id.trim()).filter(Boolean);
+  const ids = (raw ?? "")
+    .split(",")
+    .map(id => id.trim())
+    .filter(Boolean);
   if (!ids.length) return null;
   if (!ids.every(id => /^\d+$/.test(id))) throw new Error("HYWEP_SCHEDULES_INVALID");
   return [...new Set(ids)];
@@ -113,11 +130,11 @@ function nextListUrl(currentUrl: string, pagingHrefs: (string | null)[], s: Sele
 /** Reads every posting row on the current list page. An empty list must be confirmed explicitly. */
 export async function readListPage(page: Page, s: Selectors): Promise<{ rows: ListRow[]; nextUrl: string | null }> {
   await assertSession(page, s);
-  if (!await page.locator(s.listReady).count()) throw new Error("LIST_STRUCTURE_CHANGED");
+  if (!(await page.locator(s.listReady).count())) throw new Error("LIST_STRUCTURE_CHANGED");
   const rowLocator = page.locator(s.listRow);
   const count = await rowLocator.count();
   if (!count) {
-    if (!await page.locator(s.emptyList).count()) throw new Error("LIST_NOT_CONFIRMED_EMPTY");
+    if (!(await page.locator(s.emptyList).count())) throw new Error("LIST_NOT_CONFIRMED_EMPTY");
     return { rows: [], nextUrl: null };
   }
   const index = columnIndex(await page.locator(s.listHeader).allInnerTexts());
@@ -130,7 +147,7 @@ export async function readListPage(page: Page, s: Selectors): Promise<{ rows: Li
 async function readDetailFields(page: Page, s: Selectors): Promise<DetailFields> {
   const fields: DetailFields = {};
   const rows = page.locator(s.detailRows);
-  for (let i = 0; i < await rows.count(); i++) {
+  for (let i = 0; i < (await rows.count()); i++) {
     const labels = await rows.nth(i).locator(s.label).allInnerTexts();
     const values = await rows.nth(i).locator(s.value).allInnerTexts();
     if (labels.length > values.length) throw new Error("DETAIL_LABEL_VALUE_MISMATCH");
@@ -156,6 +173,6 @@ export async function readDetail(page: Page, s: Selectors, row: ListRow): Promis
   const url = sourceUrl(row.url);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
   if (redirectedAway(url, page.url())) throw new SessionExpired();
-  if (!await page.locator(s.detailReady).count()) throw new Error("DETAIL_STRUCTURE_CHANGED");
+  if (!(await page.locator(s.detailReady).count())) throw new Error("DETAIL_STRUCTURE_CHANGED");
   return normalizeDetail(await readDetailFields(page, s), row);
 }

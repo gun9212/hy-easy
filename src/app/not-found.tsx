@@ -1,2 +1,12 @@
 import Link from "next/link";
-export default function NotFound() { return <main className="error-page"><span className="eyebrow">404</span><h1>찾을 수 없는 페이지예요.</h1><Link className="primary-button" href="/">처음으로</Link></main>; }
+export default function NotFound() {
+  return (
+    <main className="error-page">
+      <span className="eyebrow">404</span>
+      <h1>찾을 수 없는 페이지예요.</h1>
+      <Link className="primary-button" href="/">
+        처음으로
+      </Link>
+    </main>
+  );
+}

@@ -7,16 +7,27 @@ const NOW = Date.parse("2026-11-10T08:00:00Z");
 const row = (id: string, overrides: ListRow["fields"] = {}): ListRow => ({
   id,
   url: `https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=${id}`,
-  fields: { company: "가상기업", department: "개발팀", status: "접수중", deadlineDate: "2026-11-20", applicants: "3", ...overrides },
+  fields: {
+    company: "가상기업",
+    department: "개발팀",
+    status: "접수중",
+    deadlineDate: "2026-11-20",
+    applicants: "3",
+    ...overrides,
+  },
 });
 const known = (r: ListRow, checkedAgoMs = 3600_000): KnownPosting => ({
-  listHash: listRowHash(r.fields), detailCheckedAt: new Date(NOW - checkedAgoMs).toISOString(),
+  listHash: listRowHash(r.fields),
+  detailCheckedAt: new Date(NOW - checkedAgoMs).toISOString(),
 });
 
 describe("목록 기반 상세 재조회 판단", () => {
   it("처음 본 공고는 상세를 읽음", () => {
     const plan = planListSync([row("1")], new Map(), NOW);
-    assert.deepEqual(plan.detail.map(d => d.reason), ["new"]);
+    assert.deepEqual(
+      plan.detail.map(d => d.reason),
+      ["new"],
+    );
     assert.equal(plan.touch.length, 0);
   });
   it("목록이 그대로면 상세 없이 지원인원만 갱신", () => {

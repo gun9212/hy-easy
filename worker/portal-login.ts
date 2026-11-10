@@ -16,10 +16,14 @@ export type Credentials = { id: string; password: string };
 export type SessionResult = "reused" | "logged_in";
 
 export class LoginFailed extends Error {
-  constructor(reason: string) { super(`LOGIN_FAILED: ${reason}`); }
+  constructor(reason: string) {
+    super(`LOGIN_FAILED: ${reason}`);
+  }
 }
 
-export function credentialsFromEnv(env: Readonly<Record<string, string | undefined>> = process.env): Credentials | null {
+export function credentialsFromEnv(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): Credentials | null {
   const id = env.HYWEP_ID?.trim();
   const password = env.HYWEP_PW;
   return id && password ? { id, password } : null;
@@ -35,14 +39,18 @@ export async function loginWithPassword(page: Page, credentials: Credentials): P
   await Promise.all([
     page.waitForURL(PORTAL_LOGIN, { timeout: LOGIN_TIMEOUT_MS }),
     page.evaluate(STUDENT_LOGIN_SCRIPT),
-  ]).catch(() => { throw new LoginFailed("PORTAL_NOT_REACHED"); });
+  ]).catch(() => {
+    throw new LoginFailed("PORTAL_NOT_REACHED");
+  });
 
   await page.locator(PORTAL_FORM.id).fill(credentials.id);
   await page.locator(PORTAL_FORM.password).fill(credentials.password);
   await Promise.all([
     page.waitForURL(HYWEP_PAGE, { timeout: LOGIN_TIMEOUT_MS }),
     page.locator(PORTAL_FORM.submit).click(),
-  ]).catch(() => { throw new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT"); });
+  ]).catch(() => {
+    throw new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT");
+  });
 }
 
 /**
@@ -50,7 +58,10 @@ export async function loginWithPassword(page: Page, credentials: Credentials): P
  * Without credentials an expired session stays a SessionExpired error.
  */
 export async function ensureSession(
-  page: Page, s: Selectors, listUrl: string, credentials: Credentials | null,
+  page: Page,
+  s: Selectors,
+  listUrl: string,
+  credentials: Credentials | null,
 ): Promise<SessionResult> {
   const url = sourceUrl(listUrl);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS });
@@ -59,6 +70,6 @@ export async function ensureSession(
 
   await loginWithPassword(page, credentials);
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS });
-  if (!await isAuthenticated(page, s)) throw new LoginFailed("NOT_AUTHENTICATED_AFTER_LOGIN");
+  if (!(await isAuthenticated(page, s))) throw new LoginFailed("NOT_AUTHENTICATED_AFTER_LOGIN");
   return "logged_in";
 }

@@ -59,7 +59,10 @@ export function parseDeadline(raw: string): Deadline {
 
 /** HY-WEP lists the deadline date and time in separate columns ("2026-10-26", "24시까지"). */
 export function combineDeadline(date: string, time: string): Deadline {
-  const raw = [date, time].map(value => value.trim()).filter(Boolean).join(" ");
+  const raw = [date, time]
+    .map(value => value.trim())
+    .filter(Boolean)
+    .join(" ");
   return parseDeadline(raw);
 }
 
@@ -99,7 +102,10 @@ function valueAfterColon(part: string | undefined): string {
 
 /** "2 명 / 학년무관 / 접수마감 : 2026-10-26 / 시간 : 24시까지" */
 export function parseSelectionInfo(raw: string): SelectionInfo {
-  const parts = raw.split("/").map(part => part.trim()).filter(Boolean);
+  const parts = raw
+    .split("/")
+    .map(part => part.trim())
+    .filter(Boolean);
   const countPart = parts.find(part => /^\d+\s*명$/.test(part));
   const datePart = parts.find(part => part.startsWith("접수마감"));
   const timePart = parts.find(part => part.startsWith("시간"));
@@ -128,7 +134,9 @@ export function stableHash(value: unknown): string {
     }
     return v;
   };
-  return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonical(value)))
+    .digest("hex");
 }
 
 export function classificationInput(posting: Pick<Posting, "practiceInfo" | "qualifications" | "tasks">) {
@@ -138,8 +146,14 @@ export function classificationInput(posting: Pick<Posting, "practiceInfo" | "qua
 /** Content hash for change history. Volatile fields (timestamps, live applicant count) are excluded. */
 export function sourceHash(posting: Posting): string {
   const {
-    id: _id, firstSeenAt: _first, updatedAt: _updated, lastCheckedAt: _checked, applicants: _applicants,
-    classification: _classification, classificationSource: _source, classificationStale: _stale,
+    id: _id,
+    firstSeenAt: _first,
+    updatedAt: _updated,
+    lastCheckedAt: _checked,
+    applicants: _applicants,
+    classification: _classification,
+    classificationSource: _source,
+    classificationStale: _stale,
     ...source
   } = posting;
   void [_id, _first, _updated, _checked, _applicants, _classification, _source, _stale];

@@ -4,7 +4,12 @@
 import { chmod, readFile, stat } from "node:fs/promises";
 import { chromium } from "playwright";
 import {
-  dismissDialogs, parseScheduleOverride, readDetail, readListPage, readScheduleUrls, selectorsSchema,
+  dismissDialogs,
+  parseScheduleOverride,
+  readDetail,
+  readListPage,
+  readScheduleUrls,
+  selectorsSchema,
 } from "../worker/adapter";
 import { credentialsFromEnv, ensureSession } from "../worker/portal-login";
 
@@ -24,7 +29,12 @@ async function main(): Promise<void> {
   try {
     // --fresh ignores the stored session to exercise the automatic portal login.
     const fresh = process.argv.includes("--fresh");
-    const hasStoredSession = !fresh && await stat(STORAGE_STATE).then(() => true, () => false);
+    const hasStoredSession =
+      !fresh &&
+      (await stat(STORAGE_STATE).then(
+        () => true,
+        () => false,
+      ));
     const context = await browser.newContext(hasStoredSession ? { storageState: STORAGE_STATE } : {});
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
@@ -33,7 +43,9 @@ async function main(): Promise<void> {
     const started = Date.now();
     const credentials = credentialsFromEnv();
     const session = await ensureSession(page, selectors, LIST_URL, credentials);
-    console.log(`세션: ${session === "reused" ? "저장된 세션 재사용" : "자동 로그인 성공"} (자격 증명 ${credentials ? "있음" : "없음"})`);
+    console.log(
+      `세션: ${session === "reused" ? "저장된 세션 재사용" : "자동 로그인 성공"} (자격 증명 ${credentials ? "있음" : "없음"})`,
+    );
     if (session === "logged_in") {
       await context.storageState({ path: STORAGE_STATE });
       await chmod(STORAGE_STATE, 0o600);
@@ -46,7 +58,9 @@ async function main(): Promise<void> {
     console.log(`첫 회차 1페이지: ${rows.length}행, 다음 페이지 ${nextUrl ? "있음" : "없음"}`);
     for (const row of rows.slice(0, 3)) {
       const f = row.fields;
-      console.log(`  #${row.id} ${f.company} / ${f.department} | ${f.status} | ${f.deadlineDate} ${f.deadlineTime} | ${f.stipend} | ${f.headcount}명 모집, ${f.applicants}명 지원`);
+      console.log(
+        `  #${row.id} ${f.company} / ${f.department} | ${f.status} | ${f.deadlineDate} ${f.deadlineTime} | ${f.stipend} | ${f.headcount}명 모집, ${f.applicants}명 지원`,
+      );
     }
 
     const target = rows.find(row => row.fields.status === "접수중") ?? rows[0];
@@ -55,7 +69,9 @@ async function main(): Promise<void> {
     console.log(`상세 #${posting.sourceId}`);
     console.log(`  제목: ${posting.title} | 학기: ${posting.term} | 상태: ${posting.recruitment}`);
     console.log(`  마감: ${posting.deadline.at ?? posting.deadline.raw} (${posting.deadline.precision})`);
-    console.log(`  지원금: ${posting.stipend.amount ?? "미확정"} (${posting.stipend.unit}) | 인원: ${posting.headcount} / 지원 ${posting.applicants}`);
+    console.log(
+      `  지원금: ${posting.stipend.amount ?? "미확정"} (${posting.stipend.unit}) | 인원: ${posting.headcount} / 지원 ${posting.applicants}`,
+    );
     console.log(`  실습내용: ${preview(posting.tasks)}`);
     console.log(`  자격사항: ${preview(posting.qualifications)}`);
     console.log(`  실습정보: ${preview(posting.practiceInfo, 80)}`);

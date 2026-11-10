@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { combineDeadline, parseCount, parseSelectionInfo, parseStipend, sourceHash, splitInstitution } from "../src/lib/normalize";
+import {
+  combineDeadline,
+  parseCount,
+  parseSelectionInfo,
+  parseStipend,
+  sourceHash,
+  splitInstitution,
+} from "../src/lib/normalize";
 import { samplePostings } from "../src/lib/sample";
 
 describe("HY-WEP 실측 형식", () => {
@@ -22,15 +29,22 @@ describe("HY-WEP 실측 형식", () => {
     assert.equal(info.grade, "학년무관");
     assert.equal(info.deadline.at, "2026-10-26T15:00:00.000Z");
   });
-  it("선발정보에 마감이 없으면 미확인", () => assert.equal(parseSelectionInfo("2 명 / 학년무관").deadline.precision, "unknown"));
+  it("선발정보에 마감이 없으면 미확인", () =>
+    assert.equal(parseSelectionInfo("2 명 / 학년무관").deadline.precision, "unknown"));
   it("인원 수", () => {
     assert.equal(parseCount("2"), 2);
     assert.equal(parseCount("12 명"), 12);
     assert.equal(parseCount("-"), null);
   });
   it("기관명 / 부서명 분리, 배지 제거, 띄어쓰기 없는 '/'는 기관명 일부", () => {
-    assert.deepEqual(splitInstitution("가상테크(주) / 개발팀 신규모집"), { company: "가상테크(주)", department: "개발팀" });
-    assert.deepEqual(splitInstitution("가상A/가상B센터 / 기획팀"), { company: "가상A/가상B센터", department: "기획팀" });
+    assert.deepEqual(splitInstitution("가상테크(주) / 개발팀 신규모집"), {
+      company: "가상테크(주)",
+      department: "개발팀",
+    });
+    assert.deepEqual(splitInstitution("가상A/가상B센터 / 기획팀"), {
+      company: "가상A/가상B센터",
+      department: "기획팀",
+    });
     assert.deepEqual(splitInstitution("가상테크(주)"), { company: "가상테크(주)", department: "" });
   });
   it("지원인원 변동은 변경 이력 해시에 영향 없음", () => {

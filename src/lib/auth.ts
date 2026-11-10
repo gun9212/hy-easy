@@ -1,11 +1,21 @@
 import { isSchoolUser } from "./auth-policy";
 import { isConfigured, serverClient } from "./supabase/server";
 
-export class HttpError extends Error { constructor(public status: number, message: string) { super(message); } }
+export class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 export async function requireUser() {
   if (!isConfigured()) throw new HttpError(503, "Supabase 프로젝트가 연결되지 않았습니다.");
   const db = await serverClient();
-  const { data: { user }, error } = await db.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await db.auth.getUser();
   if (error || !user) throw new HttpError(401, "로그인이 필요합니다.");
   if (!isSchoolUser(user)) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
   return { db, user };

@@ -1,21 +1,68 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { detailUrl, listUrl, parseScheduleOverride, redirectedAway, selectorsSchema, sourceUrl } from "../worker/adapter";
+import {
+  detailUrl,
+  listUrl,
+  parseScheduleOverride,
+  redirectedAway,
+  selectorsSchema,
+  sourceUrl,
+} from "../worker/adapter";
 import { credentialsFromEnv, LoginFailed } from "../worker/portal-login";
 import {
-  columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, listRowHash, normalizeDetail, pageNumber,
-  recruitmentStatus, termName, type DetailFields, type ListRow,
+  columnIndex,
+  extractSourceId,
+  fillTemplate,
+  hasNextPage,
+  listFields,
+  listRowHash,
+  normalizeDetail,
+  pageNumber,
+  recruitmentStatus,
+  termName,
+  type DetailFields,
+  type ListRow,
 } from "../worker/hywep-fields";
 
 // Header texts as measured on the HY-WEP list page (fictional values below).
 const HEADERS = [
-  "번호", "실습기관분류", "실습기관명", "부서\n(상세모집정보)", "실습기관 진행상태", "신규모집", "홈페이지", "소재지",
-  "모집마감일", "마감시간", "실습기간", "기관지원금", "유형", "모집전공", "모집인원", "지원인원", "실습신청",
+  "번호",
+  "실습기관분류",
+  "실습기관명",
+  "부서\n(상세모집정보)",
+  "실습기관 진행상태",
+  "신규모집",
+  "홈페이지",
+  "소재지",
+  "모집마감일",
+  "마감시간",
+  "실습기간",
+  "기관지원금",
+  "유형",
+  "모집전공",
+  "모집인원",
+  "지원인원",
+  "실습신청",
 ];
 const CELLS = [
-  "1", "기업", "가상테크(주)", "개발팀", "접수중", "신규모집", "클릭", "서울 성동구",
-  "2026-11-22", "24시까지", "2027-01-01~\n2027-02-28", "월/1,620,000", "직무체험형", "컴퓨터소프트웨어학부", "2", "7", "",
+  "1",
+  "기업",
+  "가상테크(주)",
+  "개발팀",
+  "접수중",
+  "신규모집",
+  "클릭",
+  "서울 성동구",
+  "2026-11-22",
+  "24시까지",
+  "2027-01-01~\n2027-02-28",
+  "월/1,620,000",
+  "직무체험형",
+  "컴퓨터소프트웨어학부",
+  "2",
+  "7",
+  "",
 ];
 const DETAIL: DetailFields = {
   현장실습명: "2026년도 겨울학기 단기 현장실습(,2027.01.01~2027.02.28)",
@@ -65,13 +112,17 @@ describe("HY-WEP 목록 파싱", () => {
 });
 
 describe("원문 ID 추출", () => {
-  it("onclick 인자에서 ID 추출", () => assert.equal(extractSourceId("fnView('12345');", "\\(\\s*'?([\\w.-]+)'?"), "12345"));
+  it("onclick 인자에서 ID 추출", () =>
+    assert.equal(extractSourceId("fnView('12345');", "\\(\\s*'?([\\w.-]+)'?"), "12345"));
   it("ID가 없거나 형식이 이상하면 실패", () => {
     assert.throws(() => extractSourceId(null, "(\\d+)"), /SOURCE_ID_NOT_FOUND/);
     assert.throws(() => extractSourceId("fnView('a b<c')", "'([^']+)'"), /SOURCE_ID_INVALID/);
   });
   it("상세 URL은 HY-WEP HTTPS로 제한하고 ID를 인코딩", () => {
-    assert.equal(detailUrl("https://hywep.hanyang.ac.kr/v.do?id={id}", "A-1"), "https://hywep.hanyang.ac.kr/v.do?id=A-1");
+    assert.equal(
+      detailUrl("https://hywep.hanyang.ac.kr/v.do?id={id}", "A-1"),
+      "https://hywep.hanyang.ac.kr/v.do?id=A-1",
+    );
     assert.throws(() => detailUrl("https://attacker.invalid/?id={id}", "1"), /UNTRUSTED_SOURCE_URL/);
   });
 });
@@ -109,14 +160,20 @@ describe("HY-WEP 상세 정규화", () => {
     assert.equal(fallback.recruitment, "unknown");
   });
   it("업무·자격이 모두 비면 수집 실패", () => {
-    assert.throws(() => normalizeDetail({ ...DETAIL, 실습내용: "", 자격사항: "" }, row()), /DETAIL_REQUIRED_FIELDS_MISSING/);
+    assert.throws(
+      () => normalizeDetail({ ...DETAIL, 실습내용: "", 자격사항: "" }, row()),
+      /DETAIL_REQUIRED_FIELDS_MISSING/,
+    );
   });
 });
 
 describe("목록 페이지 이동 (실측: GET list.do?schedule=&pg=, 0부터 시작)", () => {
   const template = "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule={schedule}&status=1137&pg={page}";
   it("회차·페이지로 목록 URL 생성", () => {
-    assert.equal(listUrl(template, "119", 0), "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule=119&status=1137&pg=0");
+    assert.equal(
+      listUrl(template, "119", 0),
+      "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule=119&status=1137&pg=0",
+    );
   });
   it("pg 없으면 첫 페이지(0)", () => {
     assert.equal(pageNumber("https://hywep.hanyang.ac.kr/compjoinsearch/list.do"), 0);
@@ -127,7 +184,8 @@ describe("목록 페이지 이동 (실측: GET list.do?schedule=&pg=, 0부터 �
     assert.equal(hasNextPage(links, 0, "Paging\\((\\d+)\\)"), true);
     assert.equal(hasNextPage(links, 2, "Paging\\((\\d+)\\)"), false);
   });
-  it("템플릿 값이 빠지면 실패", () => assert.throws(() => fillTemplate("a?{schedule}&{page}", { schedule: 1 }), /TEMPLATE_VALUE_MISSING/));
+  it("템플릿 값이 빠지면 실패", () =>
+    assert.throws(() => fillTemplate("a?{schedule}&{page}", { schedule: 1 }), /TEMPLATE_VALUE_MISSING/));
 });
 
 describe("실측 선택자 파일", () => {
@@ -142,7 +200,10 @@ describe("실측 선택자 파일", () => {
     assert.throws(() => parseScheduleOverride("119;drop"), /HYWEP_SCHEDULES_INVALID/);
   });
   it("상세 URL은 jid_seq GET", () => {
-    assert.equal(detailUrl(selectors.detailUrlTemplate, "22253"), "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=22253");
+    assert.equal(
+      detailUrl(selectors.detailUrlTemplate, "22253"),
+      "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=22253",
+    );
   });
   it("검증 플래그는 실제 실행 확인 전까지 false", () => assert.equal(selectors.verified, false));
   it("상세 페이지에서 다른 경로로 이동하면 세션 만료로 판단", () => {
