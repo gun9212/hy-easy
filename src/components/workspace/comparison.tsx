@@ -23,10 +23,7 @@ export function Comparison({ postings, close, applications, now }: Props) {
   return (
     <Modal close={close} label="선택 공고 비교" wide>
       <div className="modal-top">
-        <div>
-          <span className="eyebrow">SIDE BY SIDE</span>
-          <h2>같은 기준으로, 나란히 비교</h2>
-        </div>
+        <h2>같은 기준으로, 나란히 비교</h2>
         <button className="icon-button" aria-label="비교 닫기" onClick={close}>
           <X size={21} />
         </button>

@@ -75,8 +75,7 @@ export function ListMeta({ total, filters, updateFilters }: { total: number } & 
   return (
     <div className="list-meta">
       <span>
-        총 <b>{total}</b>개의 공고 <span className="meta-separator">·</span>
-        <span>나의 기준으로 살펴보세요</span>
+        총 <b>{total}</b>개의 공고
       </span>
       <div>
         <label className="check-label">

@@ -1,0 +1,97 @@
+/* Hanyang University palette, read from hanyang.ac.kr/colors-fonts on 2026-11-10 (.hallmark/brand-spec.md).
+ * Hanyang Blue #0E4A84 (PANTONE 541C) leads; Silver, Yellow Green and Orange appear only beside it. */
+:root {
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --text-display-s: 1.375rem;
+  --text-display: 1.75rem;
+  --text-section: 1.125rem;
+  --text-title: 1rem;
+  --text-lead: 1.0625rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --container: 1240px;
+  --gutter: 40px;
+  --gap-columns: 20px;
+  --section-gap-s: 120px;
+  --section-gap: 144px;
+  --section-gap-l: 176px;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+
+  --hy-blue: #0e4a84;
+  --hy-silver: #898c8e;
+  --hy-yellow-green: #7db928;
+  --hy-orange: #f08100;
+
+  --color-paper: #fbfcfe;
+  --color-surface: #ffffff;
+  --color-paper-2: #f3f6fa;
+  --color-paper-3: #e8edf4;
+  --color-hover: #f6f8fc;
+  --color-ink: #14243b;
+  --color-ink-2: #3a4a61;
+  --color-muted: #5a6679;
+  --color-rule: #dde3ec;
+  --color-edge: var(--hy-silver);
+  --color-accent: var(--hy-blue);
+  --color-accent-hover: color-mix(in oklab, var(--hy-blue) 82%, #001024);
+  --color-accent-ink: #f7f9fc;
+  --color-accent-soft: #eaf0f8;
+  --color-accent-line: #b9cbe2;
+  --color-focus: var(--hy-blue);
+  --color-warn: #8f4300;
+  --color-warn-soft: color-mix(in oklab, var(--hy-orange) 14%, #ffffff);
+  --color-warn-mark: var(--hy-orange);
+  --color-ok: #3c650c;
+  --color-ok-soft: color-mix(in oklab, var(--hy-yellow-green) 16%, #ffffff);
+  --color-error: #b42318;
+  --color-error-soft: #fdecea;
+  --color-success: var(--color-ok);
+  --color-panel: var(--color-ink);
+  --color-panel-ink: #f3f6fa;
+  --color-panel-soft: color-mix(in oklab, #ffffff 14%, var(--color-ink));
+  --color-scrim: color-mix(in oklab, var(--color-ink) 48%, transparent);
+  --shadow-float: 0 12px 32px color-mix(in oklab, var(--color-ink) 22%, transparent);
+
+  --font-display:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+  --font-body: var(--font-display);
+  --font-outlier: var(--font-body);
+  --display-weight: 700;
+  --radius-card: 12px;
+  --radius-control: 10px;
+  --radius-chip: 6px;
+  --radius-pill: 999px;
+  --rule-hair: 1px;
+  --shadow-card: none;
+  --tracking-display: -0.01em;
+  --header: 64px;
+  --sidebar: 248px;
+}

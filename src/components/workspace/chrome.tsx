@@ -1,6 +1,7 @@
 "use client";
 
 // Page chrome around the workspace: top bar, sidebar navigation and the compare dock.
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -8,7 +9,6 @@ import {
   Bookmark,
   CalendarClock,
   GitCompareArrows,
-  GraduationCap,
   LayoutList,
   LogOut,
   Menu,
@@ -28,13 +28,17 @@ export function TopBar({ mode, userLabel, onMenu }: { mode: Mode; userLabel: str
           <Menu size={20} />
         </button>
         <Link href={mode === "demo" ? "/demo" : "/postings"} className="brand">
-          <span className="brand-symbol">
-            h<span>↗</span>
-          </span>
-          hy<span className="brand-light">easy</span>
-          <span className="beta">BETA</span>
+          <Image
+            className="brand-symbol"
+            src="/brand/hyu-symbol.svg"
+            alt=""
+            width={34}
+            height={34}
+            unoptimized
+            priority
+          />
+          <span className="brand-name">HY-Easy</span>
         </Link>
-        <span className="brand-divider" />
         <span className="topbar-subtitle">한양인의 현장실습 탐색</span>
       </div>
       <div className="topbar-actions">
@@ -74,7 +78,7 @@ export function Sidebar(props: SidebarProps) {
   const roleCount = (role: string) => filterPostings(postings, { role, closed: filters.closed }).length;
   return (
     <aside className={`sidebar ${open ? "is-open" : ""}`}>
-      <div className="sidebar-section-label">WORKSPACE</div>
+      <div className="sidebar-section-label">메뉴</div>
       <nav aria-label="주 메뉴">
         <button className={view === "postings" ? "nav-item active" : "nav-item"} onClick={() => navigate("postings")}>
           <LayoutList size={18} />
@@ -86,7 +90,7 @@ export function Sidebar(props: SidebarProps) {
         </button>
         <button className={view === "planner" ? "nav-item active" : "nav-item"} onClick={() => navigate("planner")}>
           <CalendarClock size={18} />
-          지원 플래너 {props.hasActive && <span className="nav-dot" />}
+          지원 플래너 {props.hasActive && <span className="nav-count plain">진행 중</span>}
         </button>
         {props.isAdmin && (
           <Link className="nav-item" href="/admin">
@@ -106,21 +110,12 @@ export function Sidebar(props: SidebarProps) {
             className={`role-nav-item ${filters.role === role ? "selected" : ""}`}
             onClick={() => props.selectRole(role)}
           >
-            <span className="role-dot" />
             {role}
             <span>{roleCount(role)}</span>
           </button>
         ))}
       </nav>
       <div className="sidebar-bottom">
-        <div className="school-mark">
-          <GraduationCap size={22} />
-          <span>
-            HANYANG
-            <br />
-            <b>UNIVERSITY</b>
-          </span>
-        </div>
         <p>
           나에게 맞는 경험을 찾는 과정,
           <br />

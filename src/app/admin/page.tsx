@@ -33,8 +33,8 @@ export default async function Admin() {
   );
   return (
     <main className="admin-page">
-      <Link className="eyebrow" href="/postings">
-        ← WORKSPACE
+      <Link className="back-link" href="/postings">
+        공고 목록으로 돌아가기
       </Link>
       <h1>수집 · 분류 관리</h1>
       <p className="muted">수집 실패 시 원문을 확인하고, 세션 만료 시 운영자 세션을 갱신해 주세요.</p>

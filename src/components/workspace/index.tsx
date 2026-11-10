@@ -33,19 +33,16 @@ type Props = {
 const MAX_COMPARE = 4;
 const CLOCK_TICK_MS = 30_000;
 const TOAST_MS = 4_200;
-const HEADINGS: Record<View, { eyebrow: string; title: string; text: string }> = {
+const HEADINGS: Record<View, { title: string; text: string }> = {
   postings: {
-    eyebrow: "EXPLORE OPPORTUNITIES",
     title: "실습 공고",
     text: "어떤 일을 하는지부터 언제 지원할지까지, 나에게 맞는 기회를 찾아보세요.",
   },
   saved: {
-    eyebrow: "EXPLORE OPPORTUNITIES",
     title: "관심 공고",
     text: "저장해 둔 공고를 같은 기준으로 비교해 보세요.",
   },
   planner: {
-    eyebrow: "MY APPLICATIONS",
     title: "지원 플래너",
     text: "지금의 지원 상태와 다음 기회의 마감시간을 함께 확인하세요.",
   },
@@ -87,7 +84,6 @@ function useToast(): [string, (message: string) => void] {
 function SyncState({ mode, lastChecked }: { mode: Mode; lastChecked: string | undefined }) {
   return (
     <div className="sync-state">
-      <span className={mode === "demo" ? "gray-dot" : "blue-dot"} />
       {mode === "demo" ? "가상 데이터" : lastChecked ? `${formatDate(lastChecked, true)} 확인` : "첫 수집 대기"}
       <span className="sync-caption">
         {mode === "demo" ? "실제 모집 정보가 아닙니다" : "평일 09–18시 · 5분 간격 수집"}
@@ -214,11 +210,7 @@ export function Workspace({
           </div>
           <div className="heading-row">
             <div>
-              <div className="heading-eyebrow">{heading.eyebrow}</div>
-              <h1>
-                {heading.title}
-                <span className="heading-dot">.</span>
-              </h1>
+              <h1>{heading.title}</h1>
               <p>{heading.text}</p>
             </div>
             <SyncState mode={mode} lastChecked={lastChecked} />

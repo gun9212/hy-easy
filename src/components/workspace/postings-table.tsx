@@ -86,19 +86,16 @@ export function PostingsTable(props: Props) {
                     <span className="posting-info">
                       <span className="company-name">
                         {p.company}
-                        {isNewPosting(p, now) && <span className="new-badge">NEW</span>}
+                        {isNewPosting(p, now) && <span className="new-badge">신규</span>}
                       </span>
                       <b>{p.title}</b>
                       <span className="posting-subline">
                         <span>{p.department}</span>
-                        <i /> <MapPin size={11} />
-                        {p.location}
-                        {months !== null && (
-                          <span className="period-mobile-hide">
-                            <i />
-                            {months}개월
-                          </span>
-                        )}
+                        <span className="posting-place">
+                          <MapPin size={13} aria-hidden="true" />
+                          {p.location}
+                        </span>
+                        {months !== null && <span className="period-mobile-hide">{months}개월</span>}
                       </span>
                     </span>
                   </button>

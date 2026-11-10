@@ -19,14 +19,11 @@ type Props = { postings: Posting[]; applications: Application[]; record: RecordF
 
 const companyOf = (postings: Posting[], id: string | undefined) => postings.find(p => p.id === id);
 
-function PanelHeading({ step, title, text }: { step: string; title: string; text: string }) {
+function PanelHeading({ title, text }: { title: string; text: string }) {
   return (
     <div className="panel-heading">
-      <span className="step-number">{step}</span>
-      <div>
-        <h2>{title}</h2>
-        <p>{text}</p>
-      </div>
+      <h2>{title}</h2>
+      <p>{text}</p>
     </div>
   );
 }
@@ -55,14 +52,16 @@ function StatusPanel({ postings, applications, record }: Omit<Props, "now">) {
 
   return (
     <section className="planner-panel">
-      <PanelHeading step="01" title="나의 지원 상태" text="HY-WEP에서 확인한 상태를 직접 기록하세요." />
+      <PanelHeading title="나의 지원 상태" text="HY-WEP에서 확인한 상태를 직접 기록하세요." />
       {active ? (
-        <div className="current-application">
-          <span className="eyebrow">현재 지원</span>
-          <h3>{companyOf(postings, active.postingId)?.company ?? "등록된 공고"}</h3>
-          <span className="role-tag">{STATUS_LABELS[active.status]}</span>
-          <small>기록 시각 {formatDate(active.updatedAt, true)}</small>
-        </div>
+        <dl className="current-application">
+          <dt>현재 지원</dt>
+          <dd className="current-company">{companyOf(postings, active.postingId)?.company ?? "등록된 공고"}</dd>
+          <dd>
+            <span className="role-tag">{STATUS_LABELS[active.status]}</span>
+            <small>기록 시각 {formatDate(active.updatedAt, true)}</small>
+          </dd>
+        </dl>
       ) : (
         <div className="no-application">
           <Check size={20} />
@@ -133,7 +132,7 @@ function ScenarioPanel({ postings, applications, now }: Omit<Props, "record">) {
   const result = candidate && releaseAt ? simulate(candidate, `${releaseAt}:00+09:00`, now) : null;
   return (
     <section className="planner-panel">
-      <PanelHeading step="02" title="다음 지원 시나리오" text="탈락 처리 완료 시각을 가정해 마감과 비교해요." />
+      <PanelHeading title="다음 지원 시나리오" text="탈락 처리 완료 시각을 가정해 마감과 비교해요." />
       <div className="scenario-flow">
         <span>현재 기업 지원</span>
         <ArrowRight size={15} />

@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Check, GitCompareArrows, CalendarClock, Layers3, GraduationCap } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, GitCompareArrows, CalendarClock, Layers3 } from "lucide-react";
 import { demoEnabled, isConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,16 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="login-page">
       <header className="login-header">
         <Link href="/" className="brand">
-          <span className="brand-symbol">
-            h<span>↗</span>
-          </span>
-          hy<span className="brand-light">easy</span>
-          <span className="beta">BETA</span>
+          <Image
+            className="brand-symbol"
+            src="/brand/hyu-symbol.svg"
+            alt=""
+            width={34}
+            height={34}
+            unoptimized
+            priority
+          />
+          <span className="brand-name">HY-Easy</span>
         </Link>
         <a href="https://hywep.hanyang.ac.kr/" target="_blank" rel="noreferrer">
           HY-WEP 바로가기 <ArrowUpRight size={14} />
@@ -26,13 +32,10 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       </header>
       <div className="login-layout">
         <section className="login-message">
-          <span className="eyebrow">
-            <span className="blue-dot" /> HANYANG INTERNSHIP EXPLORER
-          </span>
           <h1>
             첫 커리어의 시작,
             <br />
-            <span>조금 더 명확하게.</span>
+            조금 더 명확하게.
           </h1>
           <p>
             흩어진 실습 정보를 한눈에 비교하고,
@@ -64,9 +67,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           </div>
         </section>
         <section className="login-box">
-          <span className="login-school">
-            <GraduationCap size={27} />
-          </span>
+          <Image className="login-school" src="/brand/hyu-symbol.svg" alt="" width={56} height={56} unoptimized />
           <h2>한양인, 반가워요</h2>
           <p>학교 Google 계정으로 시작하세요.</p>
           {error && (

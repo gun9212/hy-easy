@@ -17,3 +17,6 @@ infra/.terraform/
 infra/*.tfvars
 !infra/example.tfvars
 .claude/settings.local.json
+.vercel
+.hallmark/before*
+.hallmark/before/

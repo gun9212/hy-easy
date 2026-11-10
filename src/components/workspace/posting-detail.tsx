@@ -88,7 +88,6 @@ export function PostingDetail({ posting: p, applications, now, saved, onFavorite
   return (
     <Modal close={close} label={`${p.company} 공고 상세`}>
       <div className="modal-top">
-        <span className="eyebrow">OPPORTUNITY DETAILS</span>
         <button className="icon-button" aria-label="상세 닫기" onClick={close}>
           <X size={21} />
         </button>
