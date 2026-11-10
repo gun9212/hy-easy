@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react";
-import { ROLES, type Filters, type Posting } from "@/lib/domain";
+import { ROLES, filterPostings, type Filters, type Posting } from "@/lib/domain";
 import type { Mode } from "./use-personal";
 
 export type View = "postings" | "planner" | "saved";
@@ -70,7 +70,8 @@ type SidebarProps = {
 
 export function Sidebar(props: SidebarProps) {
   const { open, view, filters, postings, navigate } = props;
-  const roleCount = (role: string) => postings.filter(p => p.classification?.primaryRole === role).length;
+  // Same rule as the list: primary or secondary role, closed postings only when the list shows them.
+  const roleCount = (role: string) => filterPostings(postings, { role, closed: filters.closed }).length;
   return (
     <aside className={`sidebar ${open ? "is-open" : ""}`}>
       <div className="sidebar-section-label">WORKSPACE</div>
