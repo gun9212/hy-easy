@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { detailUrl, listUrl, redirectedAway, selectorsSchema, sourceUrl } from "../worker/adapter";
+import { credentialsFromEnv, LoginFailed } from "../worker/portal-login";
 import {
   columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, listRowHash, normalizeDetail, pageNumber,
   recruitmentStatus, termName, type DetailFields, type ListRow,
@@ -144,6 +145,17 @@ describe("실측 선택자 파일", () => {
     assert.equal(redirectedAway(detail, detail), false);
     assert.equal(redirectedAway(detail, "https://hywep.hanyang.ac.kr/index.do"), true);
     assert.equal(redirectedAway(detail, "https://api.hanyang.ac.kr/oauth/login"), true);
+  });
+});
+
+describe("운영자 자동 로그인 자격 증명", () => {
+  it("HYWEP_ID·HYWEP_PW가 모두 있어야 사용", () => {
+    assert.deepEqual(credentialsFromEnv({ HYWEP_ID: " op ", HYWEP_PW: "pw" }), { id: "op", password: "pw" });
+    assert.equal(credentialsFromEnv({ HYWEP_ID: "op" }), null);
+    assert.equal(credentialsFromEnv({}), null);
+  });
+  it("실패 메시지에 입력값이 들어가지 않음", () => {
+    assert.equal(new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT").message, "LOGIN_FAILED: PORTAL_REJECTED_OR_TIMEOUT");
   });
 });
 

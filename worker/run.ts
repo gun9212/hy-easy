@@ -8,6 +8,9 @@ import { classificationInput, sourceHash, stableHash } from "../src/lib/normaliz
 import { classify, type Provider } from "../src/lib/classifier";
 import type { Posting } from "../src/lib/domain";
 import { dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
+import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
+
+const MAX_LOGIN_FAILURES=3;
 
 const config=z.object({NEXT_PUBLIC_SUPABASE_URL:z.url(),SUPABASE_SERVICE_ROLE_KEY:z.string().min(1),HYWEP_LIST_URL:z.url(),HYWEP_SELECTORS_FILE:z.string().min(1)}).parse(process.env);
 const selectors=selectorsSchema.parse(JSON.parse(await readFile(config.HYWEP_SELECTORS_FILE,"utf8")));
@@ -40,6 +43,10 @@ try{
   // Storage state contains cookies/localStorage only and is never logged.
   const context=await browser.newContext({storageState:storageState as Exclude<Parameters<typeof browser.newContext>[0],undefined>["storageState"]});
   const page=await context.newPage();page.setDefaultTimeout(15_000);dismissDialogs(page);
+  // Stop retrying the password after 3 consecutive login failures to avoid locking the operator account.
+  const recent=check(await db.from("collector_runs").select("error_code").neq("id",runId).order("started_at",{ascending:false}).limit(MAX_LOGIN_FAILURES)).data??[];
+  const loginBlocked=recent.length===MAX_LOGIN_FAILURES&&recent.every(r=>r.error_code==="LOGIN_FAILED");
+  await ensureSession(page,selectors,startUrl,loginBlocked?null:credentialsFromEnv());
   const visited=new Set(state.seenIds);
   while(Date.now()<deadline-30_000){
     if(leaseLost)throw new Error("COLLECTOR_LEASE_LOST");
@@ -86,7 +93,9 @@ try{
       }
     }
   }
-}catch(e){status=e instanceof SessionExpired?"session_expired":"failed";errorCode=e instanceof SessionExpired?"SESSION_EXPIRED":"COLLECTION_FAILED";
+}catch(e){
+  if(e instanceof LoginFailed){status="session_expired";errorCode="LOGIN_FAILED";}
+  else{status=e instanceof SessionExpired?"session_expired":"failed";errorCode=e instanceof SessionExpired?"SESSION_EXPIRED":"COLLECTION_FAILED";}
 }finally{
   clearInterval(heartbeat);await browser?.close();
   const final=await db.from("collector_runs").update({status,finished_at:new Date().toISOString(),checked,changed,error_code:errorCode}).eq("id",runId);

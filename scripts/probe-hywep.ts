@@ -1,11 +1,10 @@
 // Read-only end-to-end check of the HY-WEP adapter with a saved operator session.
 // Opens the list, one list page and one detail page. Writes nothing to any database.
 // Usage: npm run collector:probe
-import { readFile } from "node:fs/promises";
+import { chmod, readFile, stat } from "node:fs/promises";
 import { chromium } from "playwright";
-import {
-  dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema, sourceUrl,
-} from "../worker/adapter";
+import { dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema } from "../worker/adapter";
+import { credentialsFromEnv, ensureSession } from "../worker/portal-login";
 
 const LIST_URL = process.env.HYWEP_LIST_URL || "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
 const SELECTORS_FILE = process.env.HYWEP_SELECTORS_FILE || "worker/selectors.example.json";
@@ -21,13 +20,22 @@ async function main(): Promise<void> {
   const selectors = selectorsSchema.parse(JSON.parse(await readFile(SELECTORS_FILE, "utf8")));
   const browser = await chromium.launch({ headless: true });
   try {
-    const context = await browser.newContext({ storageState: STORAGE_STATE });
+    // --fresh ignores the stored session to exercise the automatic portal login.
+    const fresh = process.argv.includes("--fresh");
+    const hasStoredSession = !fresh && await stat(STORAGE_STATE).then(() => true, () => false);
+    const context = await browser.newContext(hasStoredSession ? { storageState: STORAGE_STATE } : {});
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
     dismissDialogs(page);
 
     const started = Date.now();
-    await page.goto(sourceUrl(LIST_URL), { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
+    const credentials = credentialsFromEnv();
+    const session = await ensureSession(page, selectors, LIST_URL, credentials);
+    console.log(`세션: ${session === "reused" ? "저장된 세션 재사용" : "자동 로그인 성공"} (자격 증명 ${credentials ? "있음" : "없음"})`);
+    if (session === "logged_in") {
+      await context.storageState({ path: STORAGE_STATE });
+      await chmod(STORAGE_STATE, 0o600);
+    }
     const scheduleUrls = await readScheduleUrls(page, selectors);
     console.log(`회차 ${scheduleUrls.length}개`);
 
