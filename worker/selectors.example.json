@@ -1,0 +1,15 @@
+{
+  "verified": false,
+  "authenticated": "[data-hywep-authenticated]",
+  "listReady": "[data-postings-table]",
+  "emptyList": "[data-no-postings]",
+  "listRow": "[data-posting-id]",
+  "detailLink": "a[data-detail]",
+  "sourceIdAttribute": "data-posting-id",
+  "nextPage": "a[data-next-page]",
+  "nextDisabled": "[aria-disabled='true'], .disabled",
+  "detailReady": "[data-practice-detail]",
+  "detailRows": "table tr",
+  "label": "th",
+  "value": "td"
+}

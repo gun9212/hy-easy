@@ -1,0 +1,41 @@
+{
+  "name": "hy-easy",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "collector": "node --import tsx --env-file-if-exists=.env.local worker/run.ts",
+    "collector:login": "node --import tsx --env-file-if-exists=.env.local worker/login.ts",
+    "evaluate": "node --import tsx --env-file-if-exists=.env.local scripts/evaluate.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.10.0",
+    "@supabase/supabase-js": "2.101.1",
+    "google-auth-library": "10.5.0",
+    "lucide-react": "0.577.0",
+    "next": "16.2.4",
+    "playwright": "1.61.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.1.7",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  },
+  "type": "module"
+}

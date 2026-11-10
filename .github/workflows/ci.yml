@@ -1,0 +1,23 @@
+name: Verify
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - name: Verify database policies
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'create database hy_easy_test'
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -d hy_easy_test -f tests/database-bootstrap.sql -f supabase/migrations/202611100001_initial.sql -f tests/database-policies.sql
