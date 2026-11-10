@@ -18,10 +18,11 @@ const templateWith = (...keys: string[]) =>
 export const selectorsSchema = z.object({
   verified: z.boolean(),
   authenticated: z.string().min(1),
-  /** Term cards on the list page, e.g. onclick="schedule(119);". */
-  scheduleLink: z.string().min(1),
-  scheduleAttribute: z.string().min(1),
-  schedulePattern: z.string().min(1),
+  /**
+   * Hidden input holding the term (schedule) HY-WEP selects by default: the term currently recruiting.
+   * The term cards also list past terms (closed long ago), which are not collected.
+   */
+  currentSchedule: z.string().min(1),
   /** GET list URL. `{page}` is zero-based. */
   listUrlTemplate: templateWith("schedule", "page"),
   listReady: z.string().min(1),
@@ -75,12 +76,22 @@ async function attributes(locator: Locator, name: string): Promise<(string | nul
   return locator.evaluateAll((elements, attr) => elements.map(el => el.getAttribute(attr)), name);
 }
 
-/** Reads the open terms (schedule IDs) from the list page and returns each term's first list page. */
-export async function readScheduleUrls(page: Page, s: Selectors): Promise<string[]> {
+/** Parses an explicit term list such as "119,120". Returns null when unset. */
+export function parseScheduleOverride(raw: string | undefined): string[] | null {
+  const ids = (raw ?? "").split(",").map(id => id.trim()).filter(Boolean);
+  if (!ids.length) return null;
+  if (!ids.every(id => /^\d+$/.test(id))) throw new Error("HYWEP_SCHEDULES_INVALID");
+  return [...new Set(ids)];
+}
+
+/**
+ * Returns the first list page of each term to collect: the explicit override,
+ * otherwise only the term HY-WEP selects by default (the one currently recruiting).
+ */
+export async function readScheduleUrls(page: Page, s: Selectors, override: string[] | null = null): Promise<string[]> {
   await assertSession(page, s);
-  const values = await attributes(page.locator(s.scheduleLink), s.scheduleAttribute);
-  const ids = [...new Set(values.map(value => extractSourceId(value, s.schedulePattern)))];
-  if (!ids.length) throw new Error("SCHEDULES_NOT_FOUND");
+  const ids = override ?? [await page.locator(s.currentSchedule).first().inputValue()];
+  if (!ids.every(id => /^\d+$/.test(id))) throw new Error("CURRENT_SCHEDULE_NOT_FOUND");
   return ids.map(id => listUrl(s.listUrlTemplate, id, 0));
 }
 

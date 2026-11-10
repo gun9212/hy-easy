@@ -89,7 +89,7 @@ DOM 실측(2026-11-10, Safari Web Inspector)으로 `worker/selectors.example.jso
 | 항목 | 값 |
 |---|---|
 | 목록 URL | `GET /compjoinsearch/list.do?schedule={회차}&status=1137&pg={0부터}` (POST와 같은 결과) |
-| 회차(schedule) | 목록 상단 카드 `onclick="schedule(119);"` — 진행중 회차 4개 |
+| 회차(schedule) | 목록 상단 카드 `onclick="schedule(119);"` 4개 중 **현재 모집 회차는 기본 선택값** `#mainForm input[name=schedule]`(=119). 나머지 3개는 이미 모집이 끝난 지난 회차 |
 | 페이지 | 페이지당 50행, `.paging a[href="javaScript:Paging(n)"]` (n은 0부터) |
 | 목록 표 | `table.list.grid_header`, `thead th` 17개, 데이터 행은 `td` 17개 |
 | 공고 ID | 기관명·부서 링크 `href="javascript:goView('22253');"` |

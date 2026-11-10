@@ -7,7 +7,7 @@ import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
 import { classify, type Provider } from "../src/lib/classifier";
 import type { Posting } from "../src/lib/domain";
-import { dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
+import { dismissDialogs, parseScheduleOverride, readDetail, readListPage, readScheduleUrls, selectorsSchema, SessionExpired, sourceUrl } from "./adapter";
 import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
 
 const MAX_LOGIN_FAILURES=3;
@@ -68,7 +68,7 @@ try{
     }else if(!state.schedulesLoaded){
       // The list page shows one card per open term (schedule); each term is paged separately.
       await page.goto(startUrl,{waitUntil:"domcontentloaded",timeout:25_000});
-      state.queue=await readScheduleUrls(page,selectors);state.schedulesLoaded=true;
+      state.queue=await readScheduleUrls(page,selectors,parseScheduleOverride(process.env.HYWEP_SCHEDULES));state.schedulesLoaded=true;
     }else break;
     // A posting missing from the list is never interpreted as closure; it is simply left unchanged.
     // Checkpoint after every successful list/detail operation, before process termination.

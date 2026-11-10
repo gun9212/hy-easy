@@ -1,9 +1,7 @@
 {
   "verified": false,
   "authenticated": "a[href='/logout.do']",
-  "scheduleLink": "[onclick*='schedule(']",
-  "scheduleAttribute": "onclick",
-  "schedulePattern": "schedule\\((\\d+)\\)",
+  "currentSchedule": "#mainForm input[name=schedule]",
   "listUrlTemplate": "https://hywep.hanyang.ac.kr/compjoinsearch/list.do?schedule={schedule}&status=1137&pg={page}",
   "listReady": "table.list.grid_header",
   "emptyList": "table.list.grid_header tbody td:has-text('없습니다')",

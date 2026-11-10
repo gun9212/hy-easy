@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { detailUrl, listUrl, redirectedAway, selectorsSchema, sourceUrl } from "../worker/adapter";
+import { detailUrl, listUrl, parseScheduleOverride, redirectedAway, selectorsSchema, sourceUrl } from "../worker/adapter";
 import { credentialsFromEnv, LoginFailed } from "../worker/portal-login";
 import {
   columnIndex, extractSourceId, fillTemplate, hasNextPage, listFields, listRowHash, normalizeDetail, pageNumber,
@@ -132,9 +132,14 @@ describe("목록 페이지 이동 (실측: GET list.do?schedule=&pg=, 0부터 �
 
 describe("실측 선택자 파일", () => {
   const selectors = selectorsSchema.parse(JSON.parse(readFileSync("worker/selectors.example.json", "utf8")));
-  it("실제 속성 형식에서 ID·회차를 추출", () => {
+  it("실제 속성 형식에서 공고 ID를 추출", () => {
     assert.equal(extractSourceId("javascript:goView('22253');", selectors.sourceIdPattern), "22253");
-    assert.equal(extractSourceId("schedule(119);", selectors.schedulePattern), "119");
+  });
+  it("회차 지정(HYWEP_SCHEDULES): 없으면 현재 회차만, 숫자 목록만 허용", () => {
+    assert.equal(parseScheduleOverride(undefined), null);
+    assert.equal(parseScheduleOverride(" "), null);
+    assert.deepEqual(parseScheduleOverride("119, 120,119"), ["119", "120"]);
+    assert.throws(() => parseScheduleOverride("119;drop"), /HYWEP_SCHEDULES_INVALID/);
   });
   it("상세 URL은 jid_seq GET", () => {
     assert.equal(detailUrl(selectors.detailUrlTemplate, "22253"), "https://hywep.hanyang.ac.kr/compjoinmanage/view_stu.do?jid_seq=22253");

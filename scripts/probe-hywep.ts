@@ -3,7 +3,9 @@
 // Usage: npm run collector:probe
 import { chmod, readFile, stat } from "node:fs/promises";
 import { chromium } from "playwright";
-import { dismissDialogs, readDetail, readListPage, readScheduleUrls, selectorsSchema } from "../worker/adapter";
+import {
+  dismissDialogs, parseScheduleOverride, readDetail, readListPage, readScheduleUrls, selectorsSchema,
+} from "../worker/adapter";
 import { credentialsFromEnv, ensureSession } from "../worker/portal-login";
 
 const LIST_URL = process.env.HYWEP_LIST_URL || "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
@@ -36,8 +38,8 @@ async function main(): Promise<void> {
       await context.storageState({ path: STORAGE_STATE });
       await chmod(STORAGE_STATE, 0o600);
     }
-    const scheduleUrls = await readScheduleUrls(page, selectors);
-    console.log(`회차 ${scheduleUrls.length}개`);
+    const scheduleUrls = await readScheduleUrls(page, selectors, parseScheduleOverride(process.env.HYWEP_SCHEDULES));
+    console.log(`수집 회차 ${scheduleUrls.map(url => new URL(url).searchParams.get("schedule")).join(", ")}`);
 
     await page.goto(scheduleUrls[0], { waitUntil: "domcontentloaded", timeout: NAVIGATION_TIMEOUT_MS });
     const { rows, nextUrl } = await readListPage(page, selectors);
