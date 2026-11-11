@@ -107,6 +107,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       </div>
       <footer className="login-footer">
         <span>HY-Easy © 2026</span>
+        <Link href="/privacy">개인정보처리방침</Link>
         <span>더 잘 알고, 더 나은 선택.</span>
       </footer>
     </main>

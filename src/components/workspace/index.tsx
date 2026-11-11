@@ -241,6 +241,7 @@ export function Workspace({
         <footer className="workspace-footer">
           <span>HY-Easy · 한양인의 더 나은 선택</span>
           <span>한양대학교 비공식 서비스</span>
+          <Link href="/privacy">개인정보처리방침</Link>
         </footer>
       </main>
       <CompareDock
