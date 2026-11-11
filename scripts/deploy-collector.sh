@@ -3,14 +3,17 @@
 #   scripts/deploy-collector.sh base      # APIs, image registry, service accounts, secret containers, session bucket
 #   scripts/deploy-collector.sh secrets   # copy secrets from .env.local into Secret Manager (values never printed)
 #   scripts/deploy-collector.sh image     # build and push the collector image with Cloud Build
-#   scripts/deploy-collector.sh job       # create the Cloud Run Job + paused schedules
+#   scripts/deploy-collector.sh job       # create or update the Cloud Run Job (TAG=v2 for a new image); schedules stay on
 #   scripts/deploy-collector.sh run       # run the job once and show the result
-#   scripts/deploy-collector.sh schedule  # un-pause the weekday 5-minute schedule
+#   scripts/deploy-collector.sh schedule  # turn the weekday 5-minute schedule on (pause: schedule-off)
 set -euo pipefail
 
 PROJECT="hy-easy"
 REGION="asia-northeast1"
-TAG="${TAG:-v1}"
+# Without TAG, keep the image the job runs now, so a schedule change never rolls the collector back.
+CURRENT_TAG="$(gcloud run jobs describe hy-easy-collector --project "$PROJECT" --region "$REGION" \
+  --format='value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null | sed -n 's/.*://p')"
+TAG="${TAG:-${CURRENT_TAG:-v1}}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/hy-easy/collector:${TAG}"
 TFVARS="hy-easy.tfvars"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -44,6 +47,9 @@ case "${1:-}" in
     ;;
   schedule)
     tf apply -var schedules_paused=false
+    ;;
+  schedule-off)
+    tf apply -var schedules_paused=true
     ;;
   *)
     sed -n '2,9p' "$0"

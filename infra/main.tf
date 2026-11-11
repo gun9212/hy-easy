@@ -48,8 +48,8 @@ variable "ai_enabled" {
 
 variable "schedules_paused" {
   type        = bool
-  default     = true
-  description = "Keep the 5-minute schedule paused until one manual run of the job succeeds."
+  default     = false
+  description = "Pause the 5-minute schedule (scripts/deploy-collector.sh schedule-off). The collector runs by default."
 }
 
 locals {
