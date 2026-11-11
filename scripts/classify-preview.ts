@@ -1,6 +1,6 @@
 // Read-only preview: classifies a few open postings and prints the result. Writes nothing to the database.
 // Usage: npm run classify:preview -- [count]
-//        npm run classify:preview -- --titles "회사 / 제목;회사2 / 제목2"   (fixed set, for before/after comparisons)
+//        npm run classify:preview -- --titles "회사 / 제목;회사2 / 제목2"   (fixed set, for before/after comparisons; a posting id works too)
 import { createClient } from "@supabase/supabase-js";
 import { classify, type Provider } from "../src/lib/classifier";
 import { classificationInput } from "../src/lib/normalize";
@@ -23,7 +23,7 @@ function database() {
 
 /** Loads postings whose "company / title" exactly matches one of the given labels, in the given order. */
 async function loadByTitles(labels: string[]): Promise<Posting[]> {
-  const { data, error } = await database().from("postings").select("document");
+  const { data, error } = await database().from("postings").select("id, document");
   if (error) throw error;
   const byLabel = new Map<string, Posting>(
     (data ?? []).map(row => {
@@ -31,6 +31,8 @@ async function loadByTitles(labels: string[]): Promise<Posting[]> {
       return [`${p.company} / ${p.title}`, p];
     }),
   );
+  // A posting id also works as a label: company and title repeat across postings (e.g. several "Intern" rows).
+  (data ?? []).forEach(row => byLabel.set(String(row.id), row.document as Posting));
   return labels.map(label => byLabel.get(label)).filter((p): p is Posting => Boolean(p));
 }
 
