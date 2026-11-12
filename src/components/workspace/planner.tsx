@@ -219,6 +219,10 @@ function History({ postings, applications }: Pick<Props, "postings" | "applicati
 }
 
 export function Planner({ postings, applications, record, now }: Props) {
+  // Saved applications can arrive after the first render (demo storage, live data). Keying the form on the active
+  // application resets its fields to that application whenever it loads or changes.
+  const active = applications.find(a => isBlocking(a.status));
+  const statusKey = active ? `${active.postingId}:${active.status}` : "none";
   return (
     <div className="planner">
       <div className="planner-rule">
@@ -232,7 +236,7 @@ export function Planner({ postings, applications, record, now }: Props) {
         </div>
       </div>
       <div className="planner-grid">
-        <StatusPanel postings={postings} applications={applications} record={record} />
+        <StatusPanel key={statusKey} postings={postings} applications={applications} record={record} />
         <ScenarioPanel postings={postings} applications={applications} now={now} />
       </div>
       <History postings={postings} applications={applications} />
