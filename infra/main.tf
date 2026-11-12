@@ -187,7 +187,8 @@ resource "google_cloud_run_v2_job" "collector" {
 
   # After the first deploy, GitHub Actions moves the image to each new commit; Terraform keeps everything else.
   lifecycle {
-    ignore_changes = [template[0].template[0].containers[0].image]
+    # client/client_version are stamped by `gcloud run jobs update` in CI.
+    ignore_changes = [template[0].template[0].containers[0].image, client, client_version]
   }
 }
 
