@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
-import { classify, type Provider } from "../src/lib/classifier";
+import { classify, PROMPT_VERSION, type Provider } from "../src/lib/classifier";
 import type { Posting } from "../src/lib/domain";
 import {
   dismissDialogs,
@@ -20,6 +20,7 @@ import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
 import { loadSession, saveSession, sessionLocation } from "./session-store";
 import { listRowHash } from "./hywep-fields";
 import { planListSync } from "./list-sync";
+import { requeueStalePrompts } from "./requeue";
 
 const MAX_LOGIN_FAILURES = 3;
 
@@ -41,6 +42,7 @@ const startUrl = sourceUrl(config.HYWEP_LIST_URL),
 const startedAt = Date.now(),
   owner = randomUUID(),
   deadline = startedAt + 210_000;
+const CLASSIFY_PER_RUN = 5;
 const check = <T extends { error: unknown }>(result: T): T => {
   if (result.error) throw result.error;
   return result;
@@ -182,9 +184,15 @@ try {
     const provider = z
       .enum(["claude", "anthropic", "gemini"])
       .parse(process.env.MODEL_PROVIDER || "claude") as Provider;
+    // Once new and changed postings are done, postings classified under an older prompt take the free slots.
+    // A failure here only delays re-classification; it must not fail the run.
+    await requeueStalePrompts(db, PROMPT_VERSION, CLASSIFY_PER_RUN).catch((e: unknown) =>
+      console.error("REQUEUE_FAILED", e instanceof Error ? e.message : e),
+    );
     const queue =
-      check(await db.from("classification_queue").select("*").lt("attempts", 3).order("updated_at").limit(5)).data ??
-      [];
+      check(
+        await db.from("classification_queue").select("*").lt("attempts", 3).order("updated_at").limit(CLASSIFY_PER_RUN),
+      ).data ?? [];
     for (const job of queue) {
       if (Date.now() > deadline - 35_000 || leaseLost) break;
       try {
