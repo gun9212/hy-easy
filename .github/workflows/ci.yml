@@ -99,7 +99,9 @@ jobs:
         run: |
           IMAGE="$REGION-docker.pkg.dev/$PROJECT/hy-easy/collector:${GITHUB_SHA::12}"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          # An explicit staging dir skips gcloud's default-bucket ownership check, which needs project-wide bucket listing.
           gcloud builds submit --project "$PROJECT" --region "$REGION" \
+            --gcs-source-staging-dir "gs://${PROJECT}_cloudbuild/source" \
             --config infra/cloudbuild.yaml --substitutions=_IMAGE="$IMAGE" .
       - name: Point the job at the new image
         if: steps.changes.outputs.collector == 'true'
