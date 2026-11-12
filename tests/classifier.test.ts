@@ -22,6 +22,9 @@ for (const provider of ["claude", "anthropic"] as const) {
     assert.equal(payload.output_config.format.type, "json_schema");
     assert.equal("tools" in payload, false);
     assert.equal("temperature" in payload, false);
+    // The shared system prompt is cached; the posting text (user message) is not.
+    const system = (payload as { system: { cache_control?: { type: string } }[] }).system;
+    assert.equal(system.at(-1)?.cache_control?.type, "ephemeral");
   });
 }
 it("Vertex 경로만 anthropic_version을 붙이고 직접 호출은 붙이지 않음", () => {
@@ -67,6 +70,19 @@ it("Gemini의 thought 블록을 설명으로 노출하지 않음", () => {
 it("대량 입력과 빈 입력을 잘라 분류하지 않고 검토로 보냄", () => {
   assert.throws(() => modelPayload("claude", { practiceInfo: "", tasks: "", qualifications: "" }));
   assert.throws(() => modelPayload("claude", { ...input, tasks: "가".repeat(30000) }));
+});
+it("캐시 쓰기·읽기 토큰을 따로 계산하고 전체 입력 토큰으로 기록", () => {
+  const cached = {
+    ...response(),
+    usage: { input_tokens: 1000, output_tokens: 500, cache_creation_input_tokens: 0, cache_read_input_tokens: 10000 },
+  };
+  const parsed = parseModelResponse("anthropic", input, cached);
+  assert.equal(parsed.inputTokens, 11000);
+  assert.equal(parsed.cacheReadTokens, 10000);
+  // 1000 x $0.10 + 10000 x $0.01 + 500 x $0.50 per MTok
+  assert.equal(parsed.costUsd, (1000 * 0.1 + 10000 * 0.01 + 500 * 0.5) / 1_000_000);
+  const written = estimateCost("anthropic", 1000, 0, { writeTokens: 10000, readTokens: 0 });
+  assert.equal(written, (1000 * 0.1 + 10000 * 0.125) / 1_000_000);
 });
 it("정가와 긴 입력 구간 비용 계산", () => {
   assert.equal(estimateCost("claude", 3000000, 500000), 2.75);

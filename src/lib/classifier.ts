@@ -89,24 +89,42 @@ function withoutUnsupportedKeywords(value: unknown): unknown {
 }
 const claudeOutputSchema = withoutUnsupportedKeywords(outputSchema) as Record<string, unknown>;
 
-/** Shared Claude request body. Haiku 5.5 accepts disabled thinking at effort high or below. */
+/**
+ * Shared Claude request body. Haiku 5.5 accepts disabled thinking at effort high or below.
+ * The system prompt (instructions + major list, about 10K tokens) is identical for every posting, so it is cached:
+ * the collector classifies up to five postings per run, seconds apart, and runs every five minutes, which keeps the
+ * default 5-minute cache warm. Only the posting text after it is billed at the full input price.
+ */
 function claudeBody(text: string) {
   return {
     max_tokens: MAX_OUTPUT_TOKENS,
-    system: SYSTEM_PROMPT,
+    system: [{ type: "text" as const, text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" as const } }],
     thinking: { type: "disabled" as const },
     output_config: { effort: "medium" as const, format: { type: "json_schema" as const, schema: claudeOutputSchema } },
     messages: [{ role: "user" as const, content: [{ type: "text" as const, text }] }],
   };
 }
-export function estimateCost(provider: Provider, inputTokens: number, outputTokens: number) {
-  const [a, b] = isClaude(provider) ? (inputTokens > 100_000 ? [0.5, 2.5] : [0.1, 0.5]) : [0.3, 2.5];
-  return (inputTokens * a + outputTokens * b) / 1_000_000;
+export type CacheUsage = { writeTokens: number; readTokens: number };
+const NO_CACHE: CacheUsage = { writeTokens: 0, readTokens: 0 };
+/** Claude prompt-cache prices relative to the input price (5-minute TTL). */
+const CACHE_WRITE_MULTIPLIER = 1.25;
+const CACHE_READ_MULTIPLIER = 0.1;
+/** USD estimate. inputTokens excludes cached tokens, which are billed separately at the cache rates. */
+export function estimateCost(provider: Provider, inputTokens: number, outputTokens: number, cache = NO_CACHE) {
+  const prompt = inputTokens + cache.writeTokens + cache.readTokens;
+  const [a, b] = isClaude(provider) ? (prompt > 100_000 ? [0.5, 2.5] : [0.1, 0.5]) : [0.3, 2.5];
+  const cached = cache.writeTokens * CACHE_WRITE_MULTIPLIER + cache.readTokens * CACHE_READ_MULTIPLIER;
+  return ((inputTokens + cached) * a + outputTokens * b) / 1_000_000;
 }
 const claudeResponse = z.object({
   stop_reason: z.string(),
   content: z.array(z.object({ type: z.string(), text: z.string().optional() })),
-  usage: z.object({ input_tokens: z.number(), output_tokens: z.number() }),
+  usage: z.object({
+    input_tokens: z.number(),
+    output_tokens: z.number(),
+    cache_creation_input_tokens: z.number().nullish(),
+    cache_read_input_tokens: z.number().nullish(),
+  }),
 });
 const geminiResponse = z.object({
   candidates: z
@@ -167,6 +185,7 @@ function trimMajors(raw: unknown): unknown {
 
 export function parseModelResponse(provider: Provider, input: ClassificationInput, data: unknown) {
   let text: string, inputTokens: number, outputTokens: number;
+  let cache = NO_CACHE;
   if (isClaude(provider)) {
     const result = claudeResponse.parse(data);
     if (result.stop_reason !== "end_turn") throw new Error(`MODEL_STOP_${result.stop_reason}`);
@@ -176,6 +195,10 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
       .join("");
     inputTokens = result.usage.input_tokens;
     outputTokens = result.usage.output_tokens;
+    cache = {
+      writeTokens: result.usage.cache_creation_input_tokens ?? 0,
+      readTokens: result.usage.cache_read_input_tokens ?? 0,
+    };
   } else {
     const result = geminiResponse.parse(data),
       candidate = result.candidates[0];
@@ -188,12 +211,20 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
     outputTokens = result.usageMetadata.candidatesTokenCount + result.usageMetadata.thoughtsTokenCount;
   }
   const classification = assertEvidence(input, classificationOutputSchema.parse(trimToLimits(JSON.parse(text))));
-  return { classification, inputTokens, outputTokens, costUsd: estimateCost(provider, inputTokens, outputTokens) };
+  return {
+    classification,
+    // Stored input_tokens keep meaning "whole prompt"; the cache split only changes the price.
+    inputTokens: inputTokens + cache.writeTokens + cache.readTokens,
+    outputTokens,
+    cacheReadTokens: cache.readTokens,
+    costUsd: estimateCost(provider, inputTokens, outputTokens, cache),
+  };
 }
 export type ClassificationResult = {
   classification: Classification;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens: number;
   costUsd: number;
   provider: Provider;
   model: string;
