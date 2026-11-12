@@ -78,6 +78,8 @@ export function GoogleSignIn({ clientId }: { clientId: string }) {
           window.location.assign(await exchange(credential, nonce));
         } catch {
           setBusy(false);
+          // A full reload on purpose: the login page re-renders its error and re-initialises the Google button.
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
           window.location.assign("/login?error=oauth");
         }
       },

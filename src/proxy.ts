@@ -20,4 +20,10 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|demo).*)"] };
+// Session refresh is only needed where a user is read. Static files (logo, images, fonts) and the public privacy page
+// skip it, so they are not marked private/no-store and browsers and the CDN can cache them.
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|demo|privacy|brand/|.*\\.(?:svg|png|jpg|jpeg|webp|ico|woff2)$).*)",
+  ],
+};

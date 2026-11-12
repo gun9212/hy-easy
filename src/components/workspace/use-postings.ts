@@ -6,6 +6,11 @@ import { mergeSync, type SyncResponse } from "@/lib/posting-sync";
 import { readStoredPostings, writeStoredPostings } from "./posting-store";
 import type { Mode } from "./use-personal";
 
+/** An open tab checks for changes this often while visible (the collector runs every five minutes). */
+const REFRESH_INTERVAL_MS = 5 * 60_000;
+/** Returning to the tab re-checks only if the last check is at least this old (the server caches for a minute). */
+const MIN_REFRESH_GAP_MS = 60_000;
+
 export type PostingsState = {
   postings: Posting[];
   /** False until the first list (stored copy or server reply) is on screen. */
@@ -23,10 +28,15 @@ async function fetchSync(since: string | null): Promise<SyncResponse> {
   return data as SyncResponse;
 }
 
-/** Shows the stored copy at once, then asks the server only for what changed since that copy. */
-async function syncPostings(onUpdate: (state: PostingsState) => void): Promise<void> {
+/**
+ * Brings the stored copy up to date: asks the server only for what changed since that copy.
+ * On the first load the stored copy is shown before the server answers.
+ */
+async function syncPostings(onUpdate: (state: PostingsState) => void, showStored: boolean): Promise<void> {
   const stored = await readStoredPostings();
-  if (stored) onUpdate({ postings: stored.postings, ready: true, lastCheckedAt: stored.lastCheckedAt, error: "" });
+  if (stored && showStored) {
+    onUpdate({ postings: stored.postings, ready: true, lastCheckedAt: stored.lastCheckedAt, error: "" });
+  }
   let reply = await fetchSync(stored?.syncedAt ?? null);
   let postings = reply.full ? reply.postings : mergeSync(stored?.postings ?? [], reply);
   if (!postings) {
@@ -39,7 +49,10 @@ async function syncPostings(onUpdate: (state: PostingsState) => void): Promise<v
   }
 }
 
-/** Demo mode uses the postings it was given; live mode loads them in the browser (see syncPostings). */
+/**
+ * Demo mode uses the postings it was given. Live mode loads them in the browser (see syncPostings) and keeps an
+ * open tab current: every five minutes while visible, and when the student comes back to the tab.
+ */
 export function usePostings(mode: Mode, initial: Posting[] | null): PostingsState {
   const [state, setState] = useState<PostingsState>({
     postings: initial ?? [],
@@ -50,15 +63,36 @@ export function usePostings(mode: Mode, initial: Posting[] | null): PostingsStat
   useEffect(() => {
     if (mode === "demo" || initial !== null) return;
     let cancelled = false;
-    syncPostings(next => {
-      if (!cancelled) setState(next);
-    }).catch((e: unknown) => {
-      if (cancelled) return;
-      const message = e instanceof Error ? e.message : "공고를 불러오지 못했습니다.";
-      setState(prev => ({ ...prev, ready: true, error: message }));
-    });
+    let running = false;
+    let lastRun = 0;
+    const run = (showStored: boolean) => {
+      if (running || cancelled) return;
+      running = true;
+      lastRun = Date.now();
+      syncPostings(next => {
+        if (!cancelled) setState(next);
+      }, showStored)
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          const message = e instanceof Error ? e.message : "공고를 불러오지 못했습니다.";
+          setState(prev => ({ ...prev, ready: true, error: message }));
+        })
+        .finally(() => {
+          running = false;
+        });
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && Date.now() - lastRun >= MIN_REFRESH_GAP_MS) run(false);
+    };
+    run(true);
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") run(false);
+    }, REFRESH_INTERVAL_MS);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [mode, initial]);
   return state;
