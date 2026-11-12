@@ -67,6 +67,14 @@ resource "google_cloud_run_v2_job_iam_member" "deployer_job" {
   member   = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+# Cloud Run checks that the caller can read the image it points the job at.
+resource "google_artifact_registry_repository_iam_member" "deployer_read_images" {
+  repository = google_artifact_registry_repository.images.name
+  location   = var.region
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_service_account_iam_member" "deployer_acts_as_collector" {
   service_account_id = google_service_account.collector.name
   role               = "roles/iam.serviceAccountUser"
