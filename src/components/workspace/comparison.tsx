@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { deadlineLabel, eligibility, stipendLabel, type Application, type Posting } from "@/lib/domain";
 import { Modal } from "./modal";
 
@@ -28,8 +28,9 @@ export function Comparison({ postings, close, applications, now }: Props) {
           <X size={21} />
         </button>
       </div>
+      {postings.length > 1 && <p className="compare-hint">옆으로 밀어서 다른 공고를 볼 수 있어요.</p>}
       <div className="comparison-scroll">
-        <table className="comparison-table">
+        <table className="comparison-table" style={{ "--compare-columns": postings.length } as CSSProperties}>
           <thead>
             <tr>
               <th>비교 항목</th>
