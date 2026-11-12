@@ -15,6 +15,8 @@ export async function POST(request: Request) {
       throw new HttpError(400, "전공을 목록에서 골라 주세요.");
     const { error } = await db.auth.updateUser({ data: { major: input.data.major } });
     if (error) throw new HttpError(500, "전공을 저장하지 못했습니다.");
+    // Pages read the major from the access-token claims; a refreshed token carries the new value right away.
+    await db.auth.refreshSession();
     return Response.json({ major: input.data.major }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (e) {
     return errorResponse(e);

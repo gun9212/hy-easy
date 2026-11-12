@@ -1,4 +1,4 @@
-import { isSchoolUser } from "./auth-policy";
+import { isSchoolClaims } from "./auth-policy";
 import { isConfigured, serverClient } from "./supabase/server";
 
 export class HttpError extends Error {
@@ -9,15 +9,20 @@ export class HttpError extends Error {
     super(message);
   }
 }
+export type SessionUser = { id: string; email: string; user_metadata: Record<string, unknown> };
+
+/**
+ * Verifies the session from the signed access token. getClaims checks the ES256 signature locally (the public key
+ * is fetched once and cached), so a request no longer waits on the auth server as getUser did (25-55 ms each).
+ */
 export async function requireUser() {
   if (!isConfigured()) throw new HttpError(503, "Supabase 프로젝트가 연결되지 않았습니다.");
   const db = await serverClient();
-  const {
-    data: { user },
-    error,
-  } = await db.auth.getUser();
-  if (error || !user) throw new HttpError(401, "로그인이 필요합니다.");
-  if (!isSchoolUser(user)) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
+  const { data, error } = await db.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) throw new HttpError(401, "로그인이 필요합니다.");
+  if (!isSchoolClaims(claims)) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
+  const user: SessionUser = { id: claims.sub, email: claims.email ?? "", user_metadata: claims.user_metadata ?? {} };
   return { db, user };
 }
 export async function requireAdmin() {

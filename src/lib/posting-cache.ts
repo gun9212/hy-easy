@@ -16,7 +16,9 @@ export async function cachedPostings(db: SupabaseClient, now: number = Date.now(
   // Concurrent misses share one database read.
   inflight ??= loadPostings(db)
     .then(postings => {
-      entry = { loadedAt: Date.now(), postings };
+      // An empty list means the read saw nothing (e.g. a caller the database does not treat as a school user);
+      // keeping it would show every student an empty list for a minute.
+      if (postings.length) entry = { loadedAt: Date.now(), postings };
       return postings;
     })
     .finally(() => {

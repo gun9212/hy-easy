@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { eligibility, simulate, filterPostings, assertEvidence, majorFit, type Application } from "../src/lib/domain";
 import { samplePostings, DEMO_NOW } from "../src/lib/sample";
 import { parseDeadline, parseStipend, sourceHash, stableHash, classificationInput } from "../src/lib/normalize";
-import { isSchoolUser } from "../src/lib/auth-policy";
+import { isSchoolClaims, isSchoolUser } from "../src/lib/auth-policy";
 const p = samplePostings[0],
   now = new Date(DEMO_NOW);
 const application = (status: Application["status"]): Application => ({
@@ -116,6 +116,19 @@ describe("학교 계정 정책", () => {
   };
   it("확인된 학교 Google 계정 허용", () => assert.equal(isSchoolUser(user), true));
   it("다른 도메인 거절", () => assert.equal(isSchoolUser({ ...user, email: "student@gmail.com" }), false));
+  it("토큰 claims: 학교 메일 + Google 로그인만 허용", () => {
+    const claims = {
+      sub: "u1",
+      email: "student@hanyang.ac.kr",
+      app_metadata: { provider: "google", providers: ["google"] },
+    };
+    assert.equal(isSchoolClaims(claims), true);
+    assert.equal(isSchoolClaims({ ...claims, email: "student@gmail.com" }), false);
+    assert.equal(isSchoolClaims({ ...claims, app_metadata: { provider: "email", providers: ["email"] } }), false);
+    assert.equal(isSchoolClaims({ ...claims, is_anonymous: true }), false);
+    assert.equal(isSchoolClaims({ ...claims, sub: undefined }), false);
+    assert.equal(isSchoolClaims(null), false);
+  });
   it("확인되지 않은 이메일 거절", () => assert.equal(isSchoolUser({ ...user, email_confirmed_at: undefined }), false));
   it("사용자 메타데이터만으로 학교 인증 통과 불가", () =>
     assert.equal(isSchoolUser({ ...user, identities: [] }), false));
