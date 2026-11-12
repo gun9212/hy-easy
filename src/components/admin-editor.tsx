@@ -18,6 +18,8 @@ async function save(p: Posting, role: Role, summary: string, review: boolean): P
     summary,
     evidence: [{ field, quote: p[field].slice(0, 300) }],
     needsReview: review,
+    // Keep the AI's major mapping; the editor changes only the role, summary and review flag.
+    ...(p.classification?.majors ? { majors: p.classification.majors } : {}),
   };
   const response = await fetch(`/api/admin/classification/${p.id}`, {
     method: "POST",
