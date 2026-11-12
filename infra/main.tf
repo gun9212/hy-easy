@@ -182,6 +182,11 @@ resource "google_cloud_run_v2_job" "collector" {
   }
 
   depends_on = [google_project_service.api, google_secret_manager_secret_iam_member.collector_reader]
+
+  # After the first deploy, GitHub Actions moves the image to each new commit; Terraform keeps everything else.
+  lifecycle {
+    ignore_changes = [template[0].template[0].containers[0].image]
+  }
 }
 
 resource "google_cloud_run_v2_job_iam_member" "invoke" {

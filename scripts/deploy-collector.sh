@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Deploys the HY-WEP collector to Cloud Run Jobs in stages. Run each stage yourself and read its output.
+# After setup, GitHub Actions (deploy-collector in .github/workflows/ci.yml) builds and rolls out a new image on every
+# push to main that touches collector code; these stages are for infrastructure changes and manual rollouts.
 #   scripts/deploy-collector.sh base      # APIs, image registry, service accounts, secret containers, session bucket
 #   scripts/deploy-collector.sh secrets   # copy secrets from .env.local into Secret Manager (values never printed)
 #   scripts/deploy-collector.sh image     # build and push the collector image with Cloud Build
