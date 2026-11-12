@@ -29,6 +29,7 @@ jobs:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     concurrency:
       group: vercel-production
       cancel-in-progress: false
@@ -51,15 +52,16 @@ jobs:
             [ -n "${!name}" ] || { echo "::error::$name is not set in the repository settings"; exit 1; }
           done
       - run: npm install --global vercel@54.12.2
-      - run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-      - run: vercel build --prod --token="$VERCEL_TOKEN"
-      - run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      # Vercel builds from the uploaded checkout with its own environment variables. Prebuilt uploads
+      # (vercel build + deploy --prebuilt) twice hung in the UNKNOWN state and held this job for six hours.
+      - run: vercel deploy --prod --yes --token="$VERCEL_TOKEN"
 
   # Collector deploy to Cloud Run, only when collector code changed on main and every check passed.
   deploy-collector:
     needs: check
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
