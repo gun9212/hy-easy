@@ -98,6 +98,13 @@ describe("원문 정규화와 비교", () => {
     assert.throws(() =>
       assertEvidence(p, { ...p.classification!, evidence: [{ field: "tasks", quote: "존재하지 않는 업무" }] }),
     ));
+  it("원문과 띄어쓰기만 다른 근거는 인정", () => {
+    const input = { ...p, tasks: "결과 비교 /분석 및\n최종 보고서 작성" };
+    const quote = "결과 비교/분석 및 최종 보고서 작성";
+    assert.ok(assertEvidence(input, { ...p.classification!, evidence: [{ field: "tasks", quote }] }));
+  });
+  it("공백뿐이거나 너무 짧은 근거는 거절", () =>
+    assert.throws(() => assertEvidence(p, { ...p.classification!, evidence: [{ field: "tasks", quote: "  ·  " }] })));
   it("주 직군과 보조 직군 중복 거절", () =>
     assert.throws(() => assertEvidence(p, { ...p.classification!, secondaryRoles: [p.classification!.primaryRole] })));
 });

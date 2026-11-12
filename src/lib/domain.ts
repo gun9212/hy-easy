@@ -207,27 +207,28 @@ export function remainingDays(posting: Posting, now = new Date()) {
     (Date.parse(posting.deadline.date + "T00:00:00+09:00") - Date.parse(kstDate(now) + "T00:00:00+09:00")) / 86400_000,
   );
 }
+/** A quote must carry at least this many visible characters to count as evidence. */
+const MIN_QUOTE_CHARS = 4;
 export function assertEvidence(input: ClassificationInput, result: Classification): Classification {
   if (
     result.secondaryRoles.includes(result.primaryRole) ||
     new Set(result.secondaryRoles).size !== result.secondaryRoles.length
   )
     throw new Error("직군이 중복되었습니다.");
-  for (const e of result.evidence)
-    if (!collapseWhitespace(input[e.field]).includes(collapseWhitespace(e.quote)))
+  for (const e of result.evidence) {
+    const quote = collapseWhitespace(e.quote);
+    if (quote.length < MIN_QUOTE_CHARS || !collapseWhitespace(input[e.field]).includes(quote))
       throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
+  }
   return result;
 }
 
 /**
- * Quotes are compared ignoring line breaks, repeated spaces and invisible control/format characters
- * (HY-WEP text contains stray ones such as U+009F that models drop when quoting). Visible words must match exactly.
+ * Quotes are compared ignoring all whitespace and invisible control/format characters. HY-WEP text has stray
+ * ones (U+009F, "비교 /분석") that models drop or normalise when quoting. Visible characters must match in order.
  */
 function collapseWhitespace(text: string): string {
-  return text
-    .replace(/\s+/g, " ")
-    .replace(/[\p{Cc}\p{Cf}]/gu, "")
-    .trim();
+  return text.replace(/\s+/g, "").replace(/[\p{Cc}\p{Cf}]/gu, "");
 }
 
 export type Filters = {
