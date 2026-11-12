@@ -1701,6 +1701,26 @@ input[type="checkbox"] {
   font-size: var(--text-xs);
   font-weight: 800;
 }
+.google-button-slot {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-top: var(--space-lg);
+}
+.google-status {
+  margin-top: var(--space-xs);
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+.google-fallback {
+  margin-top: var(--space-xs);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+.google-fallback:hover {
+  color: var(--color-accent);
+}
 .setup-message {
   display: flex;
   flex-direction: column;

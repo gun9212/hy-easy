@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check, GitCompareArrows, CalendarClock, Layers3 } from "lucide-react";
+import { GoogleSignIn } from "@/components/google-sign-in";
 import { demoEnabled, isConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -75,7 +76,9 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
               {errors[error] ?? errors.oauth}
             </div>
           )}
-          {isConfigured() ? (
+          {isConfigured() && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ? (
+            <GoogleSignIn clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID} />
+          ) : isConfigured() ? (
             <a className="google-login" href="/auth/login">
               <span className="google-g">G</span>한양대 Google 계정으로 계속
             </a>
