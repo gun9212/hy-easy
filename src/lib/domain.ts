@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { periodMonths, regionOf } from "./filter-options";
+import { SEOUL_MAJORS, type Major } from "./majors";
 
 export const ROLES = [
   "개발",
@@ -25,6 +26,18 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   accepted: "합격",
   unknown: "상태 확인 필요",
 };
+export const MAJOR_REQUIREMENTS = ["any", "listed", "unknown"] as const;
+const majorList = (max: number) => z.array(z.enum(SEOUL_MAJORS)).max(max);
+/** Which Seoul-campus majors a posting asks for, prefers, and whose coursework fits its tasks. */
+export const majorsSchema = z
+  .object({
+    requirement: z.enum(MAJOR_REQUIREMENTS),
+    required: majorList(30),
+    preferred: majorList(12),
+    related: majorList(5),
+  })
+  .strict();
+export type PostingMajors = z.infer<typeof majorsSchema>;
 export const classificationSchema = z
   .object({
     primaryRole: z.enum(ROLES),
@@ -37,9 +50,30 @@ export const classificationSchema = z
       .min(1)
       .max(5),
     needsReview: z.boolean(),
+    // Optional so classifications stored before majors existed still parse.
+    majors: majorsSchema.optional(),
   })
   .strict();
 export type Classification = z.infer<typeof classificationSchema>;
+/** What the model must return: the same shape with majors required. */
+export const classificationOutputSchema = classificationSchema.extend({ majors: majorsSchema });
+
+export type MajorFit = "required" | "preferred" | "related" | "other" | "none";
+export const MAJOR_FIT_LABELS: Record<Exclude<MajorFit, "none">, string> = {
+  required: "내 전공 지원 대상",
+  preferred: "내 전공 우대",
+  related: "내 전공 관련 업무",
+  other: "다른 전공 대상",
+};
+/** How a student's major fits a posting. "none" means nothing to say (no major chosen or no data). */
+export function majorFit(posting: Posting, major: Major | null): MajorFit {
+  const m = posting.classification?.majors;
+  if (!major || !m) return "none";
+  if (m.requirement === "listed" && m.required.includes(major)) return "required";
+  if (m.preferred.includes(major)) return "preferred";
+  if (m.requirement === "listed") return "other";
+  return m.related.includes(major) ? "related" : "none";
+}
 export type ClassificationInput = { practiceInfo: string; qualifications: string; tasks: string };
 export type Posting = {
   id: string;
@@ -204,9 +238,17 @@ export type Filters = {
   sort?: string;
   closed?: string;
   saved?: string;
+  mine?: string;
   page?: string;
 };
-export function filterPostings(postings: Posting[], filters: Filters, favoriteIds: string[] = [], now = new Date()) {
+const MINE_FITS: MajorFit[] = ["required", "preferred", "related"];
+export function filterPostings(
+  postings: Posting[],
+  filters: Filters,
+  favoriteIds: string[] = [],
+  now = new Date(),
+  major: Major | null = null,
+) {
   const query = (filters.q ?? "").toLocaleLowerCase().trim();
   const rows = postings.filter(p => {
     const role = p.classification;
@@ -220,7 +262,8 @@ export function filterPostings(postings: Posting[], filters: Filters, favoriteId
       (!filters.stipend ||
         (p.stipend.unit === "month" && p.stipend.amount !== null && p.stipend.amount >= Number(filters.stipend))) &&
       (filters.closed === "true" || eligibility(p, [], now).status !== "closed") &&
-      (filters.saved !== "true" || favoriteIds.includes(p.id))
+      (filters.saved !== "true" || favoriteIds.includes(p.id)) &&
+      (filters.mine !== "true" || !major || MINE_FITS.includes(majorFit(p, major)))
     );
   });
   return rows.sort((a, b) => {

@@ -4,12 +4,38 @@
 import { useMemo } from "react";
 import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { ROLES, type Filters, type Posting } from "@/lib/domain";
+import { SEOUL_COLLEGES, isMajor, type Major } from "@/lib/majors";
 import { durationOptions, regionOptions, stipendOptions, termOptions } from "@/lib/filter-options";
 import { FilterSelect } from "./filter-select";
 
 type FilterProps = { postings: Posting[]; filters: Filters; updateFilters: (patch: Filters) => void };
+type MajorProps = { major: Major | null; onMajor: (major: Major | null) => void };
 
-export function SearchAndFilters({ postings, filters, updateFilters }: FilterProps) {
+function MajorSelect({ major, onMajor }: MajorProps) {
+  return (
+    <label className={`filter-select major-select ${major ? "has-value" : ""}`}>
+      <select
+        aria-label="내 전공"
+        value={major ?? ""}
+        onChange={e => onMajor(isMajor(e.target.value) ? e.target.value : null)}
+      >
+        <option value="">내 전공 선택</option>
+        {SEOUL_COLLEGES.map(c => (
+          <optgroup key={c.college} label={c.college}>
+            {c.majors.map(m => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <ChevronDown size={13} />
+    </label>
+  );
+}
+
+export function SearchAndFilters({ postings, filters, updateFilters, major, onMajor }: FilterProps & MajorProps) {
   const options = useMemo(
     () => ({
       terms: termOptions(postings),
@@ -36,6 +62,7 @@ export function SearchAndFilters({ postings, filters, updateFilters }: FilterPro
         )}
       </label>
       <div className="filter-controls">
+        <MajorSelect major={major} onMajor={onMajor} />
         <FilterSelect
           label="직군"
           value={filters.role ?? ""}
@@ -71,13 +98,31 @@ export function SearchAndFilters({ postings, filters, updateFilters }: FilterPro
   );
 }
 
-export function ListMeta({ total, filters, updateFilters }: { total: number } & Omit<FilterProps, "postings">) {
+export function ListMeta({
+  total,
+  filters,
+  updateFilters,
+  hasMajor,
+}: { total: number; hasMajor: boolean } & Omit<FilterProps, "postings">) {
   return (
     <div className="list-meta">
       <span>
         총 <b>{total}</b>개의 공고
       </span>
       <div>
+        {hasMajor && (
+          <>
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={filters.mine === "true"}
+                onChange={e => updateFilters({ mine: e.target.checked ? "true" : "" })}
+              />
+              내 전공 관련만
+            </label>
+            <span className="vertical-line" />
+          </>
+        )}
         <label className="check-label">
           <input
             type="checkbox"

@@ -3,6 +3,7 @@ import { Workspace } from "@/components/workspace";
 import { requireUser, HttpError } from "@/lib/auth";
 import { loadWorkspace } from "@/lib/data";
 import type { Filters } from "@/lib/domain";
+import { isMajor } from "@/lib/majors";
 export const dynamic = "force-dynamic";
 export default async function Postings({ searchParams }: { searchParams: Promise<Filters> }) {
   const ctx = await requireUser().catch((e: unknown) => {
@@ -21,6 +22,7 @@ export default async function Postings({ searchParams }: { searchParams: Promise
       initialApplications={data.applications}
       initialFilters={await searchParams}
       initialNow={new Date().toISOString()}
+      initialMajor={isMajor(ctx.user.user_metadata?.major) ? ctx.user.user_metadata.major : null}
       userLabel={ctx.user.email?.split("@")[0] ?? "한양인"}
       isAdmin={Boolean(admin.data)}
     />

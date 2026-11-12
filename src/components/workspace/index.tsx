@@ -17,7 +17,9 @@ import { CompareDock, Sidebar, TopBar, type View } from "./chrome";
 import { Planner } from "./planner";
 import { PostingDetail } from "./posting-detail";
 import { PostingsView } from "./postings-view";
+import { useMajor } from "./use-major";
 import { usePersonal, type Mode } from "./use-personal";
+import type { Major } from "@/lib/majors";
 
 type Props = {
   mode: Mode;
@@ -26,6 +28,7 @@ type Props = {
   initialApplications: Application[];
   initialFilters: Filters;
   initialNow: string;
+  initialMajor: Major | null;
   userLabel: string;
   isAdmin: boolean;
 };
@@ -99,6 +102,7 @@ export function Workspace({
   initialApplications,
   initialFilters,
   initialNow,
+  initialMajor,
   userLabel,
   isAdmin,
 }: Props) {
@@ -114,6 +118,15 @@ export function Workspace({
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useToast();
   const now = useClock(mode, initialNow);
+  const { major, chooseMajor } = useMajor(mode, initialMajor);
+  async function changeMajor(next: Major | null) {
+    try {
+      await chooseMajor(next);
+      if (!next && filters.mine === "true") updateFilters({ mine: "" });
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.");
+    }
+  }
   const view = viewOf(filters);
 
   useEffect(() => {
@@ -222,6 +235,8 @@ export function Workspace({
           <PostingsView
             postings={postings}
             filters={filters}
+            major={major}
+            onMajor={changeMajor}
             updateFilters={updateFilters}
             resetFilters={resetFilters}
             favoriteIds={personal.favoriteIds}
@@ -253,6 +268,7 @@ export function Workspace({
       {detail && (
         <PostingDetail
           posting={detail}
+          major={major}
           applications={personal.applications}
           now={now}
           saved={personal.favoriteIds.includes(detail.id)}

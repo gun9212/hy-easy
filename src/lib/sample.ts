@@ -1,4 +1,5 @@
-import type { Posting, Role } from "./domain";
+import type { Posting, PostingMajors, Role } from "./domain";
+import type { Major } from "./majors";
 
 // Fictional companies and dates. Never inserted into the production database.
 export const DEMO_NOW = "2026-11-10T04:00:00.000Z";
@@ -160,6 +161,31 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "React와 TypeScript로 웹 서비스 화면을 개발하고 접근성을 점검합니다.",
   ],
 ];
+// Majors whose coursework fits each demo role; the second posting also restricts majors to show every fit label.
+const RELATED: Record<Role, Major[]> = {
+  개발: ["컴퓨터소프트웨어학부", "정보시스템학과", "데이터사이언스학부"],
+  "데이터·AI": ["데이터사이언스학부", "컴퓨터소프트웨어학부", "산업공학과", "수학과"],
+  "인프라·보안": ["컴퓨터소프트웨어학부", "정보시스템학과"],
+  기획: ["경영학부", "산업공학과"],
+  디자인: ["응용미술교육과", "실내건축디자인학과", "의류학과"],
+  마케팅: ["경영학부", "미디어커뮤니케이션학과"],
+  영업: ["경영학부", "경제금융대학"],
+  경영지원: ["경영학부", "행정학과"],
+  "재무·회계": ["파이낸스경영학과", "경영학부", "경제금융대학"],
+  연구개발: ["화학공학과", "신소재공학부", "기계공학부"],
+  "생산·품질": ["산업공학과", "기계공학부"],
+  기타: [],
+};
+function sampleMajors(role: Role, index: number): PostingMajors {
+  if (index === 1)
+    return {
+      requirement: "listed",
+      required: ["데이터사이언스학부", "컴퓨터소프트웨어학부"],
+      preferred: [],
+      related: ["산업공학과", "수학과"],
+    };
+  return { requirement: "any", required: [], preferred: index === 0 ? ["정보시스템학과"] : [], related: RELATED[role] };
+}
 export const samplePostings: Posting[] = seeds.map((s, i) => {
   const date = new Date(Date.UTC(2026, 10, 10 + s[6])).toISOString().slice(0, 10);
   return {
@@ -202,6 +228,7 @@ export const samplePostings: Posting[] = seeds.map((s, i) => {
       summary: s[9],
       evidence: [{ field: "tasks", quote: s[9] }],
       needsReview: i === 11,
+      majors: sampleMajors(s[3], i),
     },
     classificationSource: "sample",
     classificationStale: false,

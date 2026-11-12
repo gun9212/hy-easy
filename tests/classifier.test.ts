@@ -99,3 +99,37 @@ describe("모델 출력 정리 (스키마 제한 미지원 대응)", () => {
     assert.doesNotThrow(() => assertEvidence(withControl, quoted));
   });
 });
+
+describe("trimToLimits majors", () => {
+  it("전공무관이면 지정 전공을 비우고, 우대·관련에서 지정 전공과 중복을 뺌", () => {
+    const any = trimToLimits({
+      ...result,
+      majors: { requirement: "any", required: ["경영학부"], preferred: ["경영학부", "경영학부"], related: [] },
+    }) as typeof result;
+    assert.deepEqual(any.majors?.required, []);
+    assert.deepEqual(any.majors?.preferred, ["경영학부"]);
+    const listed = trimToLimits({
+      ...result,
+      majors: {
+        requirement: "listed",
+        required: ["경영학부"],
+        preferred: ["경영학부"],
+        related: ["경영학부", "산업공학과", "수학과", "물리학과", "화학과", "사학과"],
+      },
+    }) as typeof result;
+    assert.deepEqual(listed.majors?.preferred, []);
+    assert.deepEqual(listed.majors?.related, ["산업공학과", "수학과", "물리학과", "화학과", "사학과"]);
+  });
+  it("지정 전공 없이 listed면 우대가 있을 때 any, 없을 때 unknown", () => {
+    const pref = trimToLimits({
+      ...result,
+      majors: { requirement: "listed", required: [], preferred: ["경영학부"], related: [] },
+    }) as typeof result;
+    assert.equal(pref.majors?.requirement, "any");
+    const none = trimToLimits({
+      ...result,
+      majors: { requirement: "listed", required: [], preferred: [], related: [] },
+    }) as typeof result;
+    assert.equal(none.majors?.requirement, "unknown");
+  });
+});

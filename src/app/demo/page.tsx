@@ -14,6 +14,7 @@ export default async function Demo({ searchParams }: { searchParams: Promise<Fil
       initialApplications={[]}
       initialFilters={await searchParams}
       initialNow={DEMO_NOW}
+      initialMajor={null}
       userLabel="둘러보는 한양인"
       isAdmin={false}
     />

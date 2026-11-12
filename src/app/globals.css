@@ -660,10 +660,12 @@ input[type="checkbox"] {
 .list-meta > div {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  flex-wrap: wrap;
+  gap: var(--space-2xs) var(--space-md);
 }
 .check-label,
 .sort-label {
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: var(--space-xs);
@@ -818,6 +820,33 @@ input[type="checkbox"] {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3xs);
+}
+.major-fit {
+  display: inline-flex;
+  padding: 0 var(--space-xs);
+  border-radius: var(--radius-chip);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  line-height: 1.6;
+}
+.major-fit.required,
+.major-fit.preferred {
+  background: var(--color-ok-soft);
+  color: var(--color-ok);
+}
+.major-fit.related {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+.major-fit.other {
+  background: var(--color-paper-2);
+  color: var(--color-muted);
+}
+.detail-section > .major-fit {
+  margin-bottom: var(--space-xs);
+}
+.major-select > select {
+  max-width: 220px;
 }
 .role-tag {
   display: inline-flex;

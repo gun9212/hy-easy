@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { eligibility, simulate, filterPostings, assertEvidence, type Application } from "../src/lib/domain";
+import { eligibility, simulate, filterPostings, assertEvidence, majorFit, type Application } from "../src/lib/domain";
 import { samplePostings, DEMO_NOW } from "../src/lib/sample";
 import { parseDeadline, parseStipend, sourceHash, stableHash, classificationInput } from "../src/lib/normalize";
 import { isSchoolUser } from "../src/lib/auth-policy";
@@ -115,5 +115,31 @@ describe("학교 계정 정책", () => {
   it("유사 도메인·Google identity 불일치 거절", () => {
     assert.equal(isSchoolUser({ ...user, email: "a@hanyang.ac.kr.attacker.com" }), false);
     assert.equal(isSchoolUser({ ...user, email: "other@hanyang.ac.kr" }), false);
+  });
+});
+
+describe("majorFit", () => {
+  const base = samplePostings[0];
+  const withMajors = (majors: NonNullable<NonNullable<typeof base.classification>["majors"]>) => ({
+    ...base,
+    classification: { ...base.classification!, majors },
+  });
+  it("지정 전공에 있으면 지원 대상, 없으면 다른 전공 대상", () => {
+    const p = withMajors({ requirement: "listed", required: ["경영학부"], preferred: [], related: ["산업공학과"] });
+    assert.equal(majorFit(p, "경영학부"), "required");
+    assert.equal(majorFit(p, "산업공학과"), "other");
+  });
+  it("전공무관 공고는 우대, 관련 업무 순으로 알려줌", () => {
+    const p = withMajors({ requirement: "any", required: [], preferred: ["경영학부"], related: ["산업공학과"] });
+    assert.equal(majorFit(p, "경영학부"), "preferred");
+    assert.equal(majorFit(p, "산업공학과"), "related");
+    assert.equal(majorFit(p, "철학과"), "none");
+  });
+  it("전공을 고르지 않았거나 전공 정보가 없으면 표시하지 않음", () => {
+    assert.equal(majorFit(base, null), "none");
+    assert.equal(
+      majorFit({ ...base, classification: { ...base.classification!, majors: undefined } }, "경영학부"),
+      "none",
+    );
   });
 });

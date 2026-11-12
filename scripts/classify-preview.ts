@@ -74,6 +74,12 @@ async function main(): Promise<void> {
       const secondary = c.secondaryRoles.length ? ` (+${c.secondaryRoles.join(", ")})` : "";
       console.log(`  → ${c.primaryRole}${secondary}${c.needsReview ? "  [검토 필요]" : ""}`);
       console.log(`  ${c.summary}`);
+      if (c.majors) {
+        const { requirement, required, preferred, related } = c.majors;
+        console.log(
+          `  전공 ${requirement} | 지정 ${required.join(",") || "-"} | 우대 ${preferred.join(",") || "-"} | 관련 ${related.join(",") || "-"}`,
+        );
+      }
     } catch (error) {
       console.log(`  ✗ ${error instanceof Error ? error.message.slice(0, 120) : String(error)}`);
     }

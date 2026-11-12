@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { filterPostings, type Application, type Filters, type Posting } from "@/lib/domain";
+import type { Major } from "@/lib/majors";
 import { ListMeta, SearchAndFilters } from "./list-controls";
 import { PostingsTable } from "./postings-table";
 
@@ -21,6 +22,8 @@ const PAGE_SIZE = 10;
 type Props = {
   postings: Posting[];
   filters: Filters;
+  major: Major | null;
+  onMajor: (major: Major | null) => void;
   updateFilters: (patch: Filters) => void;
   resetFilters: () => void;
   favoriteIds: string[];
@@ -137,7 +140,7 @@ function EmptyState({ savedView, onReset }: { savedView: boolean; onReset: () =>
 
 export function PostingsView(props: Props) {
   const { postings, filters, updateFilters, favoriteIds, compared, now } = props;
-  const filtered = filterPostings(postings, filters, favoriteIds, now);
+  const filtered = filterPostings(postings, filters, favoriteIds, now, props.major);
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, Number(filters.page) || 1), pages);
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -169,8 +172,19 @@ export function PostingsView(props: Props) {
             공고 비교 {compared.length > 0 && <b>{compared.length}</b>}
           </button>
         </div>
-        <SearchAndFilters postings={postings} filters={filters} updateFilters={updateFilters} />
-        <ListMeta total={filtered.length} filters={filters} updateFilters={updateFilters} />
+        <SearchAndFilters
+          postings={postings}
+          filters={filters}
+          updateFilters={updateFilters}
+          major={props.major}
+          onMajor={props.onMajor}
+        />
+        <ListMeta
+          total={filtered.length}
+          filters={filters}
+          updateFilters={updateFilters}
+          hasMajor={Boolean(props.major)}
+        />
         {visible.length ? (
           <PostingsTable
             postings={visible}
@@ -179,6 +193,7 @@ export function PostingsView(props: Props) {
             favoriteIds={favoriteIds}
             compared={compared}
             now={now}
+            major={props.major}
             onCompare={props.onCompare}
             onOpen={props.onOpen}
             onFavorite={props.onFavorite}

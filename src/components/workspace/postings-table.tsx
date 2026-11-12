@@ -2,10 +2,13 @@
 
 import { ArrowDown, Bookmark, Info, MapPin } from "lucide-react";
 import { periodMonths } from "@/lib/filter-options";
+import type { Major } from "@/lib/majors";
 import {
   deadlineLabel,
   eligibility,
   isNewPosting,
+  majorFit,
+  MAJOR_FIT_LABELS,
   remainingDays,
   stipendLabel,
   type Application,
@@ -19,6 +22,7 @@ type Props = {
   favoriteIds: string[];
   compared: string[];
   now: Date;
+  major: Major | null;
   onCompare: (id: string) => void;
   onOpen: (p: Posting) => void;
   onFavorite: (id: string) => void;
@@ -42,7 +46,7 @@ function RoleCell({ posting: p }: { posting: Posting }) {
 }
 
 export function PostingsTable(props: Props) {
-  const { postings, logoIndex, applications, favoriteIds, compared, now, onCompare, onOpen, onFavorite } = props;
+  const { postings, logoIndex, applications, favoriteIds, compared, now, major, onCompare, onOpen, onFavorite } = props;
   return (
     <div className="postings-table-wrap">
       <table className="postings-table">
@@ -70,6 +74,7 @@ export function PostingsTable(props: Props) {
             const badge = deadlineBadge(closed, remainingDays(p, now));
             const saved = favoriteIds.includes(p.id);
             const months = periodMonths(p.period);
+            const fit = majorFit(p, major);
             return (
               <tr key={p.id} className={compared.includes(p.id) ? "row-selected" : ""}>
                 <td className="select-cell">
@@ -87,6 +92,7 @@ export function PostingsTable(props: Props) {
                       <span className="company-name">
                         {p.company}
                         {isNewPosting(p, now) && <span className="new-badge">신규</span>}
+                        {fit !== "none" && <span className={`major-fit ${fit}`}>{MAJOR_FIT_LABELS[fit]}</span>}
                       </span>
                       <b>{p.title}</b>
                       <span className="posting-subline">
