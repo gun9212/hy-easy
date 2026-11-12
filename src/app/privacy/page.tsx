@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "개인정보처리방침 · HY-Easy" };
 
-const EFFECTIVE_DATE = "2026년 11월 12일";
+const EFFECTIVE_DATE = "2026년 11월 13일";
 const CONTACT_EMAIL = "gun9212@gmail.com";
 
 const COLLECTED: [string, string, string][] = [
@@ -21,6 +21,7 @@ const COLLECTED: [string, string, string][] = [
 
 const PROCESSORS: [string, string, string][] = [
   ["Supabase", "로그인 처리, 데이터 저장 (서울 리전)", "대한민국"],
+  ["Google Cloud", "데이터 백업 보관 (서울 리전)", "대한민국"],
   ["Vercel", "웹 서비스 호스팅 (요청이 서버를 거쳐 처리됨)", "미국 등"],
   ["Google", "Google 계정 로그인", "미국 등"],
 ];
@@ -89,7 +90,8 @@ export default function PrivacyPage() {
           <h2>2. 보유 기간과 파기</h2>
           <p>
             이용자가 삭제를 요청할 때까지 보관합니다. 아래 연락처로 요청하면 계정과 전공, 관심 공고, 지원 기록을 지체
-            없이 삭제합니다. 삭제한 정보는 복구할 수 없습니다.
+            없이 삭제합니다. 삭제한 정보는 복구할 수 없습니다. 장애에 대비해 하루 두 번 데이터베이스를 백업하며, 백업은
+            30일이 지나면 자동으로 지워집니다. 따라서 삭제를 요청한 정보도 최대 30일 동안 백업에 남을 수 있습니다.
           </p>
         </section>
 

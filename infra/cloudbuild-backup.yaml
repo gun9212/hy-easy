@@ -1,0 +1,11 @@
+# Builds the database backup image (backup/Dockerfile) with Cloud Build.
+# Usage: gcloud builds submit --project hy-easy --config infra/cloudbuild-backup.yaml --substitutions=_IMAGE=<image:tag>,_LATEST=<image:latest> .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "backup/Dockerfile", "-t", "${_IMAGE}", "-t", "${_LATEST}", "backup"]
+images:
+  - ${_IMAGE}
+  - ${_LATEST}
+serviceAccount: projects/hy-easy/serviceAccounts/hy-easy-builder@hy-easy.iam.gserviceaccount.com
+options:
+  logging: CLOUD_LOGGING_ONLY
