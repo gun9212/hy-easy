@@ -1,5 +1,5 @@
 # Operator alerts by email. Three situations, each with its own response written into the alert email:
-#   1. collector runs fail (portal error, session expired, login failed): the job exits non-zero
+#   1. collector runs fail (portal error, session expired, login failed)
 #   2. the collector does not run at all on a weekday daytime (schedule paused, invocation broken)
 #   3. AI classification keeps failing (API key, credit) while collection itself still succeeds
 
@@ -10,6 +10,24 @@ variable "alert_email" {
 
 locals {
   job_filter = "resource.type = \"cloud_run_job\" AND resource.labels.job_name = \"${google_cloud_run_v2_job.collector.name}\""
+}
+
+# Counted from the collector's own result line (one JSON line per run with status and elapsedSec). Cloud Run's
+# job/completed_execution_count was tried first: it reported 0 for 99 of 102 successful executions on 2026-11-12,
+# so it cannot count runs.
+resource "google_logging_metric" "collector_runs" {
+  name   = "hy_easy_collector_runs"
+  filter = "${local.job_filter} AND jsonPayload.status:* AND jsonPayload.elapsedSec:*"
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+    labels {
+      key        = "status"
+      value_type = "STRING"
+    }
+  }
+  label_extractors = { status = "EXTRACT(jsonPayload.status)" }
+  depends_on       = [google_project_service.api]
 }
 
 resource "google_monitoring_notification_channel" "operator" {
@@ -24,9 +42,9 @@ resource "google_monitoring_alert_policy" "collector_failing" {
   combiner              = "OR"
   notification_channels = [google_monitoring_notification_channel.operator.id]
   conditions {
-    display_name = "수집기 실행이 20분 안에 3회 이상 실패"
+    display_name = "수집 실행이 20분 안에 3회 이상 실패"
     condition_threshold {
-      filter          = "${local.job_filter} AND metric.type = \"run.googleapis.com/job/completed_execution_count\" AND metric.labels.result = \"failed\""
+      filter          = "resource.type = \"cloud_run_job\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.collector_runs.name}\" AND metric.labels.status = one_of(\"failed\", \"session_expired\")"
       comparison      = "COMPARISON_GT"
       threshold_value = 2
       duration        = "0s"
@@ -63,7 +81,7 @@ resource "google_monitoring_alert_policy" "collector_silent" {
     condition_prometheus_query_language {
       query               = <<-EOT
         (
-          sum(increase(run_googleapis_com:job_completed_execution_count{monitored_resource="cloud_run_job",job_name="${google_cloud_run_v2_job.collector.name}",result="succeeded"}[35m]))
+          sum(increase(logging_googleapis_com:user_${google_logging_metric.collector_runs.name}{monitored_resource="cloud_run_job",status=~"success|partial"}[35m]))
           or vector(0)
         ) == 0
         and on() (hour() >= 1 and hour() < 9)
