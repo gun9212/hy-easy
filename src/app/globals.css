@@ -1866,8 +1866,6 @@ input[type="checkbox"] {
 }
 .admin-section h2 > span {
   margin-left: var(--space-2xs);
-  color: var(--color-muted);
-  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 .admin-note {
