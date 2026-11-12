@@ -80,3 +80,35 @@ output "github_wif_provider" {
 output "github_deployer_service_account" {
   value = google_service_account.deployer.email
 }
+
+# Builds run as their own account that can only read the uploaded source, push images and write build logs,
+# instead of the project's default compute account (Editor).
+resource "google_service_account" "builder" {
+  account_id   = "hy-easy-builder"
+  display_name = "HY-Easy collector image builder (Cloud Build)"
+}
+
+resource "google_artifact_registry_repository_iam_member" "builder_push" {
+  repository = google_artifact_registry_repository.images.name
+  location   = var.region
+  role       = "roles/artifactregistry.writer"
+  member     = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_project_iam_member" "builder_logs" {
+  project = var.project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_storage_bucket_iam_member" "builder_source" {
+  bucket = "${var.project_id}_cloudbuild"
+  role   = "roles/storage.objectViewer"
+  member = "serviceAccount:${google_service_account.builder.email}"
+}
+
+resource "google_service_account_iam_member" "deployer_acts_as_builder" {
+  service_account_id = google_service_account.builder.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.deployer.email}"
+}

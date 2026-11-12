@@ -5,5 +5,7 @@ steps:
     args: ["build", "-f", "worker/Dockerfile", "-t", "${_IMAGE}", "."]
 images:
   - ${_IMAGE}
+# Runs as the narrow builder account from infra/github-deploy.tf (push images, write logs, read the source).
+serviceAccount: projects/hy-easy/serviceAccounts/hy-easy-builder@hy-easy.iam.gserviceaccount.com
 options:
   logging: CLOUD_LOGGING_ONLY
