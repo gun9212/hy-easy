@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin-editor";
+import { AdminAlerts } from "@/components/admin/admin-alerts";
 import {
   AuditTable,
   ChangesTable,
@@ -71,6 +72,7 @@ export default async function Admin() {
       <main className="admin-body">
         <h1>운영 관리</h1>
         <p className="admin-lead">수집이 멈추면 원문을 확인하고, 세션이 만료되면 운영자 세션을 갱신해 주세요.</p>
+        <AdminAlerts runs={runRows} queue={queueRows} />
 
         <dl className="admin-stats">
           <div>

@@ -223,7 +223,17 @@ try {
             .eq("posting_id", job.posting_id)
             .eq("input_hash", job.input_hash),
         );
-      } catch {
+      } catch (e) {
+        // Structured log line: Cloud Logging counts these for the "AI classification failing" alert.
+        console.error(
+          JSON.stringify({
+            severity: "ERROR",
+            event: "classification_failed",
+            postingId: job.posting_id,
+            attempt: job.attempts + 1,
+            message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+          }),
+        );
         check(
           await db
             .from("classification_queue")
@@ -239,6 +249,13 @@ try {
     }
   }
 } catch (e) {
+  console.error(
+    JSON.stringify({
+      severity: "ERROR",
+      event: "collection_failed",
+      message: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
+    }),
+  );
   if (e instanceof LoginFailed) {
     status = "session_expired";
     errorCode = "LOGIN_FAILED";

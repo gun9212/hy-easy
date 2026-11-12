@@ -1864,6 +1864,16 @@ input[type="checkbox"] {
 .admin-body h1 {
   font-size: var(--text-display);
 }
+.admin-alerts {
+  display: grid;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-control);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+  font-weight: 600;
+}
 .admin-lead {
   margin-top: var(--space-2xs);
   color: var(--color-ink-2);
