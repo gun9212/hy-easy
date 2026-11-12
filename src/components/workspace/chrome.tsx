@@ -3,6 +3,7 @@
 // Page chrome around the workspace: top bar, sidebar navigation and the compare dock.
 import Image from "next/image";
 import Link from "next/link";
+import { clearStoredPostings } from "./posting-store";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -48,7 +49,16 @@ export function TopBar({ mode, userLabel, onMenu }: { mode: Mode; userLabel: str
         <span className="user-avatar">{mode === "demo" ? "H" : userLabel.slice(0, 1).toUpperCase()}</span>
         <span className="user-name">{userLabel}</span>
         {mode === "live" && (
-          <form action="/auth/logout" method="POST">
+          <form
+            action="/auth/logout"
+            method="POST"
+            onSubmit={e => {
+              // Drop this browser's copy of the postings before signing out, then submit as usual.
+              e.preventDefault();
+              const form = e.currentTarget;
+              void clearStoredPostings().finally(() => form.submit());
+            }}
+          >
             <button className="icon-button" aria-label="로그아웃">
               <LogOut size={17} />
             </button>

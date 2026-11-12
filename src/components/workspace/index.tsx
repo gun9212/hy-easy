@@ -18,12 +18,14 @@ import { Planner } from "./planner";
 import { PostingDetail } from "./posting-detail";
 import { PostingsView } from "./postings-view";
 import { useMajor } from "./use-major";
+import { usePostings } from "./use-postings";
 import { usePersonal, type Mode } from "./use-personal";
 import type { Major } from "@/lib/majors";
 
 type Props = {
   mode: Mode;
-  postings: Posting[];
+  /** Demo: the sample postings. Live: null, and the browser loads them (see usePostings). */
+  postings: Posting[] | null;
   initialFavorites: string[];
   initialApplications: Application[];
   initialFilters: Filters;
@@ -97,7 +99,7 @@ function SyncState({ mode, lastChecked }: { mode: Mode; lastChecked: string | un
 
 export function Workspace({
   mode,
-  postings,
+  postings: initialPostings,
   initialFavorites,
   initialApplications,
   initialFilters,
@@ -106,6 +108,7 @@ export function Workspace({
   userLabel,
   isAdmin,
 }: Props) {
+  const { postings, ready, lastCheckedAt, error: loadError } = usePostings(mode, initialPostings);
   const { personal, toggleFavorite, recordApplication } = usePersonal(mode, {
     favoriteIds: initialFavorites,
     applications: initialApplications,
@@ -179,10 +182,12 @@ export function Workspace({
     activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
     hasActive: Boolean(active),
   };
-  const lastChecked = postings
-    .map(p => p.lastCheckedAt)
-    .sort()
-    .at(-1);
+  const lastChecked =
+    lastCheckedAt ??
+    postings
+      .map(p => p.lastCheckedAt)
+      .sort()
+      .at(-1);
   const selected = postings.filter(p => compared.includes(p.id));
   const heading = HEADINGS[view];
 
@@ -229,7 +234,16 @@ export function Workspace({
             <SyncState mode={mode} lastChecked={lastChecked} />
           </div>
         </div>
-        {view === "planner" ? (
+        {loadError && (
+          <div className="load-error" role="alert">
+            {loadError} {postings.length ? "저장해 둔 목록을 보여드려요." : "새로고침해 주세요."}
+          </div>
+        )}
+        {!ready ? (
+          <div className="loading-state" role="status">
+            공고를 불러오는 중…
+          </div>
+        ) : view === "planner" ? (
           <Planner postings={postings} applications={personal.applications} record={record} now={now} />
         ) : (
           <PostingsView

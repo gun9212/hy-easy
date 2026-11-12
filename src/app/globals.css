@@ -982,6 +982,19 @@ input[type="checkbox"] {
 .empty-state .secondary-button {
   margin-top: var(--space-sm);
 }
+.loading-state {
+  padding: var(--space-2xl) var(--space-lg);
+  border-top: 1px solid var(--color-rule);
+  color: var(--color-muted);
+  text-align: center;
+}
+.load-error {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-control);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
 .source-note {
   display: flex;
   align-items: flex-start;

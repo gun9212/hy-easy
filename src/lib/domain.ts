@@ -101,6 +101,8 @@ export type Posting = {
   firstSeenAt: string;
   updatedAt: string;
   lastCheckedAt: string;
+  /** Latest change to the source text or classification (from posting_view); browsers sync from it. */
+  changedAt?: string;
   classification: Classification | null;
   classificationSource: "ai" | "admin" | "sample" | null;
   classificationStale: boolean;

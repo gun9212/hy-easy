@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Workspace } from "@/components/workspace";
 import { requireUser, HttpError } from "@/lib/auth";
-import { loadWorkspace } from "@/lib/data";
+import { loadPersonal } from "@/lib/data";
 import type { Filters } from "@/lib/domain";
 import { isMajor } from "@/lib/majors";
 export const dynamic = "force-dynamic";
@@ -10,14 +10,15 @@ export default async function Postings({ searchParams }: { searchParams: Promise
     if (e instanceof HttpError) redirect(`/login${e.status === 403 ? "?error=school" : ""}`);
     throw e;
   });
+  // Postings are loaded by the browser (stored copy + changes only); the page carries just the student's own data.
   const [data, admin] = await Promise.all([
-    loadWorkspace(ctx.db, ctx.user.id),
+    loadPersonal(ctx.db, ctx.user.id),
     ctx.db.from("admins").select("user_id").eq("user_id", ctx.user.id).maybeSingle(),
   ]);
   return (
     <Workspace
       mode="live"
-      {...data}
+      postings={null}
       initialFavorites={data.favoriteIds}
       initialApplications={data.applications}
       initialFilters={await searchParams}
