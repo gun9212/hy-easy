@@ -16,6 +16,13 @@ const config: NextConfig = {
         ],
       },
       {
+        source: "/fonts/:path*",
+        headers: [
+          // Font files never change under the same name (pretendard 1.3.9); cache them for a year.
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
         source: "/brand/:path*",
         headers: [
           // Brand files change only with a deploy; a day of caching keeps them off the network on every page load.

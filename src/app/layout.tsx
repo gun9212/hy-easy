@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
+import "./pretendard.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,15 +8,12 @@ export const metadata: Metadata = {
   description: "한양대학교 현장실습 공고 비교와 지원 일정 관리",
   robots: { index: false, follow: false },
 };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  // Reading the request makes every page render per request, so Next.js can put this request's CSP nonce
+  // (set in src/proxy.ts) on its scripts. A prerendered page would carry scripts without a nonce.
+  await headers();
   return (
     <html lang="ko">
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        />
-      </head>
       <body>{children}</body>
     </html>
   );
