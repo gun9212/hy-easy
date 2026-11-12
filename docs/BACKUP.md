@@ -7,7 +7,7 @@
 - **무엇을**: 실행마다 `YYYY-MM-DD_HHMM/` 폴더에 두 파일을 만듭니다.
   - `public.dump`: `public` 스키마 전체(구조 + 데이터). 공고, 분류, 관심 공고, 지원 기록, 관리자 등.
   - `auth.dump`: `auth.users`, `auth.identities` 데이터. 학생 기록이 가리키는 계정 ID, 이메일, 전공(`user_metadata.major`).
-- **권한**: 백업 계정(`hy-easy-backup`)은 객체 생성만 할 수 있습니다. 읽기, 덮어쓰기, 삭제는 못 하므로 이 계정이 탈취돼도 기존 백업은 안전합니다. 읽기는 프로젝트 소유자만 할 수 있습니다.
+- **권한**: 백업 계정(`hy-easy-backup`)은 객체 생성만 할 수 있습니다. 읽기, 덮어쓰기, 삭제는 못 하므로 이 계정이 탈취돼도 기존 백업은 안전합니다. 읽기는 프로젝트 소유자·편집자·뷰어(현재 운영자 본인)만 할 수 있습니다.
 - **접속 정보**: Secret Manager `hy-easy-db-url`(Supabase session pooler, 5432 포트). Supabase DB 비밀번호를 바꾸면 `scripts/push-secrets.sh hy-easy hy-easy-db-url`로 갱신합니다.
 - **알림**: 백업이 실패하거나 14시간 넘게 성공이 없으면 운영자 메일로 알립니다(`infra/backup.tf`의 `HY-Easy DB 백업 실패`).
 - **코드**: `backup/run.sh`(백업), `backup/restore-test.sh`(복구 연습), `infra/backup.tf`. 이미지는 `backup/`이 바뀌면 GitHub Actions가 빌드합니다.
