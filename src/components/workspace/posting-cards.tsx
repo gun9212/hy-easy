@@ -5,13 +5,15 @@ import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import { deadlineLabel, eligibility, isNewPosting, stipendLabel, type Posting } from "@/lib/domain";
+import { eligibility, isNewPosting, type Posting } from "@/lib/domain";
+import { deadlineShort } from "@/lib/posting-format";
 import {
   BookmarkButton,
   CompareBox,
   DeadlineBadge,
   MajorFitBadge,
-  competitionLabel,
+  Competition,
+  StipendAmount,
   type RowProps,
 } from "./posting-row-parts";
 
@@ -24,7 +26,7 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
           <HStack gap={1.5} align="center" wrap="wrap">
             <DeadlineBadge posting={p} applications={props.applications} now={props.now} />
             <Text type="supporting" hasTabularNumbers>
-              {deadlineLabel(p)} 마감
+              {deadlineShort(p)} 마감
             </Text>
             {isNewPosting(p, props.now) && <Badge variant="info" label="신규" />}
           </HStack>
@@ -52,12 +54,10 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
         <Divider />
         <HStack gap={2} align="center" justify="between">
           <VStack gap={0.5}>
-            <Text size="sm">{p.location}</Text>
-            <Text type="supporting">{competitionLabel(p)}</Text>
+            <Text size="sm">{p.location || "미기재"}</Text>
+            <Competition posting={p} align="start" />
           </VStack>
-          <Text weight="bold" hasTabularNumbers>
-            {stipendLabel(p)}
-          </Text>
+          <StipendAmount posting={p} />
         </HStack>
       </VStack>
     </ClickableCard>

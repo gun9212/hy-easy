@@ -26,9 +26,9 @@ type Props = {
 };
 
 const SORTS = [
+  ["deadline", "마감순"],
+  ["stipend", "지원비순"],
   ["latest", "최신순"],
-  ["deadline", "마감 임박순"],
-  ["stipend", "지원금 높은순"],
 ] as const;
 const MAJOR_OPTIONS = SEOUL_COLLEGES.map(c => ({
   type: "section" as const,
@@ -159,7 +159,7 @@ export function ListFilters(props: Props): React.ReactElement {
         <SegmentedControl
           label="공고 정렬"
           size="sm"
-          value={filters.sort || "latest"}
+          value={filters.sort || "deadline"}
           onChange={sort => updateFilters({ sort })}
         >
           {SORTS.map(([value, label]) => (

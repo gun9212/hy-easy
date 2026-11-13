@@ -243,6 +243,8 @@ export type Filters = {
   sort?: string;
   closed?: string;
   saved?: string;
+  /** Side-nav shortcuts: "soon" (open, closing within three days) or "new" (first seen today). */
+  when?: string;
   mine?: string;
   /** "true": keep postings restricted to other majors when a major is chosen (hidden by default). */
   others?: string;

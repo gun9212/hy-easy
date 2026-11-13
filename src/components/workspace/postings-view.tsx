@@ -7,7 +7,8 @@ import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import { filterPostings, type Application, type Filters, type Posting } from "@/lib/domain";
+import { filterPostings, isNewPosting, type Application, type Filters, type Posting } from "@/lib/domain";
+import { matchesWhen, nextDeadline } from "@/lib/posting-format";
 import type { Major } from "@/lib/majors";
 import { DeadlineGroups } from "./deadline-groups";
 import { ListFilters } from "./list-filters";
@@ -34,13 +35,21 @@ type Props = {
   onPlanner: () => void;
 };
 
+const DEFAULT_SORT = "deadline";
+const WHEN_TITLES: Record<string, string> = { soon: "마감 임박", new: "새로 올라온 공고" };
+
+function listTitle(filters: Filters): string {
+  if (filters.saved === "true") return "관심 공고";
+  return WHEN_TITLES[filters.when ?? ""] ?? "전체 공고";
+}
+
 function ListHeader({ props, total }: { props: Props; total: number }): React.ReactElement {
   const { filters, updateFilters, compared } = props;
   return (
     <HStack gap={2} align="center" justify="between" wrap="wrap">
       <HStack gap={2} align="center">
         <Text weight="bold" size="lg">
-          {filters.saved === "true" ? "관심 공고" : "전체 공고"}
+          {listTitle(filters)}
         </Text>
         <Badge variant="blue" label={total} />
         {filters.role && (
@@ -64,8 +73,12 @@ function ListHeader({ props, total }: { props: Props; total: number }): React.Re
 }
 
 export function PostingsView(props: Props): React.ReactElement {
-  const { postings, filters, favoriteIds, now } = props;
-  const filtered = filterPostings(postings, filters, favoriteIds, now, props.major);
+  const { postings, favoriteIds, now } = props;
+  // Deadline order is the default, as in the demo: the list opens on the deadline groups.
+  const filters: Filters = { ...props.filters, sort: props.filters.sort || DEFAULT_SORT };
+  const filtered = filterPostings(postings, filters, favoriteIds, now, props.major).filter(p =>
+    matchesWhen(p, filters.when, now),
+  );
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major
     ? {
@@ -88,10 +101,14 @@ export function PostingsView(props: Props): React.ReactElement {
   const savedView = filters.saved === "true";
   return (
     <VStack gap={4}>
-      <SummaryCards stats={props.stats} favorites={favoriteIds.length} onPlanner={props.onPlanner} />
+      <SummaryCards
+        stats={props.stats}
+        newCount={postings.filter(p => isNewPosting(p, now)).length}
+        next={nextDeadline(postings, now)}
+      />
       <Card padding={4}>
         <VStack gap={3}>
-          <ListHeader props={props} total={filtered.length} />
+          <ListHeader props={{ ...props, filters }} total={filtered.length} />
           <ListFilters
             postings={postings}
             filters={filters}

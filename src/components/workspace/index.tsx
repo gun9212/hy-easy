@@ -11,15 +11,8 @@ import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-import {
-  eligibility,
-  formatDate,
-  isBlocking,
-  remainingDays,
-  type Application,
-  type Filters,
-  type Posting,
-} from "@/lib/domain";
+import { eligibility, formatDate, isBlocking, type Application, type Filters, type Posting } from "@/lib/domain";
+import { isClosingSoon } from "@/lib/posting-format";
 import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
 import { CompareDock, type View } from "./chrome";
@@ -160,7 +153,7 @@ export function Workspace({
     writeUrl({});
   }
   function navigate(next: View) {
-    updateFilters({ saved: next === "saved" ? "true" : next === "planner" ? "planner" : "" });
+    updateFilters({ saved: next === "saved" ? "true" : next === "planner" ? "planner" : "", when: "" });
     setMobileMenu(false);
   }
   async function favorite(id: string) {
@@ -187,10 +180,7 @@ export function Workspace({
   const active = personal.applications.find(a => isBlocking(a.status));
   const stats = {
     open: postings.filter(p => eligibility(p, [], now).status !== "closed").length,
-    closingSoon: postings.filter(p => {
-      const days = remainingDays(p, now);
-      return days !== null && days >= 0 && days <= 3 && p.recruitment !== "closed";
-    }).length,
+    closingSoon: postings.filter(p => isClosingSoon(p, now)).length,
     activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
     hasActive: Boolean(active),
   };
@@ -218,6 +208,12 @@ export function Workspace({
               hasActive={stats.hasActive}
               isAdmin={isAdmin}
               navigate={navigate}
+              now={now}
+              onOpen={setDetail}
+              selectWhen={when => {
+                updateFilters({ when, saved: "", role: "" });
+                setMobileMenu(false);
+              }}
               selectRole={role => {
                 updateFilters({ role: filters.role === role ? "" : role, saved: "" });
                 setMobileMenu(false);

@@ -5,8 +5,11 @@ import { Bookmark } from "lucide-react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { IconButton } from "@astryxdesign/core/IconButton";
+import { HStack, VStack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
 import { eligibility, majorFit, MAJOR_FIT_LABELS, remainingDays, type Application, type Posting } from "@/lib/domain";
 import type { Major } from "@/lib/majors";
+import { competitionRatio, stipendParts } from "@/lib/posting-format";
 
 export type RowProps = {
   postings: Posting[];
@@ -91,8 +94,36 @@ export function BookmarkButton({
   );
 }
 
-export function competitionLabel(posting: Posting): string {
-  return posting.applicants !== null && posting.headcount
-    ? `${posting.headcount}명 모집 · ${posting.applicants}명 지원`
-    : posting.term;
+/** "월 **224** 만원" with the amount large; the source text, dimmed, when the amount or unit is unknown. */
+export function StipendAmount({ posting, justify = "end" }: { posting: Posting; justify?: "start" | "end" }) {
+  const parts = stipendParts(posting);
+  if (!parts)
+    return (
+      <Text type="supporting" maxLines={1}>
+        {posting.stipend.raw || "미기재"}
+      </Text>
+    );
+  return (
+    <HStack gap={0.5} align="end" justify={justify}>
+      <Text type="supporting">{parts.prefix}</Text>
+      <Text weight="bold" size="lg" hasTabularNumbers>
+        {parts.amount}
+      </Text>
+      <Text type="supporting">{parts.suffix}</Text>
+    </HStack>
+  );
+}
+
+/** "3.5 : 1" over "지원 7 · 모집 2". */
+export function Competition({ posting, align = "end" }: { posting: Posting; align?: "start" | "end" }) {
+  return (
+    <VStack gap={0.5} align={align}>
+      <Text weight="semibold" hasTabularNumbers>
+        {competitionRatio(posting)}
+      </Text>
+      <Text type="supporting" hasTabularNumbers>
+        지원 {posting.applicants ?? "-"} · 모집 {posting.headcount ?? "-"}
+      </Text>
+    </VStack>
+  );
 }
