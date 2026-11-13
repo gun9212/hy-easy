@@ -3,17 +3,24 @@ import type { Posting, Role } from "@lib/domain";
 const DAY_MS = 86_400_000;
 export const SOON_DAYS = 5;
 
-/** Whole days from `now` to the posting's deadline date, or null when the deadline is unknown. */
+/** "2026-11-13": the calendar date in Seoul (en-CA formats as YYYY-MM-DD). */
+const seoulDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" });
+
+/** Whole Seoul calendar days from `now` to the posting's deadline date, or null when the deadline is unknown. */
 export function daysLeft(posting: Posting, now: string): number | null {
   if (!posting.deadline.date) return null;
   const end = Date.parse(`${posting.deadline.date}T00:00:00+09:00`);
-  const start = Date.parse(now.slice(0, 10) + "T00:00:00+09:00");
+  const start = Date.parse(`${seoulDate.format(new Date(now))}T00:00:00+09:00`);
   return Math.round((end - start) / DAY_MS);
 }
 
+/** Closed by the source, past the deadline time when it has one, or past the deadline date otherwise. */
 export function isClosed(posting: Posting, now: string): boolean {
+  if (posting.recruitment === "closed") return true;
+  const { at, precision } = posting.deadline;
+  if (precision === "minute" && at) return Date.parse(at) <= Date.parse(now);
   const days = daysLeft(posting, now);
-  return posting.recruitment === "closed" || (days !== null && days < 0);
+  return days !== null && days < 0;
 }
 
 export function isSoon(posting: Posting, now: string): boolean {
@@ -57,8 +64,11 @@ const stampFormat = new Intl.DateTimeFormat("ko-KR", {
 
 /** "18:00" in Seoul time when the posting gives a time, else "". */
 function deadlineTime(posting: Posting): string {
-  const at = posting.deadline.at;
-  return posting.deadline.precision === "minute" && at ? timeFormat.format(new Date(at)) : "";
+  const { at, date, precision } = posting.deadline;
+  if (precision !== "minute" || !at) return "";
+  const time = timeFormat.format(new Date(at));
+  // "11-13 24시까지" is stored as 11-14 00:00; shown beside the 11-13 date it must read 24:00, not 00:00.
+  return time === "00:00" && seoulDate.format(new Date(at)) !== date ? "24:00" : time;
 }
 
 /** "11.12 18:00" — the short deadline shown in table rows. */
