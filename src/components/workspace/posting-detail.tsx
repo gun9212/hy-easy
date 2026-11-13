@@ -85,6 +85,12 @@ function Majors({ posting: p, major }: { posting: Posting; major: Major | null }
     <section className="detail-section">
       <h3>전공</h3>
       {fit !== "none" && <p className={`major-fit ${fit}`}>{MAJOR_FIT_LABELS[fit]}</p>}
+      {fit === "adjacent" && (
+        <p className="muted small">
+          내 전공과 같은 분야의 전공을 대상으로 하는 공고입니다. 관련 전공으로 지원할 수 있는지 자격사항이나 담당자에게
+          확인하세요.
+        </p>
+      )}
       <dl className="event-list">
         <div>
           <dt>지원 조건</dt>

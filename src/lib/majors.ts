@@ -65,3 +65,33 @@ export function isMajor(value: unknown): value is Major {
 export function majorsPromptText(): string {
   return SEOUL_COLLEGES.map(c => `${c.college}: ${c.majors.join(", ")}`).join("\n");
 }
+
+/**
+ * Fields whose majors are close enough that a posting naming one usually accepts the others as "관련 전공"
+ * (e.g. a posting for "컴퓨터공학" lists 컴퓨터소프트웨어학부, and 정보공학전공 students study the same subjects).
+ * A major may sit in several fields. Students still have to confirm eligibility in the posting.
+ */
+export const MAJOR_FIELDS: readonly { field: string; majors: readonly Major[] }[] = [
+  {
+    field: "컴퓨터·소프트웨어",
+    majors: ["컴퓨터소프트웨어학부", "정보시스템학과", "정보공학전공", "데이터사이언스학부"],
+  },
+  { field: "전기·전자", majors: ["융합전자공학부", "전기공학전공", "반도체공학과"] },
+  { field: "기계·자동차", majors: ["기계공학부", "미래자동차공학과"] },
+  { field: "화학·소재·에너지", majors: ["화학공학과", "신소재공학부", "유기나노공학과", "에너지공학과", "화학과"] },
+  { field: "생명·바이오", majors: ["생명공학과", "생명과학과", "바이오메디컬공학전공"] },
+  { field: "건축·도시·환경", majors: ["건축학부", "건축공학부", "건설환경공학과", "도시공학과", "자원환경공학과"] },
+  { field: "산업·경영공학", majors: ["산업공학과", "경영공학전공"] },
+  { field: "경영·경제·금융", majors: ["경영학부", "파이낸스경영학과", "경제금융대학"] },
+  { field: "데이터·수학", majors: ["데이터사이언스학부", "수학과"] },
+  { field: "미디어·콘텐츠", majors: ["미디어커뮤니케이션학과", "글로벌콘텐츠융합학부"] },
+  { field: "교육", majors: ["교육학과", "교육공학과"] },
+  { field: "정책·행정·정치", majors: ["정책학과", "행정학과", "정치외교학과"] },
+];
+
+/** Majors in the same field as `major`, excluding itself. */
+export function neighborMajors(major: Major): Major[] {
+  const set = new Set<Major>();
+  for (const f of MAJOR_FIELDS) if (f.majors.includes(major)) f.majors.forEach(m => m !== major && set.add(m));
+  return [...set];
+}

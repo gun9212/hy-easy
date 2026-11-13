@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { periodMonths, regionOf } from "./filter-options";
-import { SEOUL_MAJORS, type Major } from "./majors";
+import { neighborMajors, SEOUL_MAJORS, type Major } from "./majors";
 
 export const ROLES = [
   "개발",
@@ -58,10 +58,11 @@ export type Classification = z.infer<typeof classificationSchema>;
 /** What the model must return: the same shape with majors required. */
 export const classificationOutputSchema = classificationSchema.extend({ majors: majorsSchema });
 
-export type MajorFit = "required" | "preferred" | "related" | "other" | "none";
+export type MajorFit = "required" | "preferred" | "adjacent" | "related" | "other" | "none";
 export const MAJOR_FIT_LABELS: Record<Exclude<MajorFit, "none">, string> = {
   required: "내 전공 지원 대상",
   preferred: "내 전공 우대",
+  adjacent: "비슷한 전공 대상",
   related: "내 전공 관련 업무",
   other: "다른 전공 대상",
 };
@@ -71,7 +72,8 @@ export function majorFit(posting: Posting, major: Major | null): MajorFit {
   if (!major || !m) return "none";
   if (m.requirement === "listed" && m.required.includes(major)) return "required";
   if (m.preferred.includes(major)) return "preferred";
-  if (m.requirement === "listed") return "other";
+  // Restricted to majors in the student's field (e.g. 컴퓨터소프트웨어학부 for 정보공학전공): often open as 관련 전공.
+  if (m.requirement === "listed") return neighborMajors(major).some(n => m.required.includes(n)) ? "adjacent" : "other";
   return m.related.includes(major) ? "related" : "none";
 }
 export type ClassificationInput = { practiceInfo: string; qualifications: string; tasks: string };
@@ -246,7 +248,7 @@ export type Filters = {
   others?: string;
   page?: string;
 };
-const MINE_FITS: MajorFit[] = ["required", "preferred", "related"];
+const MINE_FITS: MajorFit[] = ["required", "preferred", "adjacent", "related"];
 export function filterPostings(
   postings: Posting[],
   filters: Filters,

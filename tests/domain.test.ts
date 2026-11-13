@@ -149,6 +149,15 @@ describe("majorFit", () => {
     assert.equal(majorFit(p, "경영학부"), "required");
     assert.equal(majorFit(p, "산업공학과"), "other");
   });
+  it("같은 분야 전공만 지정된 공고는 비슷한 전공 대상(내 전공 관련에 포함)", () => {
+    const p = withMajors({ requirement: "listed", required: ["컴퓨터소프트웨어학부"], preferred: [], related: [] });
+    assert.equal(majorFit(p, "정보공학전공"), "adjacent");
+    assert.equal(majorFit(p, "국어국문학과"), "other");
+    const now = new Date("2026-11-10T13:00:00+09:00");
+    const open = { ...p, recruitment: "open" as const, deadline: { ...p.deadline, at: null, date: null } };
+    assert.equal(filterPostings([open], { mine: "true" }, [], now, "정보공학전공").length, 1);
+    assert.equal(filterPostings([open], {}, [], now, "국어국문학과").length, 0);
+  });
   it("전공무관 공고는 우대, 관련 업무 순으로 알려줌", () => {
     const p = withMajors({ requirement: "any", required: [], preferred: ["경영학부"], related: ["산업공학과"] });
     assert.equal(majorFit(p, "경영학부"), "preferred");
@@ -187,5 +196,16 @@ describe("majorFit", () => {
       majorFit({ ...base, classification: { ...base.classification!, majors: undefined } }, "경영학부"),
       "none",
     );
+  });
+});
+describe("전공 분야", () => {
+  it("모든 분야의 학과는 서울캠퍼스 학과 목록에 있음", async () => {
+    const { MAJOR_FIELDS, isMajor, neighborMajors } = await import("../src/lib/majors");
+    for (const f of MAJOR_FIELDS) for (const m of f.majors) assert.ok(isMajor(m), m);
+    assert.deepEqual(
+      neighborMajors("정보공학전공").sort(),
+      ["데이터사이언스학부", "정보시스템학과", "컴퓨터소프트웨어학부"].sort(),
+    );
+    assert.deepEqual(neighborMajors("철학과"), []);
   });
 });

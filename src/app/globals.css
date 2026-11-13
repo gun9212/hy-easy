@@ -838,6 +838,7 @@ input[type="checkbox"] {
   background: var(--color-ok-soft);
   color: var(--color-ok);
 }
+.major-fit.adjacent,
 .major-fit.related {
   background: var(--color-accent-soft);
   color: var(--color-accent);
