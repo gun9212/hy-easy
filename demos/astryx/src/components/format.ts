@@ -1,25 +1,7 @@
 import type { Posting, Role } from "@lib/domain";
 
-type BadgeColor = "blue" | "cyan" | "green" | "orange" | "pink" | "purple" | "red" | "teal" | "yellow";
-
 const DAY_MS = 86_400_000;
-const ROLE_COLORS: Partial<Record<Role, BadgeColor>> = {
-  개발: "blue",
-  "데이터·AI": "purple",
-  "인프라·보안": "teal",
-  기획: "cyan",
-  디자인: "pink",
-  마케팅: "orange",
-  영업: "yellow",
-  경영지원: "green",
-  "재무·회계": "green",
-  연구개발: "blue",
-  "생산·품질": "teal",
-};
-
-export function roleColor(role: Role): BadgeColor {
-  return ROLE_COLORS[role] ?? "cyan";
-}
+export const SOON_DAYS = 5;
 
 /** Whole days from `now` to the posting's deadline date, or null when the deadline is unknown. */
 export function daysLeft(posting: Posting, now: string): number | null {
@@ -29,11 +11,30 @@ export function daysLeft(posting: Posting, now: string): number | null {
   return Math.round((end - start) / DAY_MS);
 }
 
+export function isClosed(posting: Posting, now: string): boolean {
+  const days = daysLeft(posting, now);
+  return posting.recruitment === "closed" || (days !== null && days < 0);
+}
+
+export function isSoon(posting: Posting, now: string): boolean {
+  const days = daysLeft(posting, now);
+  return !isClosed(posting, now) && days !== null && days <= SOON_DAYS;
+}
+
 export function deadlineLabel(posting: Posting, now: string): string {
-  if (posting.recruitment === "closed") return "마감";
+  if (isClosed(posting, now)) return "마감";
   const days = daysLeft(posting, now);
   if (days === null) return "미정";
-  return days <= 0 ? "D-day" : `D-${days}`;
+  return days === 0 ? "D-day" : `D-${days}`;
+}
+
+/** "11.12 18:00" — the short deadline shown in table rows. */
+export function deadlineShort(posting: Posting): string {
+  const date = posting.deadline.date;
+  if (!date) return "날짜 미기재";
+  const [, m, d] = date.split("-");
+  const time = posting.deadline.precision === "minute" ? " 18:00" : "";
+  return `${Number(m)}.${Number(d)}${time}`;
 }
 
 export function deadlineDetail(posting: Posting): string {
@@ -43,4 +44,30 @@ export function deadlineDetail(posting: Posting): string {
 
 export function isNew(posting: Posting, now: string): boolean {
   return Date.parse(now) - Date.parse(posting.firstSeenAt) < DAY_MS;
+}
+
+export function competition(posting: Posting): string {
+  if (!posting.applicants || !posting.headcount) return "-";
+  return `${(posting.applicants / posting.headcount).toFixed(1)} : 1`;
+}
+
+export function roleOf(posting: Posting): Role | null {
+  return posting.classification?.primaryRole ?? null;
+}
+
+export type Summary = { open: number; soon: number; fresh: number; avgStipend: number | null; next: Posting | null };
+
+export function summarize(postings: Posting[], now: string): Summary {
+  const open = postings.filter(p => !isClosed(p, now));
+  const paid = open.flatMap(p => (p.stipend.unit === "month" && p.stipend.amount ? [p.stipend.amount] : []));
+  const next = open
+    .filter(p => p.deadline.date)
+    .toSorted((a, b) => (a.deadline.date ?? "").localeCompare(b.deadline.date ?? ""))[0];
+  return {
+    open: open.length,
+    soon: open.filter(p => isSoon(p, now)).length,
+    fresh: postings.filter(p => isNew(p, now)).length,
+    avgStipend: paid.length ? Math.round(paid.reduce((s, n) => s + n, 0) / paid.length / 10000) : null,
+    next: next ?? null,
+  };
 }

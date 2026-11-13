@@ -2,146 +2,162 @@
 
 import { useMemo, useState } from "react";
 import { AppShell } from "@astryxdesign/core/AppShell";
+import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
+import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Selector } from "@astryxdesign/core/Selector";
-import { SideNav, SideNavItem, SideNavSection } from "@astryxdesign/core/SideNav";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TopNav, TopNavHeading } from "@astryxdesign/core/TopNav";
-import { ROLES, type Posting } from "@lib/domain";
-import { daysLeft, isNew } from "./format";
+import { ROLES, type Posting, type Role } from "@lib/domain";
+import { AppSideNav, VIEW_LABELS, type View } from "./app-side-nav";
+import { isClosed, isNew, isSoon, roleOf, summarize } from "./format";
 import { PostingDrawer } from "./posting-drawer";
 import { PostingsTable } from "./postings-table";
+import { SummaryStats } from "./summary-stats";
 
-type View = "all" | "soon" | "new";
 type Sort = "deadline" | "stipend" | "recent";
 type Props = { postings: Posting[]; now: string };
 
-const ALL_ROLES = "전체";
-const VIEW_LABELS: Record<View, string> = { all: "전체 공고", soon: "마감 임박", new: "새로 올라온 공고" };
+const ALL_ROLES = "전체 직무";
 
-function inView(posting: Posting, view: View, now: string): boolean {
-  if (view === "new") return isNew(posting, now);
-  if (view === "soon") {
-    const days = daysLeft(posting, now);
-    return posting.recruitment === "open" && days !== null && days <= 5;
-  }
+function inView(p: Posting, view: View, now: string): boolean {
+  if (view === "new") return isNew(p, now);
+  if (view === "soon") return isSoon(p, now);
   return true;
 }
 
-function matchesQuery(posting: Posting, query: string): boolean {
+function matchesQuery(p: Posting, query: string): boolean {
   const q = query.trim().toLowerCase();
-  if (!q) return true;
-  return [posting.title, posting.company, posting.department, posting.tasks].some(s => s.toLowerCase().includes(q));
+  return !q || [p.title, p.company, p.department, p.tasks].some(s => s.toLowerCase().includes(q));
 }
 
-function compare(sort: Sort): (a: Posting, b: Posting) => number {
-  if (sort === "stipend") return (a, b) => (b.stipend.amount ?? 0) - (a.stipend.amount ?? 0);
-  if (sort === "recent") return (a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt);
-  return (a, b) => (a.deadline.date ?? "9999").localeCompare(b.deadline.date ?? "9999");
+/** Closed postings always sink to the bottom; the chosen order applies within open and closed. */
+function compare(sort: Sort, now: string): (a: Posting, b: Posting) => number {
+  const byKey: Record<Sort, (a: Posting, b: Posting) => number> = {
+    deadline: (a, b) => (a.deadline.date ?? "9999").localeCompare(b.deadline.date ?? "9999"),
+    stipend: (a, b) => (b.stipend.amount ?? 0) - (a.stipend.amount ?? 0),
+    recent: (a, b) => b.firstSeenAt.localeCompare(a.firstSeenAt),
+  };
+  return (a, b) => Number(isClosed(a, now)) - Number(isClosed(b, now)) || byKey[sort](a, b);
 }
 
-function Brand(): React.ReactElement {
+function countRoles(postings: Posting[]): Map<Role, number> {
+  return postings.reduce((m, p) => {
+    const r = roleOf(p);
+    return r ? new Map(m).set(r, (m.get(r) ?? 0) + 1) : m;
+  }, new Map<Role, number>());
+}
+
+function TopBar(): React.ReactElement {
   return (
-    <TopNavHeading
-      // eslint-disable-next-line @next/next/no-img-element
-      logo={<img src="/brand/hyu-symbol.svg" alt="" width={28} height={28} />}
-      heading="HY-Easy"
-      headingHref="/"
-      headerEndContent={<Badge variant="blue" label="Astryx 데모" />}
+    <TopNav
+      label="HY-Easy"
+      heading={
+        <TopNavHeading
+          // eslint-disable-next-line @next/next/no-img-element
+          logo={<img src="/brand/hyu-symbol.svg" alt="" width={28} height={28} />}
+          heading="HY-Easy"
+          headingHref="/"
+          headerEndContent={<Badge variant="blue" label="Astryx 데모" />}
+        />
+      }
+      endContent={<Avatar name="둘러보는 한양인" size="sm" />}
     />
   );
 }
 
 export function PostingsApp({ postings, now }: Props): React.ReactElement {
   const [view, setView] = useState<View>("all");
-  const [role, setRole] = useState<string>(ALL_ROLES);
+  const [role, setRole] = useState<Role | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("deadline");
   const [open, setOpen] = useState<Posting | null>(null);
 
-  const counts = useMemo(
-    () => ({
-      all: postings.length,
-      soon: postings.filter(p => inView(p, "soon", now)).length,
-      new: postings.filter(p => inView(p, "new", now)).length,
-    }),
-    [postings, now],
-  );
+  const summary = useMemo(() => summarize(postings, now), [postings, now]);
+  const viewCounts: Record<View, number> = {
+    all: postings.length,
+    soon: summary.soon,
+    new: summary.fresh,
+  };
+  const roleCounts = useMemo(() => countRoles(postings), [postings]);
   const visible = useMemo(
     () =>
       postings
-        .filter(p => inView(p, view, now))
-        .filter(p => role === ALL_ROLES || p.classification?.primaryRole === role)
-        .filter(p => matchesQuery(p, query))
-        .toSorted(compare(sort)),
+        .filter(p => inView(p, view, now) && (role === null || roleOf(p) === role) && matchesQuery(p, query))
+        .toSorted(compare(sort, now)),
     [postings, view, role, query, sort, now],
   );
-
+  const title = role ?? VIEW_LABELS[view];
   const sideNav = (
-    <SideNav>
-      <SideNavSection title="공고 보기">
-        {(Object.keys(VIEW_LABELS) as View[]).map(v => (
-          <SideNavItem
-            key={v}
-            label={VIEW_LABELS[v]}
-            isSelected={view === v}
-            onClick={() => setView(v)}
-            endContent={<Text type="supporting">{counts[v]}</Text>}
-          />
-        ))}
-      </SideNavSection>
-      <SideNavSection title="내 활동">
-        <SideNavItem label="관심 공고" onClick={() => undefined} />
-        <SideNavItem label="지원 현황" onClick={() => undefined} />
-      </SideNavSection>
-    </SideNav>
+    <AppSideNav
+      view={view}
+      role={role}
+      viewCounts={viewCounts}
+      roleCounts={roleCounts}
+      next={summary.next}
+      now={now}
+      onView={setView}
+      onRole={setRole}
+      onOpen={setOpen}
+    />
   );
 
   return (
-    <AppShell
-      topNav={<TopNav label="HY-Easy" heading={<Brand />} endContent={<Text type="supporting">둘러보는 한양인</Text>} />}
-      sideNav={sideNav}
-      contentPadding={6}
-    >
-      <VStack gap={5} maxWidth={1240}>
-        <VStack gap={1}>
-          <Heading level={1}>{VIEW_LABELS[view]}</Heading>
-          <Text type="supporting">한양대학교 HY-WEP 현장실습 공고를 마감 순으로 비교합니다. (가상 데이터)</Text>
-        </VStack>
-        <HStack gap={3} align="end" wrap="wrap">
-          <TextInput
-            type="search"
-            label="검색"
-            placeholder="회사, 공고명, 업무"
-            value={query}
-            onChange={setQuery}
-            hasClear
-            width={280}
-          />
-          <Selector
-            label="직무"
-            options={[ALL_ROLES, ...ROLES]}
-            value={role}
-            onChange={v => setRole(v ?? ALL_ROLES)}
-            width={180}
-          />
-          <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
-            <SegmentedControlItem value="deadline" label="마감순" />
-            <SegmentedControlItem value="stipend" label="지원비순" />
-            <SegmentedControlItem value="recent" label="최신순" />
-          </SegmentedControl>
+    <AppShell topNav={<TopBar />} sideNav={sideNav} contentPadding={5}>
+      <VStack gap={4}>
+        <HStack gap={3} align="end" justify="between" wrap="wrap">
+          <VStack gap={1}>
+            <Heading level={1}>{title}</Heading>
+            <Text type="supporting">한양대학교 HY-WEP 현장실습 공고 · 11월 10일 13:00 동기화 (가상 데이터)</Text>
+          </VStack>
+          <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
         </HStack>
-        <Text type="supporting">{visible.length}개 공고</Text>
-        {visible.length > 0 ? (
-          <PostingsTable postings={visible} now={now} onOpen={setOpen} />
-        ) : (
-          <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
-        )}
+        <SummaryStats summary={summary} />
+        <Card padding={0}>
+          <VStack>
+            <HStack gap={2} align="center" wrap="wrap" padding={3}>
+              <TextInput
+                type="search"
+                label="검색"
+                isLabelHidden
+                placeholder="회사, 공고명, 업무로 검색"
+                value={query}
+                onChange={setQuery}
+                hasClear
+                width={300}
+              />
+              <Selector
+                label="직무"
+                isLabelHidden
+                options={[ALL_ROLES, ...ROLES]}
+                value={role ?? ALL_ROLES}
+                onChange={v => setRole(!v || v === ALL_ROLES ? null : (v as Role))}
+                width={160}
+              />
+              <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
+                <SegmentedControlItem value="deadline" label="마감순" />
+                <SegmentedControlItem value="stipend" label="지원비순" />
+                <SegmentedControlItem value="recent" label="최신순" />
+              </SegmentedControl>
+              <Text type="supporting">
+                <b>{visible.length}</b>개 공고
+              </Text>
+            </HStack>
+            <Divider />
+            {visible.length > 0 ? (
+              <PostingsTable postings={visible} now={now} onOpen={setOpen} />
+            ) : (
+              <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
+            )}
+          </VStack>
+        </Card>
       </VStack>
       <PostingDrawer posting={open} now={now} onClose={() => setOpen(null)} />
     </AppShell>
