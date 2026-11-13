@@ -98,3 +98,14 @@ export function isShortFact(block: Block): block is Extract<Block, { kind: "fiel
   const [item] = block.items;
   return item.kind === "text" && item.text.length <= SHORT_FACT_CHARS;
 }
+
+const SCHEDULE_LABEL = /^운영\/지도$/;
+
+/**
+ * A week-by-week plan: the template's "운영/지도" field, or any field with two or more "1주차: …" rows.
+ * Long and rarely read first, so the drawer starts it folded.
+ */
+export function isSchedule(block: Block): boolean {
+  if (block.kind !== "field" || block.items.length === 0) return false;
+  return SCHEDULE_LABEL.test(block.label) || block.items.filter(i => i.kind === "labeled").length >= 2;
+}

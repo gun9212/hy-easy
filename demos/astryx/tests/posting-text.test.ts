@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { isShortFact, parseField, parseItem, parsePostingText } from "../src/lib/posting-text.ts";
+import { isSchedule, isShortFact, parseField, parseItem, parsePostingText } from "../src/lib/posting-text.ts";
 
 test("template labels open fields with their same-line value", () => {
   assert.deepEqual(parseField("*직무명 : SW개발"), { label: "직무명", value: "SW개발" });
@@ -89,4 +89,15 @@ test("short one-line fields are facts; lists are not", () => {
   assert.equal(isShortFact(ability), false);
   const [overview] = parsePostingText("*직무개요 : 투자 전 사전 검토 및 투자 후 사후관리 등 VC 전반의 업무 파악");
   assert.equal(isShortFact(overview), false);
+});
+
+test("운영/지도 and fields with week rows are schedules; others are not", () => {
+  const [plan, tasks, empty] = parsePostingText(
+    "*운영/지도 :\n[1개월]\n- 플랫폼 이해\n*직무개요 :\n1주차: 온보딩\n2주차: 실습\n*교육목표 :",
+  );
+  assert.equal(isSchedule(plan), true);
+  assert.equal(isSchedule(tasks), true);
+  assert.equal(isSchedule(empty), false);
+  const [overview] = parsePostingText("*직무개요 :\n- 리서치\n- 문서 작성");
+  assert.equal(isSchedule(overview), false);
 });

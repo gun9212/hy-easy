@@ -1,9 +1,10 @@
 "use client";
 
 import { Card } from "@astryxdesign/core/Card";
-import { VStack } from "@astryxdesign/core/Stack";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import { isShortFact, parsePostingText, type Block, type Item } from "@demo/lib/posting-text";
+import { isSchedule, isShortFact, parsePostingText, type Block, type Item } from "@demo/lib/posting-text";
 
 type Fact = Extract<Block, { kind: "field" }>;
 type Group = { kind: "facts"; facts: Fact[] } | { kind: "notices"; texts: string[] } | { kind: "block"; block: Block };
@@ -66,6 +67,29 @@ function Items({ items }: { items: Item[] }): React.ReactElement {
   );
 }
 
+/** A week-by-week plan, folded until the reader asks for it. */
+function ScheduleField({ label, items }: { label: string; items: Item[] }): React.ReactElement {
+  const rows = items.filter(i => i.kind !== "heading").length;
+  return (
+    <Collapsible
+      chevronPosition="start"
+      defaultIsOpen={false}
+      trigger={
+        <HStack gap={2} align="center">
+          <Text weight="bold" color="accent">
+            {label}
+          </Text>
+          <Text type="supporting">{rows}개 항목</Text>
+        </HStack>
+      }
+    >
+      <VStack paddingBlockStart={1}>
+        <Items items={items} />
+      </VStack>
+    </Collapsible>
+  );
+}
+
 function GroupView({ group: g }: { group: Group }): React.ReactElement {
   if (g.kind === "notices")
     return (
@@ -95,6 +119,7 @@ function GroupView({ group: g }: { group: Group }): React.ReactElement {
       </dl>
     );
   const { block } = g;
+  if (block.kind === "field" && isSchedule(block)) return <ScheduleField label={block.label} items={block.items} />;
   if (block.kind === "field")
     return (
       <VStack gap={1}>
