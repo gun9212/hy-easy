@@ -1,0 +1,98 @@
+"use client";
+
+// Pieces shared by the postings table (wide screens) and the posting cards (phones).
+import { Bookmark } from "lucide-react";
+import { Badge } from "@astryxdesign/core/Badge";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { IconButton } from "@astryxdesign/core/IconButton";
+import { eligibility, majorFit, MAJOR_FIT_LABELS, remainingDays, type Application, type Posting } from "@/lib/domain";
+import type { Major } from "@/lib/majors";
+
+export type RowProps = {
+  postings: Posting[];
+  applications: Application[];
+  favoriteIds: string[];
+  compared: string[];
+  now: Date;
+  major: Major | null;
+  onCompare: (id: string) => void;
+  onOpen: (p: Posting) => void;
+  onFavorite: (id: string) => void;
+};
+
+/** Same wording as before: 마감, 확인 필요, 오늘 마감, D-n (orange within three days). */
+export function DeadlineBadge({
+  posting,
+  applications,
+  now,
+}: {
+  posting: Posting;
+  applications: Application[];
+  now: Date;
+}) {
+  if (eligibility(posting, applications, now).status === "closed") return <Badge variant="neutral" label="마감" />;
+  const days = remainingDays(posting, now);
+  if (days === null) return <Badge variant="neutral" label="확인 필요" />;
+  if (days <= 0) return <Badge variant="warning" label="오늘 마감" />;
+  return <Badge variant={days <= 3 ? "warning" : "neutral"} label={`D-${days}`} />;
+}
+
+export function MajorFitBadge({ posting, major }: { posting: Posting; major: Major | null }) {
+  const fit = majorFit(posting, major);
+  if (fit === "none") return null;
+  const variant = fit === "other" ? "neutral" : fit === "required" || fit === "preferred" ? "green" : "teal";
+  return <Badge variant={variant} label={MAJOR_FIT_LABELS[fit]} />;
+}
+
+/**
+ * The compare checkbox and bookmark sit above the row's stretched link (see .row-link in globals.css), so they keep
+ * their own clicks.
+ */
+export function CompareBox({
+  posting,
+  checked,
+  onCompare,
+}: {
+  posting: Posting;
+  checked: boolean;
+  onCompare: RowProps["onCompare"];
+}) {
+  return (
+    <span className="row-control">
+      <CheckboxInput
+        label={`${posting.company} ${posting.title} 비교 선택`}
+        isLabelHidden
+        value={checked}
+        onChange={() => onCompare(posting.id)}
+      />
+    </span>
+  );
+}
+
+export function BookmarkButton({
+  posting,
+  saved,
+  onFavorite,
+}: {
+  posting: Posting;
+  saved: boolean;
+  onFavorite: RowProps["onFavorite"];
+}) {
+  return (
+    <span className="row-control">
+      <IconButton
+        variant="ghost"
+        size="sm"
+        label={`${posting.company} ${posting.title} ${saved ? "관심 해제" : "관심 저장"}`}
+        icon={<Bookmark size={18} fill={saved ? "currentColor" : "none"} />}
+        onClick={() => onFavorite(posting.id)}
+      />
+    </span>
+  );
+}
+
+export function competitionLabel(posting: Posting): string {
+  return posting.applicants !== null && posting.headcount
+    ? `${posting.headcount}명 모집 · ${posting.applicants}명 지원`
+    : posting.term;
+}

@@ -1,0 +1,63 @@
+/*
+ * HY-Easy brand on top of Astryx's neutral theme (light only, like the rest of the app).
+ * A theme is only CSS custom properties, so the Hanyang palette from tokens.css is re-pointed here inside the same
+ * layer and scope as the neutral theme; later rules in a layer win at equal specificity.
+ * --color-accent, --color-error and --color-success exist in tokens.css too: they are pinned to the app's values so
+ * older components rendered inside the Astryx theme keep their colours.
+ */
+@layer astryx-theme {
+  @scope ([data-astryx-theme="neutral"]) to ([data-astryx-theme]) {
+    :scope {
+      --font-family-body:
+        "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+      --font-family-heading: var(--font-family-body);
+
+      --color-accent: #0e4a84;
+      --color-accent-muted: #eaf0f8;
+      --color-text-accent: #0e4a84;
+      --color-icon-accent: #0e4a84;
+      --color-on-accent: #f7f9fc;
+
+      --color-background-body: #fbfcfe;
+      --color-background-surface: #ffffff;
+      --color-background-card: #ffffff;
+      --color-background-muted: #f3f6fa;
+
+      --color-text-primary: #14243b;
+      --color-text-secondary: #4b5567;
+      --color-border: #dde3ec;
+      --color-border-emphasized: #b9cbe2;
+      --color-info: #0e4a84;
+      --color-error: #b42318;
+      --color-success: #3c650c;
+
+      /* Deadline warnings use Hanyang Orange instead of Astryx's yellow. */
+      --color-warning: #f08100;
+      --color-on-warning: #ffffff;
+      --color-warning-muted: #fdeedb;
+      --color-on-warning-muted: #8f4300;
+      --color-text-warning: #8f4300;
+
+      --radius-container: 12px;
+      --radius-element: 10px;
+      --radius-inner: 6px;
+    }
+  }
+
+  /* Pointer screens: body 14→15px and supporting 12→13px so Korean text reads without squinting.
+     Touch screens keep Astryx's own larger 16/14 sizes. These are Astryx's internal scale variables (beta 0.7). */
+  @media not ((width < 1024px) and (pointer: coarse)) {
+    @scope ([data-astryx-theme="neutral"]) to ([data-astryx-theme]) {
+      :scope {
+        --_scaled-font-size-base: min(calc(0.9375rem * var(--_dynamic-type-body, 1)), var(--_scaled-font-size-lg));
+        --_scaled-font-size-sm: min(calc(0.8125rem * var(--_dynamic-type-footnote, 1)), var(--_scaled-font-size-base));
+      }
+    }
+  }
+}
+
+/* The neutral theme turns on light-dark(); the app has no dark design, so the page stays light. Unlayered: wins. */
+:root,
+html[data-theme] {
+  color-scheme: light;
+}

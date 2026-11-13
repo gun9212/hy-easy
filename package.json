@@ -24,6 +24,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.7.0",
+    "@astryxdesign/core": "0.7.15",
+    "@astryxdesign/theme-neutral": "0.7.15",
+    "@stylexjs/stylex": "0.19.2",
     "@supabase/ssr": "0.10.0",
     "@supabase/supabase-js": "2.101.1",
     "google-auth-library": "10.9.1",

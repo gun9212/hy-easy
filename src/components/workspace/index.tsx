@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, ChevronRight, Info, X } from "lucide-react";
+import { Info, X } from "lucide-react";
+import { AppShell } from "@astryxdesign/core/AppShell";
+import { Banner } from "@astryxdesign/core/Banner";
+import { Button } from "@astryxdesign/core/Button";
+import { Heading } from "@astryxdesign/core/Heading";
+import { HStack, VStack } from "@astryxdesign/core/Stack";
+import { Text } from "@astryxdesign/core/Text";
+import { Theme } from "@astryxdesign/core/theme";
+import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import {
   eligibility,
   formatDate,
@@ -13,7 +21,9 @@ import {
   type Posting,
 } from "@/lib/domain";
 import { Comparison } from "./comparison";
-import { CompareDock, Sidebar, TopBar, type View } from "./chrome";
+import { AppSideNav, AppTopNav } from "./app-chrome";
+import { CompareDock, type View } from "./chrome";
+import { LayoutProvider } from "./layout-context";
 import { Planner } from "./planner";
 import { PostingDetail } from "./posting-detail";
 import { PostingsView } from "./postings-view";
@@ -139,7 +149,9 @@ export function Workspace({
   }, []);
 
   function updateFilters(patch: Filters) {
-    const next = { ...filters, page: "1", ...patch };
+    const { page: _page, ...rest } = filters;
+    void _page;
+    const next = { ...rest, ...patch };
     setFilters(next);
     writeUrl(next);
   }
@@ -192,125 +204,128 @@ export function Workspace({
   const heading = HEADINGS[view];
 
   return (
-    <div className="app-shell">
-      <TopBar mode={mode} userLabel={userLabel} onMenu={() => setMobileMenu(!mobileMenu)} />
-      <Sidebar
-        open={mobileMenu}
-        view={view}
-        filters={filters}
-        postings={postings}
-        openCount={stats.open}
-        favoriteCount={personal.favoriteIds.length}
-        hasActive={stats.hasActive}
-        isAdmin={isAdmin}
-        navigate={navigate}
-        selectRole={role => {
-          updateFilters({ role: filters.role === role ? "" : role, saved: "" });
-          setMobileMenu(false);
-        }}
-      />
-      <main className="workspace-main">
-        {mode === "demo" && (
-          <div className="demo-notice">
-            <span>
-              <Info size={14} />
-              <b>데모 워크스페이스</b>
-              <span>가상 기업·공고입니다. 일정 기준: 2026.11.10 13:00</span>
-            </span>
-            <Link href="/login">
-              로그인 안내 <ArrowRight size={13} />
-            </Link>
-          </div>
-        )}
-        <div className="page-heading">
-          <div className="breadcrumb">
-            워크스페이스 <ChevronRight size={12} /> {heading.title}
-          </div>
-          <div className="heading-row">
-            <div>
-              <h1>{heading.title}</h1>
-              <p>{heading.text}</p>
-            </div>
-            <SyncState mode={mode} lastChecked={lastChecked} />
-          </div>
-        </div>
-        {loadError && (
-          <div className="load-error" role="alert">
-            {loadError} {postings.length ? "저장해 둔 목록을 보여드려요." : "새로고침해 주세요."}
-          </div>
-        )}
-        {!ready ? (
-          <div className="loading-state" role="status">
-            공고를 불러오는 중…
-          </div>
-        ) : view === "planner" ? (
-          <Planner postings={postings} applications={personal.applications} record={record} now={now} />
-        ) : (
-          <PostingsView
-            postings={postings}
-            filters={filters}
-            major={major}
-            onMajor={changeMajor}
-            updateFilters={updateFilters}
-            resetFilters={resetFilters}
-            favoriteIds={personal.favoriteIds}
-            applications={personal.applications}
-            compared={compared}
-            now={now}
-            stats={stats}
-            onCompare={compare}
-            onOpenCompare={() =>
-              compared.length ? setCompareOpen(true) : setToast("공고 왼쪽의 체크박스를 선택해 주세요.")
-            }
-            onOpen={setDetail}
-            onFavorite={favorite}
-            onPlanner={() => navigate("planner")}
+    <Theme theme={neutralTheme}>
+      <LayoutProvider initialNarrow={false}>
+        <AppShell
+          topNav={<AppTopNav mode={mode} userLabel={userLabel} />}
+          sideNav={
+            <AppSideNav
+              view={view}
+              filters={filters}
+              postings={postings}
+              openCount={stats.open}
+              favoriteCount={personal.favoriteIds.length}
+              hasActive={stats.hasActive}
+              isAdmin={isAdmin}
+              navigate={navigate}
+              selectRole={role => {
+                updateFilters({ role: filters.role === role ? "" : role, saved: "" });
+                setMobileMenu(false);
+              }}
+            />
+          }
+          mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu }}
+          contentPadding={5}
+        >
+          <VStack gap={4}>
+            {mode === "demo" && (
+              <Banner
+                status="info"
+                title="데모 워크스페이스"
+                description="가상 기업·공고입니다. 일정 기준: 2026.11.10 13:00"
+                collapsible={false}
+                endContent={<Button variant="secondary" size="sm" label="로그인 안내" href="/login" as={Link} />}
+              />
+            )}
+            <HStack gap={3} align="end" justify="between" wrap="wrap">
+              <VStack gap={1}>
+                <Heading level={1}>{heading.title}</Heading>
+                <Text type="supporting">{heading.text}</Text>
+              </VStack>
+              <SyncState mode={mode} lastChecked={lastChecked} />
+            </HStack>
+            {loadError && (
+              <Banner
+                status="error"
+                title={loadError}
+                description={postings.length ? "저장해 둔 목록을 보여드려요." : "새로고침해 주세요."}
+                collapsible={false}
+              />
+            )}
+            {!ready ? (
+              <Text type="supporting" role="status">
+                공고를 불러오는 중…
+              </Text>
+            ) : view === "planner" ? (
+              <Planner postings={postings} applications={personal.applications} record={record} now={now} />
+            ) : (
+              <PostingsView
+                postings={postings}
+                filters={filters}
+                major={major}
+                onMajor={changeMajor}
+                updateFilters={updateFilters}
+                resetFilters={resetFilters}
+                favoriteIds={personal.favoriteIds}
+                applications={personal.applications}
+                compared={compared}
+                now={now}
+                stats={stats}
+                onCompare={compare}
+                onOpenCompare={() =>
+                  compared.length ? setCompareOpen(true) : setToast("공고의 비교 체크박스를 선택해 주세요.")
+                }
+                onOpen={setDetail}
+                onFavorite={favorite}
+                onPlanner={() => navigate("planner")}
+              />
+            )}
+            <HStack gap={3} wrap="wrap">
+              <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
+              <Text type="supporting">한양대학교 비공식 서비스</Text>
+              <Link href="/privacy">개인정보처리방침</Link>
+            </HStack>
+          </VStack>
+          <CompareDock
+            selected={selected}
+            onRemove={compare}
+            onReset={() => setCompared([])}
+            onOpen={() => setCompareOpen(true)}
           />
-        )}
-        <footer className="workspace-footer">
-          <span>HY-Easy · 한양인의 더 나은 선택</span>
-          <span>한양대학교 비공식 서비스</span>
-          <Link href="/privacy">개인정보처리방침</Link>
-        </footer>
-      </main>
-      <CompareDock
-        selected={selected}
-        onRemove={compare}
-        onReset={() => setCompared([])}
-        onOpen={() => setCompareOpen(true)}
-      />
-      {detail && (
-        <PostingDetail
-          posting={detail}
-          major={major}
-          applications={personal.applications}
-          now={now}
-          saved={personal.favoriteIds.includes(detail.id)}
-          onFavorite={() => favorite(detail.id)}
-          close={() => setDetail(null)}
-          onPlan={() => {
-            setDetail(null);
-            navigate("planner");
-          }}
-        />
-      )}
-      {compareOpen && (
-        <Comparison
-          postings={selected}
-          close={() => setCompareOpen(false)}
-          applications={personal.applications}
-          now={now}
-        />
-      )}
-      {toast && (
-        <div className="toast" role="status">
-          <Info size={17} />
-          {toast}
-          <button aria-label="알림 닫기" onClick={() => setToast("")}>
-            <X size={15} />
-          </button>
-        </div>
-      )}
-    </div>
+          {detail && (
+            <PostingDetail
+              posting={detail}
+              major={major}
+              applications={personal.applications}
+              now={now}
+              saved={personal.favoriteIds.includes(detail.id)}
+              onFavorite={() => favorite(detail.id)}
+              close={() => setDetail(null)}
+              onPlan={() => {
+                setDetail(null);
+                navigate("planner");
+              }}
+            />
+          )}
+          {compareOpen && (
+            <Comparison
+              postings={selected}
+              close={() => setCompareOpen(false)}
+              applications={personal.applications}
+              now={now}
+            />
+          )}
+          {toast && (
+            <div className="toast" role="status">
+              <Info size={17} />
+              {toast}
+              <button aria-label="알림 닫기" onClick={() => setToast("")}>
+                <X size={15} />
+              </button>
+            </div>
+          )}
+        </AppShell>
+      </LayoutProvider>
+    </Theme>
   );
 }
