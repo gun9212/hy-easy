@@ -1,26 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
-import { Table, pixel, proportional, useTableGroupedRows } from "@astryxdesign/core/Table";
+import { Table, pixel, proportional } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import type { TableColumn } from "@astryxdesign/core/Table";
 import type { Posting } from "@lib/domain";
-import {
-  DEADLINE_GROUPS,
-  competition,
-  deadlineGroup,
-  deadlineLabel,
-  deadlineShort,
-  isClosed,
-  isNew,
-  isSoon,
-  roleOf,
-  type DeadlineGroup,
-} from "./format";
+import { competition, deadlineLabel, deadlineShort, isClosed, isNew, isSoon, roleOf } from "./format";
 
-type Props = { postings: Posting[]; now: string; onOpen: (posting: Posting) => void };
+export type Props = { postings: Posting[]; now: string; onOpen: (posting: Posting) => void };
 
 function DeadlineCell({ posting, now }: { posting: Posting; now: string }): React.ReactElement {
   const label = deadlineLabel(posting, now);
@@ -124,39 +113,9 @@ function buildColumns(now: string, onOpen: Props["onOpen"]): TableColumn<Posting
   ];
 }
 
-function GroupHeader({ group, count }: { group: DeadlineGroup; count: number }): React.ReactElement {
-  return (
-    <HStack gap={2} align="center">
-      <Text weight="bold">{group}</Text>
-      {group === "3일 안에 마감" ? <Badge variant="warning" label={`${count}건`} /> : <Text type="supporting">{count}건</Text>}
-    </HStack>
-  );
-}
-
-function toggled(set: Set<string>, key: string): Set<string> {
-  const next = new Set(set);
-  if (next.has(key)) next.delete(key);
-  else next.add(key);
-  return next;
-}
-
-/** Rows grouped by how soon they close; closed postings start collapsed. Only for the deadline order. */
-export function PostingsTable({ postings, now, onOpen, isGrouped }: Props & { isGrouped: boolean }): React.ReactElement {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(["마감된 공고"]));
+export function PostingsTable({ postings, now, onOpen }: Props): React.ReactElement {
   const columns = useMemo(() => buildColumns(now, onOpen), [now, onOpen]);
-  const grouped = useTableGroupedRows<Posting>({
-    data: postings,
-    groupBy: p => deadlineGroup(p, now),
-    groupOrder: [...DEADLINE_GROUPS],
-    collapsedGroups: collapsed,
-    onToggleGroup: key => setCollapsed(prev => toggled(prev, key)),
-    renderGroupHeader: (key, count) => <GroupHeader group={key as DeadlineGroup} count={count} />,
-    getRowKey: p => p.id,
-  });
-  const common = { columns, density: "balanced", hasHover: true, verticalAlign: "middle" } as const;
-  return isGrouped ? (
-    <Table<Posting> {...common} data={grouped.data} idKey={grouped.idKey} plugins={{ grouped: grouped.plugin }} />
-  ) : (
-    <Table<Posting> {...common} data={postings} idKey="id" />
+  return (
+    <Table<Posting> columns={columns} data={postings} idKey="id" density="balanced" hasHover verticalAlign="middle" />
   );
 }

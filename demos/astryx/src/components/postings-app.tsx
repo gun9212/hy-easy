@@ -6,7 +6,6 @@ import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
-import { Divider } from "@astryxdesign/core/Divider";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Heading } from "@astryxdesign/core/Heading";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
@@ -18,6 +17,7 @@ import { TopNav, TopNavHeading } from "@astryxdesign/core/TopNav";
 import { ROLES, type Posting, type Role } from "@lib/domain";
 import { AppSideNav, VIEW_LABELS, type View } from "./app-side-nav";
 import { isClosed, isNew, isSoon, roleOf, summarize } from "./format";
+import { DeadlineGroups } from "./deadline-groups";
 import { PostingDrawer } from "./posting-drawer";
 import { PostingsTable } from "./postings-table";
 import { SummaryStats } from "./summary-stats";
@@ -120,44 +120,45 @@ export function PostingsApp({ postings, now }: Props): React.ReactElement {
           <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
         </HStack>
         <SummaryStats summary={summary} />
-        <Card padding={0}>
-          <VStack>
-            <HStack gap={2} align="center" wrap="wrap" padding={3}>
-              <TextInput
-                type="search"
-                label="검색"
-                isLabelHidden
-                placeholder="회사, 공고명, 업무로 검색"
-                value={query}
-                onChange={setQuery}
-                hasClear
-                width={300}
-              />
-              <Selector
-                label="직무"
-                isLabelHidden
-                options={[ALL_ROLES, ...ROLES]}
-                value={role ?? ALL_ROLES}
-                onChange={v => setRole(!v || v === ALL_ROLES ? null : (v as Role))}
-                width={160}
-              />
-              <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
-                <SegmentedControlItem value="deadline" label="마감순" />
-                <SegmentedControlItem value="stipend" label="지원비순" />
-                <SegmentedControlItem value="recent" label="최신순" />
-              </SegmentedControl>
-              <Text type="supporting">
-                <b>{visible.length}</b>개 공고
-              </Text>
-            </HStack>
-            <Divider />
-            {visible.length > 0 ? (
-              <PostingsTable postings={visible} now={now} onOpen={setOpen} isGrouped={sort === "deadline"} />
-            ) : (
-              <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
-            )}
-          </VStack>
+        <Card padding={3}>
+          <HStack gap={2} align="center" wrap="wrap">
+            <TextInput
+              type="search"
+              label="검색"
+              isLabelHidden
+              placeholder="회사, 공고명, 업무로 검색"
+              value={query}
+              onChange={setQuery}
+              hasClear
+              width={300}
+            />
+            <Selector
+              label="직무"
+              isLabelHidden
+              options={[ALL_ROLES, ...ROLES]}
+              value={role ?? ALL_ROLES}
+              onChange={v => setRole(!v || v === ALL_ROLES ? null : (v as Role))}
+              width={160}
+            />
+            <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
+              <SegmentedControlItem value="deadline" label="마감순" />
+              <SegmentedControlItem value="stipend" label="지원비순" />
+              <SegmentedControlItem value="recent" label="최신순" />
+            </SegmentedControl>
+            <Text type="supporting">
+              <b>{visible.length}</b>개 공고
+            </Text>
+          </HStack>
         </Card>
+        {visible.length === 0 ? (
+          <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
+        ) : sort === "deadline" ? (
+          <DeadlineGroups postings={visible} now={now} onOpen={setOpen} />
+        ) : (
+          <Card padding={0}>
+            <PostingsTable postings={visible} now={now} onOpen={setOpen} />
+          </Card>
+        )}
       </VStack>
       <PostingDrawer posting={open} now={now} onClose={() => setOpen(null)} />
     </AppShell>
