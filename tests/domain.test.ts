@@ -207,5 +207,9 @@ describe("전공 분야", () => {
       ["데이터사이언스학부", "정보시스템학과", "컴퓨터소프트웨어학부"].sort(),
     );
     assert.deepEqual(neighborMajors("철학과"), []);
+    // 경영공학전공 bridges both fields; 산업공학과 does not reach 경영·경제·금융.
+    assert.ok(neighborMajors("경영공학전공").includes("경영학부"));
+    assert.ok(neighborMajors("경영공학전공").includes("산업공학과"));
+    assert.ok(!neighborMajors("산업공학과").includes("경영학부"));
   });
 });
