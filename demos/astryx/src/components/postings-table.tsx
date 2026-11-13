@@ -47,6 +47,11 @@ function TitleCell({ posting, now, onOpen }: { posting: Posting; now: string } &
       <Text type="supporting">
         {posting.company} · {posting.department}
       </Text>
+      {posting.classification?.summary && (
+        <Text size="sm" color="secondary" maxLines={1}>
+          {posting.classification.summary}
+        </Text>
+      )}
     </VStack>
   );
 }

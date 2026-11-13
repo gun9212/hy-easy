@@ -33,6 +33,11 @@ function PostingCard({ posting, now, onOpen }: { posting: Posting; now: string; 
             {posting.company} · {roleOf(posting) ?? "미분류"}
           </Text>
         </VStack>
+        {posting.classification?.summary && (
+          <Text size="sm" color="secondary" maxLines={2}>
+            {posting.classification.summary}
+          </Text>
+        )}
         <Divider />
         <HStack gap={2} align="center" justify="between">
           <VStack gap={0.5}>

@@ -70,7 +70,6 @@ body {
   word-break: keep-all;
 }
 
-
 /* Astryx's Table has no row click, so the title button stretches over its row (the stretched-link pattern). */
 tr:has(.posting-link) {
   position: relative;

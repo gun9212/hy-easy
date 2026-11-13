@@ -39,7 +39,12 @@ function inView(p: Posting, view: View, now: string): boolean {
 
 function matchesQuery(p: Posting, query: string): boolean {
   const q = query.trim().toLowerCase();
-  return !q || [p.title, p.company, p.department, p.location].some(s => s.toLowerCase().includes(q));
+  return (
+    !q ||
+    [p.title, p.company, p.department, p.location, p.classification?.summary ?? ""].some(s =>
+      s.toLowerCase().includes(q),
+    )
+  );
 }
 
 /** Closed postings always sink to the bottom; the chosen order applies within open and closed. */
@@ -135,7 +140,7 @@ export function PostingsApp({ postings, now, reason, mainAppLogin, initialNarrow
                 type="search"
                 label="검색"
                 isLabelHidden
-                placeholder="회사, 공고명, 지역으로 검색"
+                placeholder="회사, 공고명, 업무로 검색"
                 value={query}
                 onChange={setQuery}
                 hasClear

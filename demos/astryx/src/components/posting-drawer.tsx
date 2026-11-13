@@ -4,6 +4,7 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
+import { Divider } from "@astryxdesign/core/Divider";
 import { Drawer, DrawerHeader } from "@astryxdesign/core/Drawer";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Layout, LayoutContent, LayoutFooter, LayoutHeader } from "@astryxdesign/core/Layout";
@@ -14,6 +15,21 @@ import { PostingDetailSections } from "./posting-detail-sections";
 import { competition, deadlineDetail, deadlineLabel, isClosed, isSoon, roleOf } from "./format";
 
 type Props = { posting: Posting | null; now: string; onClose: () => void };
+
+/** The classifier's summary, marked as AI-written so it is not mistaken for the posting's own words. */
+function AiSummary({ text }: { text: string }): React.ReactElement {
+  return (
+    <Card variant="blue" padding={4}>
+      <VStack gap={1}>
+        <HStack gap={1.5} align="center">
+          <Badge variant="info" label="AI 요약" />
+          <Text type="supporting">원문을 바탕으로 자동 작성 · 아래 원문을 꼭 확인하세요</Text>
+        </HStack>
+        <Text as="p">{text}</Text>
+      </VStack>
+    </Card>
+  );
+}
 
 function Fact({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
@@ -41,6 +57,7 @@ function Body({ posting, now }: { posting: Posting; now: string }): React.ReactE
           collapsible={false}
         />
       )}
+      {posting.classification?.summary && <AiSummary text={posting.classification.summary} />}
       <Card variant="muted" padding={4}>
         <Grid columns={2} gap={3}>
           <Fact label="마감" value={deadlineDetail(posting)} />
@@ -51,6 +68,10 @@ function Body({ posting, now }: { posting: Posting; now: string }): React.ReactE
           <Fact label="경쟁률" value={`${competition(posting)} (모집 ${posting.headcount ?? "-"}명)`} />
         </Grid>
       </Card>
+      <Divider />
+      <Text type="supporting" weight="semibold">
+        HY-WEP 원문
+      </Text>
       <PostingDetailSections id={posting.id} />
     </VStack>
   );
