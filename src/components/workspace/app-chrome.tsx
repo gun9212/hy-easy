@@ -18,7 +18,6 @@ import type { View } from "./chrome";
 import { clearStoredPostings } from "./posting-store";
 import type { Mode } from "./use-personal";
 
-const HYWEP_URL = "https://hywep.hanyang.ac.kr/";
 const GUIDE_URL = "https://intern.hanyang.ac.kr/boards/205/view";
 
 function LogoutButton(): React.ReactElement {
@@ -54,7 +53,6 @@ export function AppTopNav({ mode, userLabel }: { mode: Mode; userLabel: string }
       }
       endContent={
         <HStack gap={2} align="center">
-          <Button variant="ghost" size="sm" label="HY-WEP" href={HYWEP_URL} target="_blank" rel="noreferrer" />
           <Avatar name={userLabel} size="sm" />
           {mode === "live" && <LogoutButton />}
         </HStack>

@@ -1,11 +1,9 @@
 "use client";
 
-import { GitCompareArrows } from "lucide-react";
-import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
-import { HStack, VStack } from "@astryxdesign/core/Stack";
+import { VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { filterPostings, isNewPosting, type Application, type Filters, type Posting } from "@/lib/domain";
 import { matchesWhen, nextDeadline } from "@/lib/posting-format";
@@ -38,38 +36,10 @@ type Props = {
 const DEFAULT_SORT = "deadline";
 const WHEN_TITLES: Record<string, string> = { soon: "마감 임박", new: "새로 올라온 공고" };
 
-function listTitle(filters: Filters): string {
+/** The page title for the list: 관심 공고, a side-nav shortcut, the chosen role, or 전체 공고 (as in the demo). */
+export function listTitle(filters: Filters): string {
   if (filters.saved === "true") return "관심 공고";
-  return WHEN_TITLES[filters.when ?? ""] ?? "전체 공고";
-}
-
-function ListHeader({ props, total }: { props: Props; total: number }): React.ReactElement {
-  const { filters, updateFilters, compared } = props;
-  return (
-    <HStack gap={2} align="center" justify="between" wrap="wrap">
-      <HStack gap={2} align="center">
-        <Text weight="bold" size="lg">
-          {listTitle(filters)}
-        </Text>
-        <Badge variant="blue" label={total} />
-        {filters.role && (
-          <Button
-            variant="secondary"
-            size="sm"
-            label={`${filters.role} ✕`}
-            onClick={() => updateFilters({ role: "" })}
-          />
-        )}
-      </HStack>
-      <Button
-        variant="secondary"
-        label="공고 비교"
-        icon={<GitCompareArrows size={15} />}
-        endContent={compared.length > 0 ? <Badge variant="info" label={compared.length} /> : undefined}
-        onClick={props.onOpenCompare}
-      />
-    </HStack>
-  );
+  return WHEN_TITLES[filters.when ?? ""] ?? (filters.role || "전체 공고");
 }
 
 export function PostingsView(props: Props): React.ReactElement {
@@ -107,18 +77,15 @@ export function PostingsView(props: Props): React.ReactElement {
         next={nextDeadline(postings, now)}
       />
       <Card padding={4}>
-        <VStack gap={3}>
-          <ListHeader props={{ ...props, filters }} total={filtered.length} />
-          <ListFilters
-            postings={postings}
-            filters={filters}
-            updateFilters={props.updateFilters}
-            major={props.major}
-            onMajor={props.onMajor}
-            total={filtered.length}
-            majorCounts={majorCounts}
-          />
-        </VStack>
+        <ListFilters
+          postings={postings}
+          filters={filters}
+          updateFilters={props.updateFilters}
+          major={props.major}
+          onMajor={props.onMajor}
+          total={filtered.length}
+          majorCounts={majorCounts}
+        />
       </Card>
       {filtered.length === 0 ? (
         <EmptyState

@@ -19,7 +19,7 @@ import { CompareDock, type View } from "./chrome";
 import { LayoutProvider } from "./layout-context";
 import { Planner } from "./planner";
 import { PostingDetail } from "./posting-detail";
-import { PostingsView } from "./postings-view";
+import { PostingsView, listTitle } from "./postings-view";
 import { useMajor } from "./use-major";
 import { usePostings } from "./use-postings";
 import { usePersonal, type Mode } from "./use-personal";
@@ -39,6 +39,7 @@ type Props = {
 };
 
 const MAX_COMPARE = 4;
+const HYWEP_URL = "https://hywep.hanyang.ac.kr/";
 const CLOCK_TICK_MS = 30_000;
 const TOAST_MS = 4_200;
 const HEADINGS: Record<View, { title: string; text: string }> = {
@@ -89,15 +90,11 @@ function useToast(): [string, (message: string) => void] {
   return [toast, setToast];
 }
 
-function SyncState({ mode, lastChecked }: { mode: Mode; lastChecked: string | undefined }) {
-  return (
-    <div className="sync-state">
-      {mode === "demo" ? "가상 데이터" : lastChecked ? `${formatDate(lastChecked, true)} 확인` : "첫 수집 대기"}
-      <span className="sync-caption">
-        {mode === "demo" ? "실제 모집 정보가 아닙니다" : "평일 09–18시 · 5분 간격 수집"}
-      </span>
-    </div>
-  );
+/** The demo's one line under the title: what the list is, and when the collector last checked it. */
+function sourceLine(mode: Mode, lastChecked: string | undefined): string {
+  if (mode === "demo") return "한양대학교 HY-WEP 현장실습 공고 · 가상 데이터";
+  const checked = lastChecked ? `${formatDate(lastChecked, true)} 확인` : "첫 수집 대기";
+  return `한양대학교 HY-WEP 현장실습 공고 · ${checked} · 평일 09–18시 5분 간격 수집`;
 }
 
 export function Workspace({
@@ -235,10 +232,10 @@ export function Workspace({
             )}
             <HStack gap={3} align="end" justify="between" wrap="wrap">
               <VStack gap={1}>
-                <Heading level={1}>{heading.title}</Heading>
-                <Text type="supporting">{heading.text}</Text>
+                <Heading level={1}>{view === "planner" ? heading.title : listTitle(filters)}</Heading>
+                <Text type="supporting">{view === "planner" ? heading.text : sourceLine(mode, lastChecked)}</Text>
               </VStack>
-              <SyncState mode={mode} lastChecked={lastChecked} />
+              <Button variant="primary" label="HY-WEP 바로가기" href={HYWEP_URL} target="_blank" rel="noreferrer" />
             </HStack>
             {loadError && (
               <Banner

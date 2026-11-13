@@ -56,8 +56,15 @@
   }
 }
 
-/* The neutral theme turns on light-dark(); the app has no dark design, so the page stays light. Unlayered: wins. */
-:root,
-html[data-theme] {
+/*
+ * The app has no dark design, so everything stays light. The neutral theme turns on light-dark() at the root, and
+ * Astryx sets "color-scheme: light dark" again on its own surfaces (Drawer, Dialog, popovers), so pinning only the
+ * root left those surfaces dark on a dark-mode device: dark card fills under the light text colours above.
+ * Unlayered, so it wins over every Astryx layer.
+ */
+*,
+*::before,
+*::after,
+::backdrop {
   color-scheme: light;
 }

@@ -1,7 +1,8 @@
 "use client";
 
 // Search, filter selects, the major and closed checkboxes and the sort control above the postings.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Selector } from "@astryxdesign/core/Selector";
@@ -50,7 +51,6 @@ function Filter(props: { label: string; value: string; options: readonly Option[
       value={props.value || null}
       onChange={v => props.onChange(v ?? "")}
       hasClear
-      size="sm"
     />
   );
 }
@@ -81,6 +81,17 @@ function Checks({ filters, updateFilters, majorCounts }: Pick<Props, "filters" |
   );
 }
 
+/** Filters behind "필터 더보기": how many are set, so the button can say so. */
+function extraCount(filters: Filters): number {
+  return (
+    [filters.term, filters.location, filters.duration, filters.stipend].filter(Boolean).length +
+    (filters.closed === "true" ? 1 : 0) +
+    (filters.mine === "true" ? 1 : 0) +
+    (filters.others === "true" ? 1 : 0)
+  );
+}
+
+/** The demo's single row (search, major, role, sort, count); the rest opens under "필터 더보기". */
 export function ListFilters(props: Props): React.ReactElement {
   const { postings, filters, updateFilters, majorCounts } = props;
   const options = useMemo(
@@ -92,6 +103,10 @@ export function ListFilters(props: Props): React.ReactElement {
     }),
     [postings],
   );
+  const active = extraCount(filters);
+  // Open while any of those filters is set, so a filter never hides itself.
+  const [isOpen, setIsOpen] = useState(active > 0);
+  const showMore = isOpen || active > 0;
   const hidden = majorCounts ? majorCounts.all - props.total : 0;
   return (
     <VStack gap={3}>
@@ -100,11 +115,11 @@ export function ListFilters(props: Props): React.ReactElement {
           type="search"
           label="기업명, 직무, 기술 검색"
           isLabelHidden
-          placeholder="기업명, 직무 또는 기술을 검색해 보세요"
+          placeholder="회사, 공고명, 업무로 검색"
           value={filters.q ?? ""}
           onChange={q => updateFilters({ q })}
           hasClear
-          width={320}
+          width={280}
         />
         <Selector
           label="내 전공"
@@ -116,49 +131,15 @@ export function ListFilters(props: Props): React.ReactElement {
           hasSearch
           searchPlaceholder="전공 검색"
           hasClear
-          size="sm"
         />
         <Filter
-          label="직군"
+          label="직무"
           value={filters.role ?? ""}
           options={ROLES.map(r => [r, r] as const)}
           onChange={role => updateFilters({ role })}
         />
-        <Filter
-          label="학기"
-          value={filters.term ?? ""}
-          options={options.terms}
-          onChange={term => updateFilters({ term })}
-        />
-        <Filter
-          label="지역"
-          value={filters.location ?? ""}
-          options={options.regions}
-          onChange={location => updateFilters({ location })}
-        />
-        <Filter
-          label="실습 기간"
-          value={filters.duration ?? ""}
-          options={options.durations}
-          onChange={duration => updateFilters({ duration })}
-        />
-        <Filter
-          label="지원금"
-          value={filters.stipend ?? ""}
-          options={options.stipends}
-          onChange={stipend => updateFilters({ stipend })}
-        />
-      </HStack>
-      <HStack gap={3} align="center" justify="between" wrap="wrap">
-        <HStack gap={3} align="center" wrap="wrap">
-          <Text type="supporting">
-            총 <b>{props.total}</b>개의 공고{majorCounts && hidden > 0 ? ` · 전체 ${majorCounts.all}개` : ""}
-          </Text>
-          <Checks filters={filters} updateFilters={updateFilters} majorCounts={majorCounts} />
-        </HStack>
         <SegmentedControl
           label="공고 정렬"
-          size="sm"
           value={filters.sort || "deadline"}
           onChange={sort => updateFilters({ sort })}
         >
@@ -166,7 +147,45 @@ export function ListFilters(props: Props): React.ReactElement {
             <SegmentedControlItem key={value} value={value} label={label} />
           ))}
         </SegmentedControl>
+        <Button
+          variant="ghost"
+          label={active ? `필터 더보기 (${active})` : "필터 더보기"}
+          aria-expanded={showMore}
+          onClick={() => setIsOpen(!showMore)}
+        />
+        <Text type="supporting">
+          <b>{props.total}</b>개 공고{majorCounts && hidden > 0 ? ` · 전체 ${majorCounts.all}개` : ""}
+        </Text>
       </HStack>
+      {showMore && (
+        <HStack gap={2} align="center" wrap="wrap">
+          <Filter
+            label="학기"
+            value={filters.term ?? ""}
+            options={options.terms}
+            onChange={term => updateFilters({ term })}
+          />
+          <Filter
+            label="지역"
+            value={filters.location ?? ""}
+            options={options.regions}
+            onChange={location => updateFilters({ location })}
+          />
+          <Filter
+            label="실습 기간"
+            value={filters.duration ?? ""}
+            options={options.durations}
+            onChange={duration => updateFilters({ duration })}
+          />
+          <Filter
+            label="지원금"
+            value={filters.stipend ?? ""}
+            options={options.stipends}
+            onChange={stipend => updateFilters({ stipend })}
+          />
+          <Checks filters={filters} updateFilters={updateFilters} majorCounts={majorCounts} />
+        </HStack>
+      )}
     </VStack>
   );
 }
