@@ -116,11 +116,10 @@ export function roleOf(posting: Posting): Role | null {
   return posting.classification?.primaryRole ?? null;
 }
 
-export type Summary = { open: number; soon: number; fresh: number; avgStipend: number | null; next: Posting | null };
+export type Summary = { open: number; soon: number; fresh: number; next: Posting | null };
 
 export function summarize(postings: Posting[], now: string): Summary {
   const open = postings.filter(p => !isClosed(p, now));
-  const paid = open.flatMap(p => (p.stipend.unit === "month" && p.stipend.amount ? [p.stipend.amount] : []));
   const next = open
     .filter(p => p.deadline.date)
     .toSorted((a, b) => (a.deadline.date ?? "").localeCompare(b.deadline.date ?? ""))[0];
@@ -128,7 +127,6 @@ export function summarize(postings: Posting[], now: string): Summary {
     open: open.length,
     soon: open.filter(p => isSoon(p, now)).length,
     fresh: postings.filter(p => isNew(p, now)).length,
-    avgStipend: paid.length ? Math.round(paid.reduce((s, n) => s + n, 0) / paid.length / 10000) : null,
     next: next ?? null,
   };
 }

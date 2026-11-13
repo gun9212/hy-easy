@@ -21,13 +21,6 @@ function stats(summary: Summary): Stat[] {
       variant: "warning",
     },
     { label: "새로 올라옴", value: String(summary.fresh), unit: "건", note: "최근 24시간", variant: "success" },
-    {
-      label: "평균 실습지원비",
-      value: summary.avgStipend === null ? "-" : String(summary.avgStipend),
-      unit: "만원/월",
-      note: "금액이 공개된 모집 중 공고 기준",
-      variant: "neutral",
-    },
   ];
 }
 
