@@ -16,14 +16,16 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { TopNav, TopNavHeading } from "@astryxdesign/core/TopNav";
 import { ROLES, type Posting, type Role } from "@lib/domain";
 import { AppSideNav, VIEW_LABELS, type View } from "./app-side-nav";
-import { isClosed, isNew, isSoon, roleOf, summarize } from "./format";
+import type { SourceReason } from "@demo/lib/postings-source";
+import { isClosed, isNew, isSoon, lastSyncLabel, roleOf, summarize } from "./format";
+import { SourceBanner } from "./source-banner";
 import { DeadlineGroups } from "./deadline-groups";
 import { PostingDrawer } from "./posting-drawer";
 import { PostingResults } from "./posting-results";
 import { SummaryStats } from "./summary-stats";
 
 type Sort = "deadline" | "stipend" | "recent";
-type Props = { postings: Posting[]; now: string };
+type Props = { postings: Posting[]; now: string; reason: SourceReason; mainAppLogin: string };
 
 const ALL_ROLES = "전체 직무";
 
@@ -73,7 +75,7 @@ function TopBar(): React.ReactElement {
   );
 }
 
-export function PostingsApp({ postings, now }: Props): React.ReactElement {
+export function PostingsApp({ postings, now, reason, mainAppLogin }: Props): React.ReactElement {
   const [view, setView] = useState<View>("all");
   const [role, setRole] = useState<Role | null>(null);
   const [query, setQuery] = useState("");
@@ -115,10 +117,14 @@ export function PostingsApp({ postings, now }: Props): React.ReactElement {
         <HStack gap={3} align="end" justify="between" wrap="wrap">
           <VStack gap={1}>
             <Heading level={1}>{title}</Heading>
-            <Text type="supporting">한양대학교 HY-WEP 현장실습 공고 · 11월 10일 13:00 동기화 (가상 데이터)</Text>
+            <Text type="supporting">
+              한양대학교 HY-WEP 현장실습 공고 · {lastSyncLabel(postings) ?? "-"} 확인
+              {reason === "live" ? "" : " (가상 데이터)"}
+            </Text>
           </VStack>
           <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
         </HStack>
+        <SourceBanner reason={reason} mainAppLogin={mainAppLogin} />
         <SummaryStats summary={summary} />
         <Card padding={3}>
           <HStack gap={2} align="center" wrap="wrap">

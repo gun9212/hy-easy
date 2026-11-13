@@ -8,19 +8,7 @@ import { Text } from "@astryxdesign/core/Text";
 import type { Posting } from "@lib/domain";
 import { competition, deadlineLabel, deadlineShort, isClosed, isNew, isSoon, roleOf } from "./format";
 import type { Props } from "./postings-table";
-
-function Stipend({ posting }: { posting: Posting }): React.ReactElement {
-  if (!posting.stipend.amount) return <Text type="supporting">지원비 미기재</Text>;
-  return (
-    <HStack gap={0.5} align="end">
-      <Text type="supporting">월</Text>
-      <Text weight="bold" size="lg" hasTabularNumbers>
-        {Math.round(posting.stipend.amount / 10000)}
-      </Text>
-      <Text type="supporting">만원</Text>
-    </HStack>
-  );
-}
+import { Stipend } from "./stipend";
 
 function PostingCard({ posting, now, onOpen }: { posting: Posting; now: string; onOpen: Props["onOpen"] }) {
   const closed = isClosed(posting, now);

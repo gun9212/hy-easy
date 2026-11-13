@@ -39,18 +39,57 @@ export function deadlineLabel(posting: Posting, now: string): string {
   return days === 0 ? "D-day" : `D-${days}`;
 }
 
+const SEOUL = "Asia/Seoul";
+const timeFormat = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: SEOUL,
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+const stampFormat = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: SEOUL,
+  month: "long",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+/** "18:00" in Seoul time when the posting gives a time, else "". */
+function deadlineTime(posting: Posting): string {
+  const at = posting.deadline.at;
+  return posting.deadline.precision === "minute" && at ? timeFormat.format(new Date(at)) : "";
+}
+
 /** "11.12 18:00" — the short deadline shown in table rows. */
 export function deadlineShort(posting: Posting): string {
   const date = posting.deadline.date;
   if (!date) return "날짜 미기재";
   const [, m, d] = date.split("-");
-  const time = posting.deadline.precision === "minute" ? " 18:00" : "";
-  return `${Number(m)}.${Number(d)}${time}`;
+  const time = deadlineTime(posting);
+  return `${Number(m)}.${Number(d)}${time ? ` ${time}` : ""}`;
 }
 
 export function deadlineDetail(posting: Posting): string {
-  const date = posting.deadline.date ?? "날짜 미기재";
-  return posting.deadline.precision === "minute" ? `${date} 18:00` : date;
+  const date = posting.deadline.date;
+  if (!date) return posting.deadline.raw || "날짜 미기재";
+  const time = deadlineTime(posting);
+  return time ? `${date} ${time}` : date;
+}
+
+/** "11월 13일 10:55" — when the collector last checked any posting, or null without data. */
+export function lastSyncLabel(postings: Posting[]): string | null {
+  const latest = postings.reduce((max, p) => (p.lastCheckedAt > max ? p.lastCheckedAt : max), "");
+  return latest ? stampFormat.format(new Date(latest)) : null;
+}
+
+/** "월 250만원", "시급 1만원" or the source's own text when the amount or unit is unknown. */
+export function stipendParts(posting: Posting): { prefix: string; amount: string; suffix: string } | null {
+  const { amount, unit } = posting.stipend;
+  if (!amount || unit === "unknown") return null;
+  const prefix = unit === "month" ? "월" : unit === "hour" ? "시급" : "총";
+  const value = unit === "hour" ? amount.toLocaleString("ko-KR") : String(Math.round(amount / 10000));
+  return { prefix, amount: value, suffix: unit === "hour" ? "원" : "만원" };
 }
 
 export function isNew(posting: Posting, now: string): boolean {

@@ -7,6 +7,7 @@ import { Table, pixel, proportional } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import type { TableColumn } from "@astryxdesign/core/Table";
 import type { Posting } from "@lib/domain";
+import { Stipend } from "./stipend";
 import { competition, deadlineLabel, deadlineShort, isClosed, isNew, isSoon, roleOf } from "./format";
 
 export type Props = { postings: Posting[]; now: string; onOpen: (posting: Posting) => void };
@@ -81,18 +82,7 @@ function buildColumns(now: string, onOpen: Props["onOpen"]): TableColumn<Posting
       header: "실습지원비",
       width: pixel(112),
       align: "end",
-      renderCell: p =>
-        p.stipend.amount ? (
-          <HStack gap={0.5} align="end" justify="end">
-            <Text type="supporting">월</Text>
-            <Text weight="bold" size="lg" hasTabularNumbers>
-              {Math.round(p.stipend.amount / 10000)}
-            </Text>
-            <Text type="supporting">만원</Text>
-          </HStack>
-        ) : (
-          <Text type="supporting">미기재</Text>
-        ),
+      renderCell: p => <Stipend posting={p} />,
     },
     {
       key: "applicants",
