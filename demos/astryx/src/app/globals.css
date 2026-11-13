@@ -32,7 +32,7 @@
       --color-background-muted: light-dark(#f3f6fa, #1b2840);
 
       --color-text-primary: light-dark(#14243b, #eef2f8);
-      --color-text-secondary: light-dark(#5a6679, #a3afc2);
+      --color-text-secondary: light-dark(#4b5567, #b4bfd0);
       --color-border: light-dark(#dde3ec, #ffffff1a);
       --color-border-emphasized: light-dark(#b9cbe2, #3a4f6e);
       --color-info: light-dark(#0e4a84, #8fb4e0);
@@ -47,6 +47,17 @@
       --radius-container: 12px;
       --radius-element: 10px;
       --radius-inner: 6px;
+    }
+  }
+
+  /* Pointer screens: body 14→15px and supporting 12→13px so Korean text reads without squinting.
+     Touch screens keep Astryx's own larger 16/14 sizes. */
+  @media not ((width < 1024px) and (pointer: coarse)) {
+    @scope ([data-astryx-theme="neutral"]) to ([data-astryx-theme]) {
+      :scope {
+        --_scaled-font-size-base: min(calc(0.9375rem * var(--_dynamic-type-body, 1)), var(--_scaled-font-size-lg));
+        --_scaled-font-size-sm: min(calc(0.8125rem * var(--_dynamic-type-footnote, 1)), var(--_scaled-font-size-base));
+      }
     }
   }
 }

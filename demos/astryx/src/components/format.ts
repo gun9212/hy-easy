@@ -21,6 +21,17 @@ export function isSoon(posting: Posting, now: string): boolean {
   return !isClosed(posting, now) && days !== null && days <= SOON_DAYS;
 }
 
+export const DEADLINE_GROUPS = ["3일 안에 마감", "이번 주 마감", "다음 주 이후", "마감일 미정", "마감된 공고"] as const;
+export type DeadlineGroup = (typeof DEADLINE_GROUPS)[number];
+
+export function deadlineGroup(posting: Posting, now: string): DeadlineGroup {
+  if (isClosed(posting, now)) return "마감된 공고";
+  const days = daysLeft(posting, now);
+  if (days === null) return "마감일 미정";
+  if (days <= 3) return "3일 안에 마감";
+  return days <= 7 ? "이번 주 마감" : "다음 주 이후";
+}
+
 export function deadlineLabel(posting: Posting, now: string): string {
   if (isClosed(posting, now)) return "마감";
   const days = daysLeft(posting, now);

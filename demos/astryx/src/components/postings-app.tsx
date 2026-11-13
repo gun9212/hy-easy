@@ -152,7 +152,7 @@ export function PostingsApp({ postings, now }: Props): React.ReactElement {
             </HStack>
             <Divider />
             {visible.length > 0 ? (
-              <PostingsTable postings={visible} now={now} onOpen={setOpen} />
+              <PostingsTable postings={visible} now={now} onOpen={setOpen} isGrouped={sort === "deadline"} />
             ) : (
               <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
             )}
