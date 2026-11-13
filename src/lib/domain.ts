@@ -242,6 +242,8 @@ export type Filters = {
   closed?: string;
   saved?: string;
   mine?: string;
+  /** "true": keep postings restricted to other majors when a major is chosen (hidden by default). */
+  others?: string;
   page?: string;
 };
 const MINE_FITS: MajorFit[] = ["required", "preferred", "related"];
@@ -266,6 +268,7 @@ export function filterPostings(
         (p.stipend.unit === "month" && p.stipend.amount !== null && p.stipend.amount >= Number(filters.stipend))) &&
       (filters.closed === "true" || eligibility(p, [], now).status !== "closed") &&
       (filters.saved !== "true" || favoriteIds.includes(p.id)) &&
+      (!major || filters.others === "true" || majorFit(p, major) !== "other") &&
       (filters.mine !== "true" || !major || MINE_FITS.includes(majorFit(p, major)))
     );
   });

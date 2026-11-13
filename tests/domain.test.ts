@@ -155,6 +155,32 @@ describe("majorFit", () => {
     assert.equal(majorFit(p, "산업공학과"), "related");
     assert.equal(majorFit(p, "철학과"), "none");
   });
+  it("전공을 고르면 다른 전공만 뽑는 공고를 숨기고, 옵션으로 다시 보여줌", () => {
+    const now = new Date("2026-11-10T13:00:00+09:00");
+    const open = { ...base, recruitment: "open" as const, deadline: { ...base.deadline, at: null, date: null } };
+    const listed = {
+      ...open,
+      id: "listed",
+      classification: {
+        ...base.classification!,
+        majors: { requirement: "listed" as const, required: ["경영학부" as const], preferred: [], related: [] },
+      },
+    };
+    const any = {
+      ...open,
+      id: "any",
+      classification: {
+        ...base.classification!,
+        majors: { requirement: "any" as const, required: [], preferred: [], related: [] },
+      },
+    };
+    const ids = (filters = {}, major: "철학과" | "경영학부" | null = "철학과") =>
+      filterPostings([listed, any], filters, [], now, major).map(p => p.id);
+    assert.deepEqual(ids(), ["any"]);
+    assert.deepEqual(ids({}, "경영학부").sort(), ["any", "listed"]);
+    assert.deepEqual(ids({ others: "true" }).sort(), ["any", "listed"]);
+    assert.deepEqual(ids({}, null).sort(), ["any", "listed"]);
+  });
   it("전공을 고르지 않았거나 전공 정보가 없으면 표시하지 않음", () => {
     assert.equal(majorFit(base, null), "none");
     assert.equal(

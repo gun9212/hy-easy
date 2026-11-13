@@ -141,6 +141,14 @@ function EmptyState({ savedView, onReset }: { savedView: boolean; onReset: () =>
 export function PostingsView(props: Props) {
   const { postings, filters, updateFilters, favoriteIds, compared, now } = props;
   const filtered = filterPostings(postings, filters, favoriteIds, now, props.major);
+  // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
+  const majorCounts = props.major
+    ? {
+        all: filterPostings(postings, { ...filters, mine: "", others: "true" }, favoriteIds, now, props.major).length,
+        related: filterPostings(postings, { ...filters, mine: "true", others: "" }, favoriteIds, now, props.major)
+          .length,
+      }
+    : null;
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, Number(filters.page) || 1), pages);
   const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -179,12 +187,7 @@ export function PostingsView(props: Props) {
           major={props.major}
           onMajor={props.onMajor}
         />
-        <ListMeta
-          total={filtered.length}
-          filters={filters}
-          updateFilters={updateFilters}
-          hasMajor={Boolean(props.major)}
-        />
+        <ListMeta total={filtered.length} filters={filters} updateFilters={updateFilters} majorCounts={majorCounts} />
         {visible.length ? (
           <PostingsTable
             postings={visible}

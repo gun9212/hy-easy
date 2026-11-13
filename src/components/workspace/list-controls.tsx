@@ -98,19 +98,24 @@ export function SearchAndFilters({ postings, filters, updateFilters, major, onMa
   );
 }
 
+/** Counts behind the major options: without the major restriction, and with "내 전공 관련만". */
+export type MajorCounts = { all: number; related: number };
+
 export function ListMeta({
   total,
   filters,
   updateFilters,
-  hasMajor,
-}: { total: number; hasMajor: boolean } & Omit<FilterProps, "postings">) {
+  majorCounts,
+}: { total: number; majorCounts: MajorCounts | null } & Omit<FilterProps, "postings">) {
+  const hidden = majorCounts ? majorCounts.all - total : 0;
   return (
     <div className="list-meta">
       <span>
         총 <b>{total}</b>개의 공고
+        {majorCounts && hidden > 0 && <small className="list-meta-note"> · 전체 {majorCounts.all}개</small>}
       </span>
       <div>
-        {hasMajor && (
+        {majorCounts && (
           <>
             <label className="check-label">
               <input
@@ -118,7 +123,16 @@ export function ListMeta({
                 checked={filters.mine === "true"}
                 onChange={e => updateFilters({ mine: e.target.checked ? "true" : "" })}
               />
-              내 전공 관련만
+              내 전공 관련만 ({majorCounts.related})
+            </label>
+            <span className="vertical-line" />
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={filters.others === "true"}
+                onChange={e => updateFilters({ others: e.target.checked ? "true" : "" })}
+              />
+              다른 전공 대상도 보기
             </label>
             <span className="vertical-line" />
           </>

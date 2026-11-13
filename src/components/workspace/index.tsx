@@ -125,7 +125,7 @@ export function Workspace({
   async function changeMajor(next: Major | null) {
     try {
       await chooseMajor(next);
-      if (!next && filters.mine === "true") updateFilters({ mine: "" });
+      if (!next && (filters.mine || filters.others)) updateFilters({ mine: "", others: "" });
     } catch (e) {
       setToast(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.");
     }
