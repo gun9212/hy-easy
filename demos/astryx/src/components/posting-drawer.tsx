@@ -67,6 +67,12 @@ function Body({ posting, now }: { posting: Posting; now: string }): React.ReactE
           <Fact label="기간" value={posting.period} />
           <Fact label="경쟁률" value={`${competition(posting)} (모집 ${posting.headcount ?? "-"}명)`} />
         </Grid>
+        {posting.majors && (
+          <VStack gap={0.5} paddingBlockStart={3}>
+            <Text type="supporting">지원 가능 전공 (원문)</Text>
+            <Text weight="semibold">{posting.majors}</Text>
+          </VStack>
+        )}
       </Card>
       <Divider />
       <Text type="supporting" weight="semibold">

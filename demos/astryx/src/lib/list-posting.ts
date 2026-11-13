@@ -2,7 +2,8 @@ import type { Classification, Posting } from "@lib/domain";
 
 /**
  * What the list needs from a posting, plus the AI summary (short, and it makes task keywords searchable). The long
- * texts (practice info, tasks, qualifications, benefits, events) and the classifier's evidence stay on the server until the drawer asks for one posting, which keeps the first page small.
+ * texts (practice info, tasks, qualifications, benefits, events) and the classifier's evidence stay on the server
+ * until the drawer asks for one posting, which keeps the first page small.
  */
 export type ListPosting = Omit<
   Posting,
@@ -10,7 +11,12 @@ export type ListPosting = Omit<
 > & { classification: Pick<Classification, "primaryRole" | "needsReview" | "summary"> | null };
 
 /** The drawer's extra fields, fetched per posting from /api/postings/[id]. */
-export type PostingDetail = Pick<Posting, "id" | "practiceInfo" | "qualifications" | "tasks" | "benefits">;
+export type PostingDetail = Pick<
+  Posting,
+  "id" | "practiceInfo" | "qualifications" | "tasks" | "benefits" | "events"
+> & {
+  evidence: Classification["evidence"];
+};
 
 export function toListPosting(posting: Posting): ListPosting {
   const { classification } = posting;
@@ -48,5 +54,13 @@ export function toListPosting(posting: Posting): ListPosting {
 
 export function toDetail(posting: Posting): PostingDetail {
   const { id, practiceInfo, qualifications, tasks, benefits } = posting;
-  return { id, practiceInfo, qualifications, tasks, benefits };
+  return {
+    id,
+    practiceInfo,
+    qualifications,
+    tasks,
+    benefits,
+    events: posting.events ?? [],
+    evidence: posting.classification?.evidence ?? [],
+  };
 }

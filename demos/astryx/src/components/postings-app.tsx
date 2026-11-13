@@ -27,7 +27,7 @@ import { PostingResults } from "./posting-results";
 import { SummaryStats } from "./summary-stats";
 
 type Sort = "deadline" | "stipend" | "recent";
-type Props = { postings: Posting[]; now: string; reason: SourceReason; mainAppLogin: string; initialNarrow: boolean };
+type Props = { postings: Posting[]; now: string; reason: SourceReason; mainAppBase: string; initialNarrow: boolean };
 
 const ALL_ROLES = "전체 직무";
 
@@ -82,7 +82,7 @@ function TopBar(): React.ReactElement {
   );
 }
 
-export function PostingsApp({ postings, now, reason, mainAppLogin, initialNarrow }: Props): React.ReactElement {
+export function PostingsApp({ postings, now, reason, mainAppBase, initialNarrow }: Props): React.ReactElement {
   const [view, setView] = useState<View>("all");
   const [role, setRole] = useState<Role | null>(null);
   const [query, setQuery] = useState("");
@@ -132,7 +132,7 @@ export function PostingsApp({ postings, now, reason, mainAppLogin, initialNarrow
             </VStack>
             <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
           </HStack>
-          <SourceBanner reason={reason} mainAppLogin={mainAppLogin} />
+          <SourceBanner reason={reason} mainAppBase={mainAppBase} />
           <SummaryStats summary={summary} />
           <Card padding={3}>
             <HStack gap={2} align="center" wrap="wrap">

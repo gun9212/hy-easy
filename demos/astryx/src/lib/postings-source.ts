@@ -7,8 +7,9 @@ import { loadPostings } from "@lib/data";
 import type { Posting } from "@lib/domain";
 import { samplePostings, DEMO_NOW } from "@lib/sample";
 import { toDetail, toListPosting, type ListPosting, type PostingDetail } from "./list-posting";
+import { isAuthCookieName, sessionReason } from "./main-app";
 
-export type SourceReason = "live" | "not-configured" | "signed-out" | "not-school" | "empty" | "error";
+export type SourceReason = "live" | "not-configured" | "signed-out" | "expired" | "not-school" | "empty" | "error";
 export type PostingsSource = { postings: ListPosting[]; now: string; reason: SourceReason };
 
 const SAMPLE_ID = /^sample-\d+$/;
@@ -32,9 +33,13 @@ async function schoolSession(): Promise<Session> {
   const jar = await cookies();
   const db = createServerClient(url, key, { cookies: { getAll: () => jar.getAll(), setAll: () => undefined } });
   const { data, error } = await db.auth.getClaims();
-  if (error || !data?.claims?.sub) return { db: null, reason: "signed-out" };
-  if (!isSchoolClaims(data.claims)) return { db: null, reason: "not-school" };
-  return { db, reason: "live" };
+  const claims = error ? null : (data?.claims ?? null);
+  const reason = sessionReason({
+    hasAuthCookie: jar.getAll().some(c => isAuthCookieName(c.name)),
+    hasValidClaims: Boolean(claims?.sub),
+    isSchool: isSchoolClaims(claims),
+  });
+  return reason === "live" ? { db, reason } : { db: null, reason };
 }
 
 /** Real postings for a school session; the fictional sample, with the reason, for anyone else. */

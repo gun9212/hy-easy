@@ -5,23 +5,26 @@
   "scripts": {
     "dev": "next dev --webpack --hostname 127.0.0.1 --port 3100",
     "build": "next build --webpack",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "node --import tsx --test tests/*.test.ts",
     "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
   },
   "dependencies": {
-    "@astryxdesign/core": "^0.7.15",
-    "@astryxdesign/theme-neutral": "^0.7.15",
-    "@stylexjs/stylex": "^0.19.2",
-    "@supabase/ssr": "^0.10.0",
-    "@supabase/supabase-js": "^2.101.1",
-    "next": "^16.4.6",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "server-only": "^0.0.1"
+    "@astryxdesign/core": "0.7.15",
+    "@astryxdesign/theme-neutral": "0.7.15",
+    "@stylexjs/stylex": "0.19.2",
+    "@supabase/ssr": "0.10.0",
+    "@supabase/supabase-js": "2.101.1",
+    "next": "16.4.6",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
-    "@astryxdesign/cli": "^0.7.15",
-    "@types/node": "^22.19.17",
-    "@types/react": "^19.2.14",
-    "typescript": "^5.9.3"
+    "@astryxdesign/cli": "0.7.15",
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.14",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
   }
 }

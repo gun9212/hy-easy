@@ -24,6 +24,31 @@ jobs:
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'create database hy_easy_test'
           sudo -u postgres psql -v ON_ERROR_STOP=1 -d hy_easy_test -f tests/database-bootstrap.sql -f supabase/migrations/202611100001_initial.sql -f supabase/migrations/202611100002_list_sync.sql -f supabase/migrations/202611120001_posting_changed_at.sql -f tests/database-policies.sql
 
+  # The Astryx demo (demos/astryx) imports the main app's src/lib, so a change there can break it. It is checked
+  # here but never deployed, and deploy does not wait on it: a broken demo must not hold back production.
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            demos/astryx/package-lock.json
+      # The root install provides what the shared src/lib imports (zod) and the root Prettier config.
+      - run: npm ci
+      - run: npx prettier --check demos/astryx/src demos/astryx/tests
+      - run: npm ci
+        working-directory: demos/astryx
+      - run: npm run typecheck
+        working-directory: demos/astryx
+      - run: npm test
+        working-directory: demos/astryx
+      - run: npm run build
+        working-directory: demos/astryx
+
   # Production deploy to Vercel, only from main and only after every check above passed.
   deploy:
     needs: check
