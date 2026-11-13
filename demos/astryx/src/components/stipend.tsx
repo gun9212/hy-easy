@@ -2,7 +2,7 @@
 
 import { HStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import type { Posting } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { stipendParts } from "./format";
 
 /** "월 **250** 만원" with the amount large; the source text, dimmed, when the amount or unit is unknown. */

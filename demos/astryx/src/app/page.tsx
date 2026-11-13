@@ -13,7 +13,23 @@ async function mainAppLogin(): Promise<string> {
   return `http://${hostname}:${MAIN_APP_PORT}/login`;
 }
 
+/** A guess for the first render only (Client Hints, then the user agent); the client corrects it on hydration. */
+async function looksLikePhone(): Promise<boolean> {
+  const h = await headers();
+  const hint = h.get("sec-ch-ua-mobile");
+  if (hint) return hint === "?1";
+  return /Mobi|Android|iPhone/i.test(h.get("user-agent") ?? "");
+}
+
 export default async function Page(): Promise<React.ReactElement> {
-  const [source, login] = await Promise.all([loadPostingsSource(), mainAppLogin()]);
-  return <PostingsApp postings={source.postings} now={source.now} reason={source.reason} mainAppLogin={login} />;
+  const [source, login, phone] = await Promise.all([loadPostingsSource(), mainAppLogin(), looksLikePhone()]);
+  return (
+    <PostingsApp
+      postings={source.postings}
+      now={source.now}
+      reason={source.reason}
+      mainAppLogin={login}
+      initialNarrow={phone}
+    />
+  );
 }

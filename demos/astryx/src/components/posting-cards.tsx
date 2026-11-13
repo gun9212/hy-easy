@@ -5,7 +5,7 @@ import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import type { Posting } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { competition, deadlineLabel, deadlineShort, isClosed, isNew, isSoon, roleOf } from "./format";
 import type { Props } from "./postings-table";
 import { Stipend } from "./stipend";

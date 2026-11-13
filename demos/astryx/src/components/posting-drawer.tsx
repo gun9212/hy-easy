@@ -6,11 +6,11 @@ import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Drawer, DrawerHeader } from "@astryxdesign/core/Drawer";
 import { Grid } from "@astryxdesign/core/Grid";
-import { Heading } from "@astryxdesign/core/Heading";
 import { Layout, LayoutContent, LayoutFooter, LayoutHeader } from "@astryxdesign/core/Layout";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import type { Posting } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
+import { PostingDetailSections } from "./posting-detail-sections";
 import { competition, deadlineDetail, deadlineLabel, isClosed, isSoon, roleOf } from "./format";
 
 type Props = { posting: Posting | null; now: string; onClose: () => void };
@@ -20,15 +20,6 @@ function Fact({ label, value }: { label: string; value: string }): React.ReactEl
     <VStack gap={0.5}>
       <Text type="supporting">{label}</Text>
       <Text weight="semibold">{value}</Text>
-    </VStack>
-  );
-}
-
-function Section({ title, body }: { title: string; body: string }): React.ReactElement {
-  return (
-    <VStack gap={1}>
-      <Heading level={3}>{title}</Heading>
-      <Text as="p">{body}</Text>
     </VStack>
   );
 }
@@ -60,10 +51,7 @@ function Body({ posting, now }: { posting: Posting; now: string }): React.ReactE
           <Fact label="경쟁률" value={`${competition(posting)} (모집 ${posting.headcount ?? "-"}명)`} />
         </Grid>
       </Card>
-      <Section title="실습 내용" body={posting.practiceInfo} />
-      <Section title="수행 업무" body={posting.tasks} />
-      <Section title="자격 요건" body={posting.qualifications} />
-      <Section title="혜택" body={posting.benefits} />
+      <PostingDetailSections id={posting.id} />
     </VStack>
   );
 }

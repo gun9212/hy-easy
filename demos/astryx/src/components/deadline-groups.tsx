@@ -5,7 +5,7 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import type { Posting } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { DEADLINE_GROUPS, deadlineGroup, type DeadlineGroup } from "./format";
 import { PostingResults } from "./posting-results";
 import type { Props } from "./postings-table";
@@ -53,7 +53,7 @@ export function DeadlineGroups({ postings, now, onOpen }: Props): React.ReactEle
           trigger={<GroupTitle group={group} count={items.length} />}
         >
           <VStack paddingBlockStart={2}>
-            <PostingResults postings={items} now={now} onOpen={onOpen} />
+            {!closedGroups.has(group) && <PostingResults postings={items} now={now} onOpen={onOpen} />}
           </VStack>
         </Collapsible>
       ))}

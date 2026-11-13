@@ -6,7 +6,8 @@ import { Card } from "@astryxdesign/core/Card";
 import { SideNav, SideNavItem, SideNavSection } from "@astryxdesign/core/SideNav";
 import { VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import { ROLES, type Posting, type Role } from "@lib/domain";
+import { ROLES, type Role } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { deadlineLabel } from "./format";
 
 export type View = "all" | "soon" | "new";

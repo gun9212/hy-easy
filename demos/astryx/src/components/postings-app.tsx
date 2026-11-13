@@ -14,18 +14,20 @@ import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TopNav, TopNavHeading } from "@astryxdesign/core/TopNav";
-import { ROLES, type Posting, type Role } from "@lib/domain";
+import { ROLES, type Role } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { AppSideNav, VIEW_LABELS, type View } from "./app-side-nav";
 import type { SourceReason } from "@demo/lib/postings-source";
 import { isClosed, isNew, isSoon, lastSyncLabel, roleOf, summarize } from "./format";
 import { SourceBanner } from "./source-banner";
 import { DeadlineGroups } from "./deadline-groups";
+import { LayoutProvider } from "./layout-context";
 import { PostingDrawer } from "./posting-drawer";
 import { PostingResults } from "./posting-results";
 import { SummaryStats } from "./summary-stats";
 
 type Sort = "deadline" | "stipend" | "recent";
-type Props = { postings: Posting[]; now: string; reason: SourceReason; mainAppLogin: string };
+type Props = { postings: Posting[]; now: string; reason: SourceReason; mainAppLogin: string; initialNarrow: boolean };
 
 const ALL_ROLES = "전체 직무";
 
@@ -37,7 +39,7 @@ function inView(p: Posting, view: View, now: string): boolean {
 
 function matchesQuery(p: Posting, query: string): boolean {
   const q = query.trim().toLowerCase();
-  return !q || [p.title, p.company, p.department, p.tasks].some(s => s.toLowerCase().includes(q));
+  return !q || [p.title, p.company, p.department, p.location].some(s => s.toLowerCase().includes(q));
 }
 
 /** Closed postings always sink to the bottom; the chosen order applies within open and closed. */
@@ -75,7 +77,7 @@ function TopBar(): React.ReactElement {
   );
 }
 
-export function PostingsApp({ postings, now, reason, mainAppLogin }: Props): React.ReactElement {
+export function PostingsApp({ postings, now, reason, mainAppLogin, initialNarrow }: Props): React.ReactElement {
   const [view, setView] = useState<View>("all");
   const [role, setRole] = useState<Role | null>(null);
   const [query, setQuery] = useState("");
@@ -112,59 +114,61 @@ export function PostingsApp({ postings, now, reason, mainAppLogin }: Props): Rea
   );
 
   return (
-    <AppShell topNav={<TopBar />} sideNav={sideNav} contentPadding={5}>
-      <VStack gap={4}>
-        <HStack gap={3} align="end" justify="between" wrap="wrap">
-          <VStack gap={1}>
-            <Heading level={1}>{title}</Heading>
-            <Text type="supporting">
-              한양대학교 HY-WEP 현장실습 공고 · {lastSyncLabel(postings) ?? "-"} 확인
-              {reason === "live" ? "" : " (가상 데이터)"}
-            </Text>
-          </VStack>
-          <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
-        </HStack>
-        <SourceBanner reason={reason} mainAppLogin={mainAppLogin} />
-        <SummaryStats summary={summary} />
-        <Card padding={3}>
-          <HStack gap={2} align="center" wrap="wrap">
-            <TextInput
-              type="search"
-              label="검색"
-              isLabelHidden
-              placeholder="회사, 공고명, 업무로 검색"
-              value={query}
-              onChange={setQuery}
-              hasClear
-              width={300}
-            />
-            <Selector
-              label="직무"
-              isLabelHidden
-              options={[ALL_ROLES, ...ROLES]}
-              value={role ?? ALL_ROLES}
-              onChange={v => setRole(!v || v === ALL_ROLES ? null : (v as Role))}
-              width={160}
-            />
-            <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
-              <SegmentedControlItem value="deadline" label="마감순" />
-              <SegmentedControlItem value="stipend" label="지원비순" />
-              <SegmentedControlItem value="recent" label="최신순" />
-            </SegmentedControl>
-            <Text type="supporting">
-              <b>{visible.length}</b>개 공고
-            </Text>
+    <LayoutProvider initialNarrow={initialNarrow}>
+      <AppShell topNav={<TopBar />} sideNav={sideNav} contentPadding={5}>
+        <VStack gap={4}>
+          <HStack gap={3} align="end" justify="between" wrap="wrap">
+            <VStack gap={1}>
+              <Heading level={1}>{title}</Heading>
+              <Text type="supporting">
+                한양대학교 HY-WEP 현장실습 공고 · {lastSyncLabel(postings) ?? "-"} 확인
+                {reason === "live" ? "" : " (가상 데이터)"}
+              </Text>
+            </VStack>
+            <Button variant="primary" label="HY-WEP 바로가기" href="https://hywep.hanyang.ac.kr/" target="_blank" />
           </HStack>
-        </Card>
-        {visible.length === 0 ? (
-          <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
-        ) : sort === "deadline" ? (
-          <DeadlineGroups postings={visible} now={now} onOpen={setOpen} />
-        ) : (
-          <PostingResults postings={visible} now={now} onOpen={setOpen} />
-        )}
-      </VStack>
-      <PostingDrawer posting={open} now={now} onClose={() => setOpen(null)} />
-    </AppShell>
+          <SourceBanner reason={reason} mainAppLogin={mainAppLogin} />
+          <SummaryStats summary={summary} />
+          <Card padding={3}>
+            <HStack gap={2} align="center" wrap="wrap">
+              <TextInput
+                type="search"
+                label="검색"
+                isLabelHidden
+                placeholder="회사, 공고명, 지역으로 검색"
+                value={query}
+                onChange={setQuery}
+                hasClear
+                width={300}
+              />
+              <Selector
+                label="직무"
+                isLabelHidden
+                options={[ALL_ROLES, ...ROLES]}
+                value={role ?? ALL_ROLES}
+                onChange={v => setRole(!v || v === ALL_ROLES ? null : (v as Role))}
+                width={160}
+              />
+              <SegmentedControl label="정렬" value={sort} onChange={v => setSort(v as Sort)}>
+                <SegmentedControlItem value="deadline" label="마감순" />
+                <SegmentedControlItem value="stipend" label="지원비순" />
+                <SegmentedControlItem value="recent" label="최신순" />
+              </SegmentedControl>
+              <Text type="supporting">
+                <b>{visible.length}</b>개 공고
+              </Text>
+            </HStack>
+          </Card>
+          {visible.length === 0 ? (
+            <EmptyState title="조건에 맞는 공고가 없어요" description="검색어나 직무 필터를 바꿔 보세요." />
+          ) : sort === "deadline" ? (
+            <DeadlineGroups postings={visible} now={now} onOpen={setOpen} />
+          ) : (
+            <PostingResults postings={visible} now={now} onOpen={setOpen} />
+          )}
+        </VStack>
+        <PostingDrawer posting={open} now={now} onClose={() => setOpen(null)} />
+      </AppShell>
+    </LayoutProvider>
   );
 }

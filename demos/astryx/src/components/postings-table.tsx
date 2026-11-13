@@ -6,7 +6,7 @@ import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Table, pixel, proportional } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
 import type { TableColumn } from "@astryxdesign/core/Table";
-import type { Posting } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 import { Stipend } from "./stipend";
 import { competition, deadlineLabel, deadlineShort, isClosed, isNew, isSoon, roleOf } from "./format";
 

@@ -1,4 +1,5 @@
-import type { Posting, Role } from "@lib/domain";
+import type { Role } from "@lib/domain";
+import type { ListPosting as Posting } from "@demo/lib/list-posting";
 
 const DAY_MS = 86_400_000;
 export const SOON_DAYS = 5;
