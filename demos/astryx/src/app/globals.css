@@ -101,3 +101,42 @@ tr:has(.posting-link):hover .posting-link {
 tr:has(.posting-link[data-closed]) > td {
   opacity: 0.5;
 }
+
+/* Posting text (components/posting-text.tsx): HY-WEP's free-form text as lists and key-value rows. */
+.pt-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.pt-bullet {
+  display: grid;
+  grid-template-columns: 1.6em 1fr;
+}
+.pt-bullet::before {
+  content: attr(data-marker);
+  color: var(--color-text-accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pt-heading {
+  padding-top: 6px;
+}
+.pt-labeled {
+  display: grid;
+  grid-template-columns: minmax(4.5em, max-content) 1fr;
+  gap: 12px;
+}
+.pt-labeled > :first-child {
+  white-space: nowrap;
+}
+.pt-facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 16px;
+}
+.pt-facts dd {
+  margin: 2px 0 0;
+}

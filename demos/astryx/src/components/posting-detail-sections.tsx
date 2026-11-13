@@ -5,8 +5,8 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Skeleton } from "@astryxdesign/core/Skeleton";
 import { VStack } from "@astryxdesign/core/Stack";
-import { Text } from "@astryxdesign/core/Text";
 import type { PostingDetail } from "@demo/lib/list-posting";
+import { PostingText } from "./posting-text";
 
 type State = { id: string; detail: PostingDetail | null; error: string | null };
 
@@ -57,11 +57,7 @@ export function PostingDetailSections({ id }: { id: string }): React.ReactElemen
       {SECTIONS.map(section => (
         <VStack key={section.key} gap={1}>
           <Heading level={3}>{section.title}</Heading>
-          {current.detail ? (
-            <Text as="p">{current.detail[section.key] || "원문에 내용이 없습니다."}</Text>
-          ) : (
-            <Skeleton height={40} />
-          )}
+          {current.detail ? <PostingText text={current.detail[section.key]} /> : <Skeleton height={40} />}
         </VStack>
       ))}
     </VStack>
