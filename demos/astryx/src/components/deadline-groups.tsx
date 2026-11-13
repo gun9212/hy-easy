@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { Badge } from "@astryxdesign/core/Badge";
-import { Card } from "@astryxdesign/core/Card";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import type { Posting } from "@lib/domain";
 import { DEADLINE_GROUPS, deadlineGroup, type DeadlineGroup } from "./format";
-import { PostingsTable, type Props } from "./postings-table";
+import { PostingResults } from "./posting-results";
+import type { Props } from "./postings-table";
 
 const HINTS: Record<DeadlineGroup, string> = {
   "3일 안에 마감": "오늘 서류를 마무리해야 하는 공고",
@@ -53,9 +53,7 @@ export function DeadlineGroups({ postings, now, onOpen }: Props): React.ReactEle
           trigger={<GroupTitle group={group} count={items.length} />}
         >
           <VStack paddingBlockStart={2}>
-            <Card padding={0}>
-              <PostingsTable postings={items} now={now} onOpen={onOpen} />
-            </Card>
+            <PostingResults postings={items} now={now} onOpen={onOpen} />
           </VStack>
         </Collapsible>
       ))}

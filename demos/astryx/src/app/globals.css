@@ -70,6 +70,19 @@ body {
   word-break: keep-all;
 }
 
+/* Postings: table from 768px (where AppShell shows its side nav), card list below. */
+.results-narrow {
+  display: none;
+}
+@media (width < 768px) {
+  .results-wide {
+    display: none;
+  }
+  .results-narrow {
+    display: block;
+  }
+}
+
 /* Astryx's Table has no row click, so the title button stretches over its row (the stretched-link pattern). */
 tr:has(.posting-link) {
   position: relative;

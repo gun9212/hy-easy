@@ -19,7 +19,7 @@ import { AppSideNav, VIEW_LABELS, type View } from "./app-side-nav";
 import { isClosed, isNew, isSoon, roleOf, summarize } from "./format";
 import { DeadlineGroups } from "./deadline-groups";
 import { PostingDrawer } from "./posting-drawer";
-import { PostingsTable } from "./postings-table";
+import { PostingResults } from "./posting-results";
 import { SummaryStats } from "./summary-stats";
 
 type Sort = "deadline" | "stipend" | "recent";
@@ -155,9 +155,7 @@ export function PostingsApp({ postings, now }: Props): React.ReactElement {
         ) : sort === "deadline" ? (
           <DeadlineGroups postings={visible} now={now} onOpen={setOpen} />
         ) : (
-          <Card padding={0}>
-            <PostingsTable postings={visible} now={now} onOpen={setOpen} />
-          </Card>
+          <PostingResults postings={visible} now={now} onOpen={setOpen} />
         )}
       </VStack>
       <PostingDrawer posting={open} now={now} onClose={() => setOpen(null)} />
