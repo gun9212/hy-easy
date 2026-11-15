@@ -3,6 +3,7 @@ import { Workspace } from "@/components/workspace";
 import { samplePostings, DEMO_NOW } from "@/lib/sample";
 import { demoEnabled } from "@/lib/supabase/server";
 import type { Filters } from "@/lib/domain";
+import { readThemeMode } from "@/lib/theme-cookie";
 export const dynamic = "force-dynamic";
 export default async function Demo({ searchParams }: { searchParams: Promise<Filters> }) {
   if (!demoEnabled()) notFound();
@@ -17,6 +18,7 @@ export default async function Demo({ searchParams }: { searchParams: Promise<Fil
       initialMajor={null}
       userLabel="둘러보는 한양인"
       isAdmin={false}
+      initialTheme={await readThemeMode()}
     />
   );
 }

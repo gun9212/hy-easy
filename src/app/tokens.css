@@ -49,35 +49,47 @@
   --hy-yellow-green: #7db928;
   --hy-orange: #f08100;
 
-  --color-paper: #fbfcfe;
-  --color-surface: #ffffff;
-  --color-paper-2: #f3f6fa;
-  --color-paper-3: #e8edf4;
-  --color-hover: #f6f8fc;
-  --color-ink: #14243b;
-  --color-ink-2: #3a4a61;
-  --color-muted: #5a6679;
-  --color-rule: #dde3ec;
+  /* Every colour is light-dark(light, dark): the element's color-scheme picks one, so the theme toggle
+   * (html[data-theme], see astryx-theme.css) and the device setting both reach older screens and Astryx alike.
+   * Dark keeps the Hanyang navy as the ground and lifts the blue so it still reads as text on it. */
+  --hy-blue-lifted: #8ab8ef;
+  --color-paper: light-dark(#fbfcfe, #0d1420);
+  --color-surface: light-dark(#ffffff, #141d2b);
+  --color-paper-2: light-dark(#f3f6fa, #1a2434);
+  --color-paper-3: light-dark(#e8edf4, #222e40);
+  --color-hover: light-dark(#f6f8fc, #1b2636);
+  --color-ink: light-dark(#14243b, #e6ecf5);
+  --color-ink-2: light-dark(#3a4a61, #c3cddb);
+  --color-muted: light-dark(#5a6679, #9aa6b8);
+  --color-rule: light-dark(#dde3ec, #2a3648);
   --color-edge: var(--hy-silver);
-  --color-accent: var(--hy-blue);
-  --color-accent-hover: color-mix(in oklab, var(--hy-blue) 82%, #001024);
-  --color-accent-ink: #f7f9fc;
-  --color-accent-soft: #eaf0f8;
-  --color-accent-line: #b9cbe2;
-  --color-focus: var(--hy-blue);
-  --color-warn: #8f4300;
-  --color-warn-soft: color-mix(in oklab, var(--hy-orange) 14%, #ffffff);
+  --color-accent: light-dark(var(--hy-blue), var(--hy-blue-lifted));
+  --color-accent-hover: light-dark(color-mix(in oklab, var(--hy-blue) 82%, #001024), #a9cbf4);
+  --color-accent-ink: light-dark(#f7f9fc, #0b1a2e);
+  --color-accent-soft: light-dark(#eaf0f8, #1b2c44);
+  --color-accent-line: light-dark(#b9cbe2, #33507a);
+  --color-focus: var(--color-accent);
+  --color-warn: light-dark(#8f4300, #ffb35c);
+  --color-warn-soft: light-dark(
+    color-mix(in oklab, var(--hy-orange) 14%, #ffffff),
+    color-mix(in oklab, var(--hy-orange) 18%, #141d2b)
+  );
   --color-warn-mark: var(--hy-orange);
-  --color-ok: #3c650c;
-  --color-ok-soft: color-mix(in oklab, var(--hy-yellow-green) 16%, #ffffff);
-  --color-error: #b42318;
-  --color-error-soft: #fdecea;
+  --color-ok: light-dark(#3c650c, #a3d468);
+  --color-ok-soft: light-dark(
+    color-mix(in oklab, var(--hy-yellow-green) 16%, #ffffff),
+    color-mix(in oklab, var(--hy-yellow-green) 18%, #141d2b)
+  );
+  --color-error: light-dark(#b42318, #ff8a80);
+  --color-error-soft: light-dark(#fdecea, #3a1c1e);
   --color-success: var(--color-ok);
-  --color-panel: var(--color-ink);
-  --color-panel-ink: #f3f6fa;
-  --color-panel-soft: color-mix(in oklab, #ffffff 14%, var(--color-ink));
-  --color-scrim: color-mix(in oklab, var(--color-ink) 48%, transparent);
-  --shadow-float: 0 12px 32px color-mix(in oklab, var(--color-ink) 22%, transparent);
+  /* The panel (toast, compare dock) is the inverse of the page in both modes. */
+  --color-panel: light-dark(#14243b, #e6ecf5);
+  --color-panel-ink: light-dark(#f3f6fa, #14243b);
+  --color-panel-soft: color-mix(in oklab, var(--color-panel-ink) 14%, var(--color-panel));
+  --color-scrim: light-dark(color-mix(in oklab, #14243b 48%, transparent), color-mix(in oklab, #000 60%, transparent));
+  --shadow-float: 0 12px 32px
+    light-dark(color-mix(in oklab, #14243b 22%, transparent), color-mix(in oklab, #000 50%, transparent));
 
   --font-display:
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",

@@ -24,6 +24,7 @@ import { useMajor } from "./use-major";
 import { usePostings } from "./use-postings";
 import { usePersonal, type Mode } from "./use-personal";
 import type { Major } from "@/lib/majors";
+import type { ThemeMode } from "@/lib/theme-mode";
 
 type Props = {
   mode: Mode;
@@ -36,6 +37,8 @@ type Props = {
   initialMajor: Major | null;
   userLabel: string;
   isAdmin: boolean;
+  /** The theme the student picked, from the cookie (the layout already put it on <html>). */
+  initialTheme: ThemeMode;
 };
 
 const MAX_COMPARE = 4;
@@ -107,7 +110,9 @@ export function Workspace({
   initialMajor,
   userLabel,
   isAdmin,
+  initialTheme,
 }: Props) {
+  const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const { postings, ready, lastCheckedAt, error: loadError } = usePostings(mode, initialPostings);
   const { personal, toggleFavorite, recordApplication } = usePersonal(mode, {
     favoriteIds: initialFavorites,
@@ -191,10 +196,10 @@ export function Workspace({
   const heading = HEADINGS[view];
 
   return (
-    <Theme theme={neutralTheme}>
+    <Theme theme={neutralTheme} mode={theme}>
       <LayoutProvider initialNarrow={false}>
         <AppShell
-          topNav={<AppTopNav mode={mode} userLabel={userLabel} />}
+          topNav={<AppTopNav mode={mode} userLabel={userLabel} theme={theme} onTheme={setTheme} />}
           sideNav={
             <AppSideNav
               view={view}

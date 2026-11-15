@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { readThemeMode } from "@/lib/theme-cookie";
 import "./pretendard.css";
 import "./globals.css";
 
@@ -12,8 +13,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   // Reading the request makes every page render per request, so Next.js can put this request's CSP nonce
   // (set in src/proxy.ts) on its scripts. A prerendered page would carry scripts without a nonce.
   await headers();
+  // A chosen theme goes on <html> before the first paint; without one the page follows the device.
+  const theme = await readThemeMode();
   return (
-    <html lang="ko">
+    <html lang="ko" data-theme={theme === "system" ? undefined : theme} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

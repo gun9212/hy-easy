@@ -1,7 +1,8 @@
 /*
- * HY-Easy brand on top of Astryx's neutral theme (light only, like the rest of the app).
+ * HY-Easy brand on top of Astryx's neutral theme, in light and dark.
  * A theme is only CSS custom properties, so the Hanyang palette from tokens.css is re-pointed here inside the same
- * layer and scope as the neutral theme; later rules in a layer win at equal specificity.
+ * layer and scope as the neutral theme; later rules in a layer win at equal specificity. Every colour is
+ * light-dark(light, dark), like the neutral theme's own, so the element's color-scheme picks the side.
  * --color-accent, --color-error and --color-success exist in tokens.css too: they are pinned to the app's values so
  * older components rendered inside the Astryx theme keep their colours.
  */
@@ -12,31 +13,31 @@
         "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
       --font-family-heading: var(--font-family-body);
 
-      --color-accent: #0e4a84;
-      --color-accent-muted: #eaf0f8;
-      --color-text-accent: #0e4a84;
-      --color-icon-accent: #0e4a84;
-      --color-on-accent: #f7f9fc;
+      --color-accent: light-dark(#0e4a84, #8ab8ef);
+      --color-accent-muted: light-dark(#eaf0f8, #1b2c44);
+      --color-text-accent: light-dark(#0e4a84, #8ab8ef);
+      --color-icon-accent: light-dark(#0e4a84, #8ab8ef);
+      --color-on-accent: light-dark(#f7f9fc, #0b1a2e);
 
-      --color-background-body: #fbfcfe;
-      --color-background-surface: #ffffff;
-      --color-background-card: #ffffff;
-      --color-background-muted: #f3f6fa;
+      --color-background-body: light-dark(#fbfcfe, #0d1420);
+      --color-background-surface: light-dark(#ffffff, #141d2b);
+      --color-background-card: light-dark(#ffffff, #141d2b);
+      --color-background-muted: light-dark(#f3f6fa, #1a2434);
 
-      --color-text-primary: #14243b;
-      --color-text-secondary: #4b5567;
-      --color-border: #dde3ec;
-      --color-border-emphasized: #b9cbe2;
-      --color-info: #0e4a84;
-      --color-error: #b42318;
-      --color-success: #3c650c;
+      --color-text-primary: light-dark(#14243b, #e6ecf5);
+      --color-text-secondary: light-dark(#4b5567, #a9b4c4);
+      --color-border: light-dark(#dde3ec, #2a3648);
+      --color-border-emphasized: light-dark(#b9cbe2, #33507a);
+      --color-info: light-dark(#0e4a84, #8ab8ef);
+      --color-error: light-dark(#b42318, #ff8a80);
+      --color-success: light-dark(#3c650c, #a3d468);
 
       /* Deadline warnings use Hanyang Orange instead of Astryx's yellow. */
       --color-warning: #f08100;
       --color-on-warning: #ffffff;
-      --color-warning-muted: #fdeedb;
-      --color-on-warning-muted: #8f4300;
-      --color-text-warning: #8f4300;
+      --color-warning-muted: light-dark(#fdeedb, #3a2814);
+      --color-on-warning-muted: light-dark(#8f4300, #ffc27a);
+      --color-text-warning: light-dark(#8f4300, #ffb35c);
 
       --radius-container: 12px;
       --radius-element: 10px;
@@ -57,14 +58,23 @@
 }
 
 /*
- * The app has no dark design, so everything stays light. The neutral theme turns on light-dark() at the root, and
- * Astryx sets "color-scheme: light dark" again on its own surfaces (Drawer, Dialog, popovers), so pinning only the
- * root left those surfaces dark on a dark-mode device: dark card fills under the light text colours above.
+ * A chosen theme (html[data-theme], set by the server from the cookie and by Astryx's root Theme) reaches every
+ * element. Astryx sets "color-scheme: light dark" again on its own surfaces (Drawer, Dialog, popovers), which follows
+ * the device, not the choice: on a dark device with the light theme chosen that left the drawer dark under light-theme
+ * text. Without a choice (system) nothing is pinned and everything follows the device together.
  * Unlayered, so it wins over every Astryx layer.
  */
-*,
-*::before,
-*::after,
-::backdrop {
+html[data-theme="light"],
+html[data-theme="light"] *,
+html[data-theme="light"] *::before,
+html[data-theme="light"] *::after,
+html[data-theme="light"] ::backdrop {
   color-scheme: light;
+}
+html[data-theme="dark"],
+html[data-theme="dark"] *,
+html[data-theme="dark"] *::before,
+html[data-theme="dark"] *::after,
+html[data-theme="dark"] ::backdrop {
+  color-scheme: dark;
 }

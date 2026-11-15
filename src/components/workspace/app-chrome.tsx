@@ -16,6 +16,8 @@ import { ROLES, filterPostings, isNewPosting, remainingDays, type Filters, type 
 import { isClosingSoon, nextDeadline } from "@/lib/posting-format";
 import type { View } from "./chrome";
 import { clearStoredPostings } from "./posting-store";
+import type { ThemeMode } from "@/lib/theme-mode";
+import { ThemeToggle } from "./theme-toggle";
 import type { Mode } from "./use-personal";
 
 const GUIDE_URL = "https://intern.hanyang.ac.kr/boards/205/view";
@@ -37,7 +39,9 @@ function LogoutButton(): React.ReactElement {
   );
 }
 
-export function AppTopNav({ mode, userLabel }: { mode: Mode; userLabel: string }): React.ReactElement {
+type TopNavProps = { mode: Mode; userLabel: string; theme: ThemeMode; onTheme: (theme: ThemeMode) => void };
+
+export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): React.ReactElement {
   return (
     <TopNav
       label="HY-Easy"
@@ -53,6 +57,7 @@ export function AppTopNav({ mode, userLabel }: { mode: Mode; userLabel: string }
       }
       endContent={
         <HStack gap={2} align="center">
+          <ThemeToggle mode={theme} onChange={onTheme} />
           <Avatar name={userLabel} size="sm" />
           {mode === "live" && <LogoutButton />}
         </HStack>
