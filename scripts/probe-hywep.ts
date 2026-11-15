@@ -3,9 +3,12 @@
 // Usage: npm run collector:probe
 import { chmod, readFile, stat } from "node:fs/promises";
 import { chromium } from "playwright";
+import { needsAttachment } from "../worker/attachments";
+import { fillTemplate } from "../worker/hywep-fields";
 import {
   dismissDialogs,
   parseScheduleOverride,
+  readAttachment,
   readDetail,
   readListPage,
   readScheduleUrls,
@@ -49,6 +52,25 @@ async function main(): Promise<void> {
     if (session === "logged_in") {
       await context.storageState({ path: STORAGE_STATE });
       await chmod(STORAGE_STATE, 0o600);
+    }
+    // --attachment <공고 ID>: read one posting's attached PDF (in memory) and print what the collector would store.
+    const attachmentFlag = process.argv.indexOf("--attachment");
+    if (attachmentFlag >= 0) {
+      const id = process.argv[attachmentFlag + 1] ?? "";
+      if (!/^\d+$/.test(id)) throw new Error("사용법: npm run collector:probe -- --attachment <공고 ID>");
+      const row = { id, url: fillTemplate(selectors.detailUrlTemplate, { id }), fields: {} };
+      const posting = await readDetail(page, selectors, row);
+      console.log(`상세 #${id} ${posting.company} / ${posting.department}`);
+      console.log(`  실습내용(${posting.tasks.length}자): ${preview(posting.tasks, 80)}`);
+      console.log(`  첨부가 필요한 공고: ${needsAttachment(posting) ? "예" : "아니요"}`);
+      const attachment = await readAttachment(page, selectors);
+      if (!attachment) console.log("  첨부 파일 없음");
+      else {
+        console.log(`  파일: ${attachment.fileName} · ${attachment.pages}쪽 · ${attachment.text.length}자`);
+        console.log(`  잘림: ${attachment.truncated ? "예" : "아니요"} · sha256 ${attachment.fileHash.slice(0, 12)}`);
+        console.log(`  앞부분: ${preview(attachment.text, 300)}`);
+      }
+      return;
     }
     const scheduleUrls = await readScheduleUrls(page, selectors, parseScheduleOverride(process.env.HYWEP_SCHEDULES));
     console.log(`수집 회차 ${scheduleUrls.map(url => new URL(url).searchParams.get("schedule")).join(", ")}`);

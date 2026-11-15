@@ -2,7 +2,8 @@
 // Page structure measured on 2026-11-10: docs/HYWEP-STRUCTURE.md.
 import { z } from "zod";
 import type { Locator, Page } from "playwright";
-import type { Posting } from "../src/lib/domain";
+import type { Posting, PostingAttachment } from "../src/lib/domain";
+import { MAX_ATTACHMENT_BYTES, parseFileDown, toAttachment } from "./attachments";
 import {
   columnIndex,
   extractSourceId,
@@ -49,6 +50,10 @@ export const selectorsSchema = z
     detailRows: z.string().min(1),
     label: z.string().min(1),
     value: z.string().min(1),
+    /** "모집공고 추가자료" link on the detail page; its onclick calls fileDown(jid_seq, org_name, fake_name, ext). */
+    attachmentLink: z.string().min(1),
+    /** fileDown() posts its four arguments as a form here (same session). */
+    attachmentDownloadUrl: z.string().min(1),
   })
   .strict();
 export type Selectors = z.infer<typeof selectorsSchema>;
@@ -175,4 +180,24 @@ export async function readDetail(page: Page, s: Selectors, row: ListRow): Promis
   if (redirectedAway(url, page.url())) throw new SessionExpired();
   if (!(await page.locator(s.detailReady).count())) throw new Error("DETAIL_STRUCTURE_CHANGED");
   return normalizeDetail(await readDetailFields(page, s), row);
+}
+
+/**
+ * Downloads the "모집공고 추가자료" file of the detail page that is open now (call right after readDetail) and
+ * extracts its text. Returns null when the page has no attachment. The file is kept in memory only.
+ */
+export async function readAttachment(page: Page, s: Selectors): Promise<PostingAttachment | null> {
+  const anchor = page.locator(s.attachmentLink).first();
+  if (!(await anchor.count())) return null;
+  const link = parseFileDown(await anchor.getAttribute("onclick"));
+  if (!link) throw new Error("ATTACHMENT_LINK_CHANGED");
+  const response = await page.context().request.post(sourceUrl(s.attachmentDownloadUrl), {
+    form: { jid_seq: link.jidSeq, org_name: link.orgName, fake_name: link.fakeName, ext: link.ext },
+    timeout: NAVIGATION_TIMEOUT_MS,
+    maxRedirects: 0,
+  });
+  if (!response.ok()) throw new Error(`ATTACHMENT_HTTP_${response.status()}`);
+  const declared = Number(response.headers()["content-length"] ?? 0);
+  if (declared > MAX_ATTACHMENT_BYTES) throw new Error("ATTACHMENT_TOO_LARGE");
+  return toAttachment(link, await response.body());
 }

@@ -7,11 +7,17 @@ import { Modal } from "./modal";
 
 type Props = { postings: Posting[]; close: () => void; applications: Application[]; now: Date };
 type Row = [label: string, render: (p: Posting) => ReactNode];
+/** How much of an attached file's text the side-by-side table shows; the detail has the rest. */
+const COMPARE_ATTACHMENT_CHARS = 400;
 
 export function Comparison({ postings, close, applications, now }: Props) {
   const rows: Row[] = [
     ["직군", p => p.classification?.primaryRole ?? "분류 대기"],
-    ["실습내용", p => p.tasks],
+    [
+      "실습내용",
+      p =>
+        p.attachment ? `${p.tasks}\n\n[첨부 파일] ${p.attachment.text.slice(0, COMPARE_ATTACHMENT_CHARS)}…` : p.tasks,
+    ],
     ["자격사항", p => p.qualifications],
     ["지원금", stipendLabel],
     ["실습 기간", p => p.period],

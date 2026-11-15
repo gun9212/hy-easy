@@ -1,5 +1,6 @@
 import { requireAdmin, sameOrigin, errorResponse, HttpError } from "@/lib/auth";
 import { assertEvidence, classificationSchema, type Posting } from "@/lib/domain";
+import { classificationInput } from "@/lib/normalize";
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     sameOrigin(request);
@@ -11,7 +12,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (error) throw error;
     if (!data) throw new HttpError(404, "공고를 찾을 수 없습니다.");
     try {
-      assertEvidence(data.document as Posting, input.data);
+      // Same fields the classifier saw, so evidence quoted from an attached file is accepted too.
+      assertEvidence(classificationInput(data.document as Posting), input.data);
     } catch {
       throw new HttpError(400, "분류 근거가 원문과 일치하지 않습니다.");
     }

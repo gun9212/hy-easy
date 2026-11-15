@@ -13,7 +13,14 @@ const role = z.enum(ROLES);
 export const goldenCaseSchema = z.object({
   id: z.string(),
   label: z.string(),
-  input: z.object({ practiceInfo: z.string(), qualifications: z.string(), tasks: z.string() }),
+  input: z.object({
+    practiceInfo: z.string(),
+    qualifications: z.string(),
+    tasks: z.string(),
+    // Only for postings whose tasks point to an attached file (see worker/attachments.ts).
+    attachment: z.string().optional(),
+    department: z.string().optional(),
+  }),
   expected: z.object({
     primaryRoles: z.array(role).min(1),
     needsReview: z.boolean().nullable(),

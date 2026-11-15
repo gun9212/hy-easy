@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Posting } from "./domain";
+import type { ClassificationInput, Posting } from "./domain";
 
 type Deadline = Posting["deadline"];
 type Stipend = Posting["stipend"];
@@ -139,8 +139,17 @@ export function stableHash(value: unknown): string {
     .digest("hex");
 }
 
-export function classificationInput(posting: Pick<Posting, "practiceInfo" | "qualifications" | "tasks">) {
-  return { practiceInfo: posting.practiceInfo, qualifications: posting.qualifications, tasks: posting.tasks };
+/**
+ * Classifier input. The attached-file text and the department (to pick the right part of a multi-department file)
+ * are added only when there is an attachment, so every other posting keeps its exact input and classification hash.
+ */
+export function classificationInput(
+  posting: Pick<Posting, "practiceInfo" | "qualifications" | "tasks"> &
+    Partial<Pick<Posting, "department" | "attachment">>,
+): ClassificationInput {
+  const base = { practiceInfo: posting.practiceInfo, qualifications: posting.qualifications, tasks: posting.tasks };
+  if (!posting.attachment?.text) return base;
+  return { ...base, attachment: posting.attachment.text, department: posting.department ?? "" };
 }
 
 /** Content hash for change history. Volatile fields (timestamps, live applicant count) are excluded. */
@@ -157,5 +166,11 @@ export function sourceHash(posting: Posting): string {
     ...source
   } = posting;
   void [_id, _first, _updated, _checked, _applicants, _classification, _source, _stale];
+  // The extraction time changes on every read; only the file and its text count as a change.
+  if (source.attachment) {
+    const { extractedAt: _extracted, ...attachment } = source.attachment;
+    void _extracted;
+    return stableHash({ ...source, attachment });
+  }
   return stableHash(source);
 }

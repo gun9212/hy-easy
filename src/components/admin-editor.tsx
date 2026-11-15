@@ -40,6 +40,7 @@ export function AdminEditor({ posting: p }: { posting: Posting }) {
     ["실습내용", p.tasks],
     ["자격사항", p.qualifications],
     ["실습정보", p.practiceInfo],
+    ...(p.attachment ? ([["첨부 파일에서 읽은 내용", p.attachment.text]] as [string, string][]) : []),
   ];
   return (
     <details className="admin-edit">

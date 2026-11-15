@@ -45,7 +45,10 @@ export const classificationSchema = z
     summary: z.string().min(1).max(500),
     evidence: z
       .array(
-        z.object({ field: z.enum(["practiceInfo", "qualifications", "tasks"]), quote: z.string().min(1).max(400) }),
+        z.object({
+          field: z.enum(["practiceInfo", "qualifications", "tasks", "attachment"]),
+          quote: z.string().min(1).max(400),
+        }),
       )
       .min(1)
       .max(5),
@@ -76,7 +79,27 @@ export function majorFit(posting: Posting, major: Major | null): MajorFit {
   if (m.requirement === "listed") return neighborMajors(major).some(n => m.required.includes(n)) ? "adjacent" : "other";
   return m.related.includes(major) ? "related" : "none";
 }
-export type ClassificationInput = { practiceInfo: string; qualifications: string; tasks: string };
+/**
+ * What the classifier reads. attachment/department are present only for postings whose tasks just point to an
+ * attached file (see worker/attachments.ts); other postings keep the three-field shape and their hashes.
+ */
+export type ClassificationInput = {
+  practiceInfo: string;
+  qualifications: string;
+  tasks: string;
+  attachment?: string;
+  department?: string;
+};
+/** Text pulled out of the posting's attached PDF with a plain PDF reader (no AI). The file itself is not kept. */
+export type PostingAttachment = {
+  fileName: string;
+  /** sha256 of the downloaded file. */
+  fileHash: string;
+  pages: number;
+  text: string;
+  truncated: boolean;
+  extractedAt: string;
+};
 export type Posting = {
   id: string;
   sourceId: string;
@@ -100,6 +123,8 @@ export type Posting = {
   tasks: string;
   benefits: string;
   events: { label: string; raw: string }[];
+  /** Only for postings whose tasks say "see the attached file" and whose attachment is a readable PDF. */
+  attachment?: PostingAttachment;
   firstSeenAt: string;
   updatedAt: string;
   lastCheckedAt: string;
@@ -219,7 +244,7 @@ export function assertEvidence(input: ClassificationInput, result: Classificatio
     throw new Error("직군이 중복되었습니다.");
   for (const e of result.evidence) {
     const quote = collapseWhitespace(e.quote);
-    if (quote.length < MIN_QUOTE_CHARS || !collapseWhitespace(input[e.field]).includes(quote))
+    if (quote.length < MIN_QUOTE_CHARS || !collapseWhitespace(input[e.field] ?? "").includes(quote))
       throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
   }
   return result;
@@ -263,7 +288,10 @@ export function filterPostings(
     const role = p.classification;
     return (
       (!query ||
-        [p.company, p.title, p.department, p.tasks, p.qualifications].join(" ").toLowerCase().includes(query)) &&
+        [p.company, p.title, p.department, p.tasks, p.qualifications, p.attachment?.text ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(query)) &&
       (!filters.role || role?.primaryRole === filters.role || role?.secondaryRoles.includes(filters.role as Role)) &&
       (!filters.term || p.term === filters.term) &&
       (!filters.location || regionOf(p.location) === filters.location) &&

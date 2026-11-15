@@ -17,5 +17,7 @@
   "detailReady": "h4.sec_tit:has-text('실습기관 정보')",
   "detailRows": "table.write tr",
   "label": "th",
-  "value": "td"
+  "value": "td",
+  "attachmentLink": "table.write tr:has(th:has-text('모집공고 추가자료')) a[onclick*='fileDown']",
+  "attachmentDownloadUrl": "https://hywep.hanyang.ac.kr/studentcareer/fileDown.do"
 }

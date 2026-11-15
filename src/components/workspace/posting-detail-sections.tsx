@@ -52,7 +52,12 @@ export function Facts({ posting: p }: { posting: Posting }): React.ReactElement 
   );
 }
 
-const EVIDENCE_FIELDS = { practiceInfo: "실습정보", qualifications: "자격사항", tasks: "실습내용" } as const;
+const EVIDENCE_FIELDS = {
+  practiceInfo: "실습정보",
+  qualifications: "자격사항",
+  tasks: "실습내용",
+  attachment: "첨부 파일",
+} as const;
 
 /** The AI summary and role, marked as AI-written, with the quotes it was based on (folded). */
 export function Classification({ posting: p }: { posting: Posting }): React.ReactElement | null {
@@ -161,8 +166,26 @@ export function OriginalTexts({ posting: p }: { posting: Posting }): React.React
         <VStack key={label} gap={1}>
           <Heading level={3}>{label}</Heading>
           {value ? <PostingText text={value} /> : <Text type="supporting">원문 미기재</Text>}
+          {label === "실습내용" && p.attachment && <AttachmentText attachment={p.attachment} />}
         </VStack>
       ))}
     </VStack>
+  );
+}
+
+/** Text pulled out of the attached PDF (worker/attachments.ts) for postings whose tasks only point to the file. */
+function AttachmentText({ attachment: a }: { attachment: NonNullable<Posting["attachment"]> }): React.ReactElement {
+  return (
+    <Card>
+      <VStack gap={2}>
+        <Heading level={4}>첨부 파일에서 읽은 내용</Heading>
+        <Text type="supporting">
+          {a.fileName} · {a.pages}쪽. 첨부 PDF에서 자동으로 꺼낸 글자라 표 순서가 섞이거나 그림은 빠질 수 있어요. 정확한
+          내용은 HY-WEP의 원문 파일에서 확인하세요.
+        </Text>
+        <PostingText text={a.text} />
+        {a.truncated && <Text type="supporting">내용이 길어 앞부분만 보여 줍니다.</Text>}
+      </VStack>
+    </Card>
   );
 }

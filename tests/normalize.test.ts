@@ -1,8 +1,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  classificationInput,
   combineDeadline,
   parseCount,
+  stableHash,
   parseSelectionInfo,
   parseStipend,
   sourceHash,
@@ -50,5 +52,35 @@ describe("HY-WEP 실측 형식", () => {
   it("지원인원 변동은 변경 이력 해시에 영향 없음", () => {
     const p = samplePostings[0];
     assert.equal(sourceHash(p), sourceHash({ ...p, applicants: 99 }));
+  });
+});
+
+describe("첨부 파일과 분류 입력", () => {
+  const p = samplePostings[0];
+  const attachment = {
+    fileName: "a.pdf",
+    fileHash: "h1",
+    pages: 2,
+    text: "첨부 본문",
+    truncated: false,
+    extractedAt: "2026-11-15T00:00:00Z",
+  };
+  it("첨부가 없는 공고는 세 필드 그대로라 분류 해시가 바뀌지 않음", () => {
+    const input = classificationInput(p);
+    assert.deepEqual(Object.keys(input), ["practiceInfo", "qualifications", "tasks"]);
+    assert.equal(
+      stableHash(input),
+      stableHash({ practiceInfo: p.practiceInfo, qualifications: p.qualifications, tasks: p.tasks }),
+    );
+  });
+  it("첨부가 있으면 첨부 글자와 부서명을 함께 넘김", () => {
+    const input = classificationInput({ ...p, attachment });
+    assert.equal(input.attachment, "첨부 본문");
+    assert.equal(input.department, p.department);
+  });
+  it("추출 시각만 바뀐 첨부는 변경으로 치지 않고, 파일이 바뀌면 변경", () => {
+    const base = sourceHash({ ...p, attachment });
+    assert.equal(base, sourceHash({ ...p, attachment: { ...attachment, extractedAt: "2026-11-16T00:00:00Z" } }));
+    assert.notEqual(base, sourceHash({ ...p, attachment: { ...attachment, fileHash: "h2" } }));
   });
 });

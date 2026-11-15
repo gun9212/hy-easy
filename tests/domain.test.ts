@@ -5,6 +5,7 @@ import { samplePostings, DEMO_NOW } from "../src/lib/sample";
 import { parseDeadline, parseStipend, sourceHash, stableHash, classificationInput } from "../src/lib/normalize";
 import { isSchoolClaims, isSchoolUser } from "../src/lib/auth-policy";
 const p = samplePostings[0],
+  ci = classificationInput(p),
   now = new Date(DEMO_NOW);
 const application = (status: Application["status"]): Application => ({
   id: "a",
@@ -96,17 +97,23 @@ describe("원문 정규화와 비교", () => {
     ));
   it("원문에 없는 근거를 거절", () =>
     assert.throws(() =>
-      assertEvidence(p, { ...p.classification!, evidence: [{ field: "tasks", quote: "존재하지 않는 업무" }] }),
+      assertEvidence(ci, { ...p.classification!, evidence: [{ field: "tasks", quote: "존재하지 않는 업무" }] }),
     ));
   it("원문과 띄어쓰기만 다른 근거는 인정", () => {
-    const input = { ...p, tasks: "결과 비교 /분석 및\n최종 보고서 작성" };
+    const input = { ...ci, tasks: "결과 비교 /분석 및\n최종 보고서 작성" };
     const quote = "결과 비교/분석 및 최종 보고서 작성";
     assert.ok(assertEvidence(input, { ...p.classification!, evidence: [{ field: "tasks", quote }] }));
   });
+  it("첨부 파일 글자를 근거로 인용할 수 있고, 첨부가 없으면 거절", () => {
+    const evidence = [{ field: "attachment" as const, quote: "초등 수학 기초학습 문항 분류" }];
+    const input = { ...ci, attachment: "1. 초등 수학 기초학습 문항 분류 및 데이터 정리 보조" };
+    assert.ok(assertEvidence(input, { ...p.classification!, evidence }));
+    assert.throws(() => assertEvidence(ci, { ...p.classification!, evidence }));
+  });
   it("공백뿐이거나 너무 짧은 근거는 거절", () =>
-    assert.throws(() => assertEvidence(p, { ...p.classification!, evidence: [{ field: "tasks", quote: "  ·  " }] })));
+    assert.throws(() => assertEvidence(ci, { ...p.classification!, evidence: [{ field: "tasks", quote: "  ·  " }] })));
   it("주 직군과 보조 직군 중복 거절", () =>
-    assert.throws(() => assertEvidence(p, { ...p.classification!, secondaryRoles: [p.classification!.primaryRole] })));
+    assert.throws(() => assertEvidence(ci, { ...p.classification!, secondaryRoles: [p.classification!.primaryRole] })));
 });
 describe("학교 계정 정책", () => {
   const user = {

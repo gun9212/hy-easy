@@ -5,10 +5,11 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
 import { classify, PROMPT_VERSION, type Provider } from "../src/lib/classifier";
-import type { Posting } from "../src/lib/domain";
+import type { Posting, PostingAttachment } from "../src/lib/domain";
 import {
   dismissDialogs,
   parseScheduleOverride,
+  readAttachment,
   readDetail,
   readListPage,
   readScheduleUrls,
@@ -21,6 +22,7 @@ import { loadSession, saveSession, sessionLocation } from "./session-store";
 import { listRowHash } from "./hywep-fields";
 import { planListSync } from "./list-sync";
 import { requeueStalePrompts } from "./requeue";
+import { withAttachment } from "./attachments";
 
 const MAX_LOGIN_FAILURES = 3;
 
@@ -113,7 +115,15 @@ try {
     if (state.pending.length) {
       const link = state.pending[0];
       try {
-        const posting = await readDetail(page, selectors, link);
+        // Postings whose tasks only point to an attached file also get the file's text (worker/attachments.ts).
+        const posting = await withAttachment(
+          await readDetail(page, selectors, link),
+          () => readAttachment(page, selectors),
+          async () =>
+            ((
+              await db.from("postings").select("attachment:document->attachment").eq("source_id", link.id).maybeSingle()
+            ).data?.attachment as PostingAttachment | null) ?? null,
+        );
         if (leaseLost) throw new Error("COLLECTOR_LEASE_LOST");
         const result = check(
           await db.rpc("sync_posting", {
