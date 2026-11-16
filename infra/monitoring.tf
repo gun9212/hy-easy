@@ -42,14 +42,14 @@ resource "google_monitoring_alert_policy" "collector_failing" {
   combiner              = "OR"
   notification_channels = [google_monitoring_notification_channel.operator.id]
   conditions {
-    display_name = "수집 실행이 20분 안에 3회 이상 실패"
+    display_name = "수집 실행이 30분 안에 3회 이상 실패"
     condition_threshold {
       filter          = "resource.type = \"cloud_run_job\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.collector_runs.name}\" AND metric.labels.status = one_of(\"failed\", \"session_expired\")"
       comparison      = "COMPARISON_GT"
       threshold_value = 2
       duration        = "0s"
       aggregations {
-        alignment_period     = "1200s"
+        alignment_period     = "1800s"
         per_series_aligner   = "ALIGN_SUM"
         cross_series_reducer = "REDUCE_SUM"
       }
