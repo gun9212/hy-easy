@@ -155,7 +155,8 @@ export function Workspace({
     writeUrl({});
   }
   function navigate(next: View) {
-    updateFilters({ saved: next === "saved" ? "true" : next === "planner" ? "planner" : "", when: "" });
+    // A side-nav tab starts a fresh search: the text typed on the previous tab would hide this tab's postings.
+    updateFilters({ saved: next === "saved" ? "true" : next === "planner" ? "planner" : "", when: "", q: "" });
     setMobileMenu(false);
   }
   async function favorite(id: string) {
@@ -213,11 +214,11 @@ export function Workspace({
               now={now}
               onOpen={setDetail}
               selectWhen={when => {
-                updateFilters({ when, saved: "", role: "" });
+                updateFilters({ when, saved: "", role: "", q: "" });
                 setMobileMenu(false);
               }}
               selectRole={role => {
-                updateFilters({ role: filters.role === role ? "" : role, saved: "" });
+                updateFilters({ role: filters.role === role ? "" : role, saved: "", q: "" });
                 setMobileMenu(false);
               }}
             />
