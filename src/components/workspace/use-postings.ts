@@ -6,8 +6,8 @@ import { mergeSync, type SyncResponse } from "@/lib/posting-sync";
 import { readStoredPostings, writeStoredPostings } from "./posting-store";
 import type { Mode } from "./use-personal";
 
-/** An open tab checks for changes this often while visible (the collector runs every five minutes). */
-const REFRESH_INTERVAL_MS = 5 * 60_000;
+/** An open tab checks for changes this often while visible (the collector runs every ten minutes). */
+const REFRESH_INTERVAL_MS = 10 * 60_000;
 /** Returning to the tab re-checks only if the last check is at least this old (the server caches for a minute). */
 const MIN_REFRESH_GAP_MS = 60_000;
 
@@ -51,7 +51,7 @@ async function syncPostings(onUpdate: (state: PostingsState) => void, showStored
 
 /**
  * Demo mode uses the postings it was given. Live mode loads them in the browser (see syncPostings) and keeps an
- * open tab current: every five minutes while visible, and when the student comes back to the tab.
+ * open tab current: every ten minutes while visible, and when the student comes back to the tab.
  */
 export function usePostings(mode: Mode, initial: Posting[] | null): PostingsState {
   const [state, setState] = useState<PostingsState>({

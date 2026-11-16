@@ -97,7 +97,7 @@ function useToast(): [string, (message: string) => void] {
 function sourceLine(mode: Mode, lastChecked: string | undefined): string {
   if (mode === "demo") return "한양대학교 HY-WEP 현장실습 공고 · 가상 데이터";
   const checked = lastChecked ? `${formatDate(lastChecked, true)} 확인` : "첫 수집 대기";
-  return `한양대학교 HY-WEP 현장실습 공고 · ${checked} · 평일 09–18시 5분 간격 수집`;
+  return `한양대학교 HY-WEP 현장실습 공고 · ${checked} · 평일 09–18시 10분 간격 수집`;
 }
 
 export function Workspace({

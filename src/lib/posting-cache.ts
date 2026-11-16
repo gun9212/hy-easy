@@ -1,5 +1,5 @@
 // Server-side cache of the posting list. Every school user sees the same postings and the collector changes them at
-// most every five minutes, so one read serves all requests on this server instance for a minute.
+// most every ten minutes, so one read serves all requests on this server instance for a minute.
 // Callers must check the user first (requireUser): the cache is filled with the caller's own RLS client.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loadPostings } from "./data";

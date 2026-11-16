@@ -44,7 +44,7 @@ const startUrl = sourceUrl(config.HYWEP_LIST_URL),
 const startedAt = Date.now(),
   owner = randomUUID(),
   deadline = startedAt + 210_000;
-const CLASSIFY_PER_RUN = 5;
+const CLASSIFY_PER_RUN = 10;
 const check = <T extends { error: unknown }>(result: T): T => {
   if (result.error) throw result.error;
   return result;

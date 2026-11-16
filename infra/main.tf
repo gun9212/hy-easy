@@ -84,7 +84,7 @@ locals {
   }
 
   schedules = {
-    daytime = "*/5 9-17 * * 1-5"
+    daytime = "*/10 9-17 * * 1-5"
     final   = "0 18 * * 1-5"
   }
 }
