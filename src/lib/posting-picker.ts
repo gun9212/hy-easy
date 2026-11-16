@@ -1,9 +1,10 @@
-import { deadlineLabel, type Posting } from "./domain";
+import type { Posting } from "./domain";
+import { deadlineShort } from "./posting-format";
 
 /** One line per posting, with the team and deadline so two postings of the same title can be told apart. */
 export function postingOptionLabel(p: Posting): string {
   const team = p.department && p.department !== p.title ? ` (${p.department})` : "";
-  return `${p.company} · ${p.title}${team} · 마감 ${deadlineLabel(p)}`;
+  return `${p.company} · ${p.title}${team} · 마감 ${deadlineShort(p)}`;
 }
 
 /** The postings whose company, title or team hold every word of the query (case-insensitive). */
