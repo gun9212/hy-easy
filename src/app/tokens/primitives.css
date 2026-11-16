@@ -1,0 +1,119 @@
+/*
+ * Layer 1 · Primitives. Raw values with no meaning attached; nothing outside src/app/tokens/ reads these directly
+ * except the Astryx bridge (astryx-theme.css), whose own names collide with the semantic ones.
+ *
+ * Colour comes from the Hanyang University palette (hanyang.ac.kr/colors-fonts, read 2026-11-10):
+ * Hanyang Blue #0E4A84 (PANTONE 541C) is blue-700 and leads; Silver, Yellow Green and Orange sit at 500 in their
+ * ramps and only appear beside the blue. The other steps are tints and shades of those four, plus a navy-tinted slate
+ * so greys carry a trace of the brand blue.
+ */
+:root {
+  /* Hanyang brand colours, as published */
+  --hy-blue: #0e4a84;
+  --hy-silver: #898c8e;
+  --hy-yellow-green: #7db928;
+  --hy-orange: #f08100;
+
+  /* Blue · Hanyang Blue at 700 */
+  --blue-50: #eaf0f8;
+  --blue-100: #dbe6f3;
+  --blue-200: #b9cbe2;
+  --blue-300: #8ab8ef;
+  --blue-250: #a9cbf4;
+  --blue-500: #2f6fb3;
+  --blue-600: #1a5a9c;
+  --blue-700: var(--hy-blue);
+  --blue-800: #0b3b6a;
+  --blue-850: #33507a;
+  --blue-900: #1b2c44;
+  --blue-950: #0b1a2e;
+
+  /* Slate · navy-tinted neutrals, light grounds to dark grounds */
+  --slate-0: #ffffff;
+  --slate-25: #fbfcfe;
+  --slate-50: #f6f8fc;
+  --slate-75: #f3f6fa;
+  --slate-100: #e8edf4;
+  --slate-150: #dde3ec;
+  --slate-200: #e6ecf5;
+  --slate-300: #c3cddb;
+  --slate-400: #a9b4c4;
+  --slate-500: #4b5567;
+  --slate-600: #3a4a61;
+  --slate-700: #2a3648;
+  --slate-750: #222e40;
+  --slate-800: #1b2636;
+  --slate-825: #1a2434;
+  --slate-850: #141d2b;
+  --slate-900: #14243b;
+  --slate-950: #0d1420;
+  --black: #000000;
+
+  /* Orange · Hanyang Orange at 500 */
+  --orange-50: #fdeedb;
+  --orange-200: #ffc27a;
+  --orange-300: #ffb35c;
+  --orange-500: var(--hy-orange);
+  --orange-700: #8f4300;
+  --orange-900: #3a2814;
+
+  /* Green · Hanyang Yellow Green at 500 */
+  --green-300: #a3d468;
+  --green-500: var(--hy-yellow-green);
+  --green-700: #3c650c;
+
+  /* Red · errors only; not a Hanyang colour */
+  --red-50: #fdecea;
+  --red-300: #ff8a80;
+  --red-700: #b42318;
+  --red-900: #3a1c1e;
+
+  /* Type */
+  --font-pretendard:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+    sans-serif;
+  --size-12: 0.75rem;
+  --size-13: 0.8125rem;
+  --size-14: 0.875rem;
+  --size-15: 0.9375rem;
+  --size-16: 1rem;
+  --size-17: 1.0625rem;
+  --size-18: 1.125rem;
+  --size-20: 1.25rem;
+  --size-22: 1.375rem;
+  --size-24: 1.5rem;
+  --size-28: 1.75rem;
+  --size-36: 2.25rem;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* Space · 4px base */
+  --unit-2: 2px;
+  --unit-4: 4px;
+  --unit-8: 8px;
+  --unit-12: 12px;
+  --unit-16: 16px;
+  --unit-20: 20px;
+  --unit-24: 24px;
+  --unit-40: 40px;
+  --unit-44: 44px;
+  --unit-48: 48px;
+  --unit-64: 64px;
+  --unit-96: 96px;
+  --unit-144: 144px;
+
+  /* Radius */
+  --round-6: 6px;
+  --round-10: 10px;
+  --round-12: 12px;
+  --round-full: 999px;
+
+  /* Motion */
+  --curve-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --curve-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --curve-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --time-120: 120ms;
+  --time-220: 220ms;
+  --time-420: 420ms;
+}

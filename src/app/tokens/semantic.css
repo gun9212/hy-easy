@@ -1,0 +1,130 @@
+/*
+ * Layer 2 · Semantic tokens. What a value is for, never what it looks like. App CSS reads only this layer and the
+ * component layer.
+ *
+ * Every colour is light-dark(light, dark): the element's color-scheme picks one, so the theme toggle
+ * (html[data-theme], see astryx-theme.css) and the device setting reach older screens and Astryx alike.
+ * Dark keeps a Hanyang navy ground and lifts the blue to blue-300 so it still reads as text on it.
+ */
+:root {
+  /* Grounds, from the page back to raised layers */
+  --color-paper: light-dark(var(--slate-25), var(--slate-950));
+  --color-surface: light-dark(var(--slate-0), var(--slate-850));
+  --color-paper-2: light-dark(var(--slate-75), var(--slate-825));
+  --color-paper-3: light-dark(var(--slate-100), var(--slate-750));
+  --color-hover: light-dark(var(--slate-50), var(--slate-800));
+
+  /* Text. Muted text meets 7:1 on the surface in both modes, so it can carry body copy such as disclaimers. */
+  --color-ink: light-dark(var(--slate-900), var(--slate-200));
+  --color-ink-2: light-dark(var(--slate-600), var(--slate-300));
+  --color-muted: light-dark(var(--slate-500), var(--slate-400));
+
+  /* Lines */
+  --color-rule: light-dark(var(--slate-150), var(--slate-700));
+  --color-edge: var(--hy-silver);
+
+  /* Brand action · Hanyang Blue */
+  --color-accent: light-dark(var(--blue-700), var(--blue-300));
+  --color-accent-hover: light-dark(var(--blue-800), var(--blue-250));
+  --color-accent-ink: light-dark(var(--slate-0), var(--blue-950));
+  --color-accent-soft: light-dark(var(--blue-50), var(--blue-900));
+  --color-accent-line: light-dark(var(--blue-200), var(--blue-850));
+  --color-focus: var(--color-accent);
+
+  /* Status. Deadlines warn in Hanyang Orange, "can apply" reads in Hanyang Yellow Green. */
+  --color-warn: light-dark(var(--orange-700), var(--orange-300));
+  --color-warn-soft: light-dark(var(--orange-50), var(--orange-900));
+  --color-warn-mark: var(--orange-500);
+  --color-ok: light-dark(var(--green-700), var(--green-300));
+  --color-ok-soft: light-dark(
+    color-mix(in oklab, var(--green-500) 16%, var(--slate-0)),
+    color-mix(in oklab, var(--green-500) 18%, var(--slate-850))
+  );
+  --color-error: light-dark(var(--red-700), var(--red-300));
+  --color-error-soft: light-dark(var(--red-50), var(--red-900));
+  --color-success: var(--color-ok);
+
+  /* Inverse panel (toast, compare dock): the opposite of the page in both modes */
+  --color-panel: light-dark(var(--slate-900), var(--slate-200));
+  --color-panel-ink: light-dark(var(--slate-75), var(--slate-900));
+  --color-panel-soft: color-mix(in oklab, var(--color-panel-ink) 14%, var(--color-panel));
+  --color-scrim: light-dark(
+    color-mix(in oklab, var(--slate-900) 48%, transparent),
+    color-mix(in oklab, var(--black) 60%, transparent)
+  );
+  --shadow-float: 0 12px 32px
+    light-dark(
+      color-mix(in oklab, var(--slate-900) 22%, transparent),
+      color-mix(in oklab, var(--black) 50%, transparent)
+    );
+  --shadow-card: none;
+
+  /* Type. Body copy never goes below 14px; the page title is the largest text on a screen. */
+  --font-display: var(--font-pretendard);
+  --font-body: var(--font-pretendard);
+  --font-outlier: var(--font-body);
+  --display-weight: var(--weight-bold);
+  --tracking-display: -0.01em;
+  --text-xs: var(--size-13);
+  --text-sm: var(--size-14);
+  --text-md: var(--size-16);
+  --text-lg: var(--size-18);
+  --text-xl: var(--size-22);
+  --text-2xl: var(--size-28);
+  --text-3xl: var(--size-36);
+  --text-display-s: var(--size-22);
+  --text-display: var(--size-28);
+  --text-section: var(--size-18);
+  --text-title: var(--size-16);
+  --text-lead: var(--size-17);
+  --text-page-title: var(--size-28);
+  --text-body: var(--size-15);
+  --text-caption: var(--size-14);
+
+  /* Space */
+  --space-3xs: var(--unit-2);
+  --space-2xs: var(--unit-4);
+  --space-xs: var(--unit-8);
+  --space-sm: var(--unit-12);
+  --space-md: var(--unit-16);
+  --space-lg: var(--unit-24);
+  --space-xl: var(--unit-40);
+  --space-2xl: var(--unit-64);
+  --space-3xl: var(--unit-96);
+  --space-4xl: var(--unit-144);
+
+  /* Shape */
+  --radius-card: var(--round-12);
+  --radius-control: var(--round-10);
+  --radius-chip: var(--round-6);
+  --radius-pill: var(--round-full);
+  --rule-hair: 1px;
+
+  /* Motion */
+  --ease-out: var(--curve-out);
+  --ease-in: var(--curve-in);
+  --ease-in-out: var(--curve-in-out);
+  --dur-micro: var(--time-120);
+  --dur-short: var(--time-220);
+  --dur-long: var(--time-420);
+
+  /* Layout */
+  --container: 1240px;
+  --gutter: var(--unit-40);
+  --gap-columns: var(--unit-20);
+  --section-gap-s: 120px;
+  --section-gap: var(--unit-144);
+  --section-gap-l: 176px;
+  --header: var(--unit-64);
+  --sidebar: 248px;
+
+  /* Stacking */
+  --z-base: 1;
+  --z-raised: 10;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-sticky-nav: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}

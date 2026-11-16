@@ -19,9 +19,11 @@ function Stat(props: { label: string; value: number; note: string; variant: Vari
           <Text type="supporting">{props.label}</Text>
         </HStack>
         <HStack gap={1} align="end">
-          <Text type="display-3" weight="bold" hasTabularNumbers>
-            {props.value}
-          </Text>
+          <span className="stat-value">
+            <Text type="display-3" weight="bold" hasTabularNumbers>
+              {props.value}
+            </Text>
+          </span>
           <Text type="supporting">건</Text>
         </HStack>
         <Text type="supporting" maxLines={1}>

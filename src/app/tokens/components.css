@@ -1,0 +1,14 @@
+/*
+ * Layer 3 · Component tokens. One name per decision a component makes, pointing at the semantic layer, so a
+ * component can change without touching what the page means by "accent" or "muted".
+ */
+:root {
+  /* Focus · every keyboard-reachable control, Astryx's included (base.css, focus-ring.css) */
+  --focus-ring-width: 2px;
+  --focus-ring-color: var(--color-focus);
+  --focus-ring-offset: 2px;
+
+  /* Summary stat · a figure is data, so it stays below the page title (--text-page-title) */
+  --stat-value-size: var(--size-24);
+  --stat-value-weight: var(--weight-bold);
+}

@@ -1,0 +1,31 @@
+/*
+ * The only rules that reach into Astryx's own classes, each reading a component token (tokens/components.css).
+ * Unlayered, so they win over the layered Astryx rules without !important.
+ */
+
+/* Focus · Astryx's own focus state is a faint border shift that disappears on the dark theme, and the native
+ * checkbox it wraps is invisible, so the ring goes on what the eye actually sees. */
+.astryx-text-input:has(input:focus-visible),
+.astryx-selector:has(> button:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+.astryx-checkbox-input:has(input:focus-visible) .astryx-checkbox-indicator {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+.astryx-segmented-control-item:focus-visible,
+.astryx-button:focus-visible,
+.astryx-top-nav-heading:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* Type hierarchy · the page title is the largest text on the screen; a summary figure sits below it. */
+#astryx-app-shell-main h1.astryx-heading {
+  font-size: var(--text-page-title);
+}
+.stat-value > * {
+  font-size: var(--stat-value-size);
+  font-weight: var(--stat-value-weight);
+}

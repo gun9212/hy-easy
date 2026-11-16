@@ -1,4 +1,5 @@
-/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
+/* Design tokens live in src/app/tokens/ (primitives → semantic → components); see docs/DESIGN-SYSTEM.md.
+ * Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
  * paper: #fbfcfe (tinted white) · accent: Hanyang Blue #0e4a84 · display: Pretendard · body: Pretendard
  * nav: kept (top bar with the Hanyang symbol, sidebar of views and roles) · signature: the postings ledger, deadline first · states: loading by the server, empty, error, full
  * axes: light/grotesk-sans/chromatic-blue · posture: app · contrast: pass · brand: Hanyang University (spec 2026-11-10) · v2.0.0 */
@@ -11,14 +12,16 @@
  * look), then Astryx components and theme. The app's class rules below stay unlayered: they never target Astryx's
  * own classes, so they cannot bend its components, and they still win over everything layered. */
 @layer reset, app-base, astryx-base, astryx-theme;
-@import url("./tokens.css");
+@import url("./tokens/primitives.css");
+@import url("./tokens/semantic.css");
+@import url("./tokens/components.css");
 @import url("./base.css") layer(app-base);
 @import url("./app-base.css") layer(app-base);
 @import "@astryxdesign/core/reset.css";
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";
 @import url("./astryx-theme.css");
-@import url("./focus-ring.css");
+@import url("./astryx-overrides.css");
 
 .muted {
   color: var(--color-muted);
