@@ -18,6 +18,7 @@
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";
 @import url("./astryx-theme.css");
+@import url("./focus-ring.css");
 
 .muted {
   color: var(--color-muted);
@@ -1489,6 +1490,12 @@
   background: var(--color-surface);
   color: var(--color-ink);
   font-size: var(--text-md);
+  font-weight: 400;
+}
+.posting-picker select {
+  text-overflow: ellipsis;
+}
+.posting-picker small {
   font-weight: 400;
 }
 .form-field select:disabled,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { PostingPicker } from "./posting-picker";
 import { ArrowRight, CalendarClock, Check, Clock3, Info } from "lucide-react";
 import {
   APPLICATION_STATUSES,
@@ -69,25 +70,18 @@ function StatusPanel({ postings, applications, record }: Omit<Props, "now">) {
         </div>
       )}
       <form onSubmit={submit}>
-        <label className="form-field">
-          지원한 공고
-          <select
-            required
-            value={postingId}
-            onChange={e => {
-              setPostingId(e.target.value);
-              setStatus(applications.find(a => a.postingId === e.target.value)?.status ?? "in_progress");
-              setConfirmed(false);
-            }}
-          >
-            <option value="">공고를 선택하세요</option>
-            {postings.map(p => (
-              <option key={p.id} value={p.id}>
-                {p.company} · {p.title}
-              </option>
-            ))}
-          </select>
-        </label>
+        <PostingPicker
+          label="지원한 공고"
+          placeholder="공고를 선택하세요"
+          required
+          postings={postings}
+          value={postingId}
+          onChange={id => {
+            setPostingId(id);
+            setStatus(applications.find(a => a.postingId === id)?.status ?? "in_progress");
+            setConfirmed(false);
+          }}
+        />
         <label className="form-field">
           확인한 지원 상태
           <select
@@ -128,6 +122,7 @@ function ScenarioPanel({ postings, applications, now }: Omit<Props, "record">) {
   const active = applications.find(a => isBlocking(a.status));
   const [candidateId, setCandidateId] = useState("");
   const [releaseAt, setReleaseAt] = useState("");
+  const candidates = useMemo(() => postings.filter(p => p.id !== active?.postingId), [postings, active?.postingId]);
   const candidate = companyOf(postings, candidateId);
   const result = candidate && releaseAt ? simulate(candidate, `${releaseAt}:00+09:00`, now) : null;
   return (
@@ -140,19 +135,13 @@ function ScenarioPanel({ postings, applications, now }: Omit<Props, "record">) {
         <ArrowRight size={15} />
         <span>다음 기업</span>
       </div>
-      <label className="form-field">
-        다음에 지원하고 싶은 공고
-        <select value={candidateId} onChange={e => setCandidateId(e.target.value)}>
-          <option value="">후보 공고를 선택하세요</option>
-          {postings
-            .filter(p => p.id !== active?.postingId)
-            .map(p => (
-              <option key={p.id} value={p.id}>
-                {p.company} · {p.title}
-              </option>
-            ))}
-        </select>
-      </label>
+      <PostingPicker
+        label="다음에 지원하고 싶은 공고"
+        placeholder="후보 공고를 선택하세요"
+        postings={candidates}
+        value={candidateId}
+        onChange={setCandidateId}
+      />
       <label className="form-field">
         예상 탈락 처리 완료 시각 · 한국 시간
         <input type="datetime-local" value={releaseAt} onChange={e => setReleaseAt(e.target.value)} />

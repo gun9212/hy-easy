@@ -89,13 +89,13 @@ export function PostingDetail(props: Props) {
             <HStack gap={2} justify="end">
               <Button
                 variant="secondary"
-                label={saved ? "관심 저장됨" : "관심 공고에 담기"}
+                label={saved ? "저장됨" : "관심 저장"}
                 icon={<Bookmark size={16} fill={saved ? "currentColor" : "none"} />}
                 onClick={onFavorite}
               />
               <Button
                 variant="primary"
-                label={closed ? "마감된 공고" : "HY-WEP에서 지원"}
+                label={closed ? "마감됨" : "HY-WEP 지원"}
                 isDisabled={closed}
                 href={p.sourceUrl}
                 target="_blank"
