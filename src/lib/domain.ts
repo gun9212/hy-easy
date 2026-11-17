@@ -201,10 +201,26 @@ export function simulate(posting: Posting, releaseAt: string, now = new Date()):
   return result;
 }
 
-/** NEW badge: first seen by the collector on the same KST calendar day as `now`. */
+/** How many weekdays (KST) a posting stays "new": today and the two before it, so a Monday still shows Thu–Fri. */
+export const NEW_BUSINESS_DAYS = 3;
+const DAY_MS = 86_400_000;
+
+/** The first KST date of the "new" window: the earliest of the last NEW_BUSINESS_DAYS weekdays up to `now`. */
+export function newWindowStart(now = new Date()): string {
+  let day = new Date(`${kstDate(now)}T00:00:00Z`);
+  let weekdays = 0;
+  for (;;) {
+    const weekday = day.getUTCDay();
+    if (weekday !== 0 && weekday !== 6) weekdays++;
+    if (weekdays === NEW_BUSINESS_DAYS) return day.toISOString().slice(0, 10);
+    day = new Date(day.getTime() - DAY_MS);
+  }
+}
+
+/** 신규 badge and the "새로 올라온 공고" view: first seen by the collector within the last three KST business days. */
 export function isNewPosting(posting: Posting, now = new Date()) {
   const firstSeen = new Date(posting.firstSeenAt);
-  return Number.isFinite(firstSeen.getTime()) && kstDate(firstSeen) === kstDate(now);
+  return Number.isFinite(firstSeen.getTime()) && kstDate(firstSeen) >= newWindowStart(now);
 }
 export function kstDate(date: Date) {
   return new Date(date.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
@@ -268,7 +284,7 @@ export type Filters = {
   sort?: string;
   closed?: string;
   saved?: string;
-  /** Side-nav shortcuts: "soon" (open, closing within three days) or "new" (first seen today). */
+  /** Side-nav shortcuts: "soon" (open, closing within three days) or "new" (first seen in the last three KST business days). */
   when?: string;
   mine?: string;
   /** "true": keep postings restricted to other majors when a major is chosen (hidden by default). */

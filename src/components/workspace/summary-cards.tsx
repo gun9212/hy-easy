@@ -47,7 +47,7 @@ export function SummaryCards({ stats, newCount, next }: Props): React.ReactEleme
         note={next ? `가장 빠른 마감 · ${next.company}` : "3일 안에 마감되는 공고"}
         variant="warning"
       />
-      <Stat label="새로 올라옴" value={newCount} note="오늘 새로 수집된 공고" variant="success" />
+      <Stat label="새로 올라옴" value={newCount} note="최근 3영업일 동안 올라온 공고" variant="success" />
     </Grid>
   );
 }

@@ -40,13 +40,29 @@ describe("실제 데이터 기반 필터 선택지", () => {
   });
 });
 
-describe("NEW 배지 (한국 시간 기준)", () => {
+describe("신규 공고: 최근 3영업일 (한국 시간 기준)", () => {
   const p = samplePostings[0];
-  it("KST 같은 날이면 NEW: UTC로는 전날이어도", () => {
-    const kstMorning = new Date("2026-11-10T00:30:00Z"); // 09:30 KST
-    assert.equal(isNewPosting({ ...p, firstSeenAt: "2026-11-09T15:10:00Z" }, kstMorning), true); // 00:10 KST same day
+  const seen = (firstSeenAt: string, now: Date) => isNewPosting({ ...p, firstSeenAt }, now);
+  const monday = new Date("2026-11-16T00:30:00Z"); // 월 09:30 KST → 월·금·목
+
+  it("월요일에는 지난 목·금 공고도 신규", () => {
+    assert.equal(seen("2026-11-12T01:00:00Z", monday), true); // 목 10:00
+    assert.equal(seen("2026-11-13T08:50:00Z", monday), true); // 금 17:50
+    assert.equal(seen("2026-11-16T00:10:00Z", monday), true); // 월 09:10
   });
-  it("KST 전날이면 NEW 아님", () => {
-    assert.equal(isNewPosting({ ...p, firstSeenAt: "2026-11-09T14:50:00Z" }, new Date("2026-11-10T00:30:00Z")), false);
+  it("3영업일 전(수요일)은 신규 아님", () => {
+    assert.equal(seen("2026-11-11T08:00:00Z", monday), false); // 수 17:00
+  });
+  it("주말에 처음 발견된 공고는 신규", () => {
+    assert.equal(seen("2026-11-14T03:00:00Z", monday), true); // 토 12:00
+  });
+  it("경계는 KST 자정: UTC로는 전날이어도", () => {
+    assert.equal(seen("2026-11-11T15:10:00Z", monday), true); // 목 00:10 KST
+    assert.equal(seen("2026-11-11T14:50:00Z", monday), false); // 수 23:50 KST
+  });
+  it("주말에 보면 지난 3영업일(수·목·금)", () => {
+    const sunday = new Date("2026-11-15T03:00:00Z"); // 일 12:00 KST
+    assert.equal(seen("2026-11-11T01:00:00Z", sunday), true); // 수
+    assert.equal(seen("2026-11-10T08:00:00Z", sunday), false); // 화
   });
 });
