@@ -85,7 +85,7 @@ type SidebarProps = {
 export function Sidebar(props: SidebarProps) {
   const { open, view, filters, postings, navigate } = props;
   // Same rule as the list: primary or secondary role, closed postings only when the list shows them.
-  const roleCount = (role: string) => filterPostings(postings, { role, closed: filters.closed }).length;
+  const roleCount = (role: string) => filterPostings(postings, { role }).length;
   return (
     <aside className={`sidebar ${open ? "is-open" : ""}`}>
       <div className="sidebar-section-label">메뉴</div>

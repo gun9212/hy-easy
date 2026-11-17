@@ -84,14 +84,14 @@ describe("원문 정규화와 비교", () => {
     assert.notEqual(stableHash(classificationInput(p)), stableHash(classificationInput({ ...p, tasks: "다른 업무" }))));
   it("키 순서가 달라도 안정적인 해시", () => assert.equal(stableHash({ a: 1, b: 2 }), stableHash({ b: 2, a: 1 })));
   it("지원금순에서 미기재를 뒤로 정렬", () =>
-    assert.equal(filterPostings(samplePostings, { sort: "stipend" }, [], now).at(-1)?.stipend.amount, null));
+    assert.equal(filterPostings(samplePostings, { sort: "stipend" }, []).at(-1)?.stipend.amount, null));
   it("기업별 여러 부서를 검색하고 관심 필터 적용", () => {
-    assert.equal(filterPostings(samplePostings, { q: "온도랩" }, [], now).length, 2);
-    assert.equal(filterPostings(samplePostings, { saved: "true" }, [p.id], now).length, 1);
+    assert.equal(filterPostings(samplePostings, { q: "온도랩" }, []).length, 2);
+    assert.equal(filterPostings(samplePostings, { saved: "true" }, [p.id]).length, 1);
   });
   it("월 지원금 필터는 시간당·미기재 제외", () =>
     assert.ok(
-      filterPostings(samplePostings, { stipend: "2400000" }, [], now).every(
+      filterPostings(samplePostings, { stipend: "2400000" }, []).every(
         p => p.stipend.unit === "month" && p.stipend.amount! >= 2400000,
       ),
     ));
@@ -160,10 +160,9 @@ describe("majorFit", () => {
     const p = withMajors({ requirement: "listed", required: ["컴퓨터소프트웨어학부"], preferred: [], related: [] });
     assert.equal(majorFit(p, "정보공학전공"), "adjacent");
     assert.equal(majorFit(p, "국어국문학과"), "other");
-    const now = new Date("2026-11-10T13:00:00+09:00");
     const open = { ...p, recruitment: "open" as const, deadline: { ...p.deadline, at: null, date: null } };
-    assert.equal(filterPostings([open], { mine: "true" }, [], now, "정보공학전공").length, 1);
-    assert.equal(filterPostings([open], {}, [], now, "국어국문학과").length, 0);
+    assert.equal(filterPostings([open], { mine: "true" }, [], "정보공학전공").length, 1);
+    assert.equal(filterPostings([open], {}, [], "국어국문학과").length, 0);
   });
   it("전공무관 공고는 우대, 관련 업무 순으로 알려줌", () => {
     const p = withMajors({ requirement: "any", required: [], preferred: ["경영학부"], related: ["산업공학과"] });
@@ -172,7 +171,6 @@ describe("majorFit", () => {
     assert.equal(majorFit(p, "철학과"), "none");
   });
   it("전공을 고르면 다른 전공만 뽑는 공고를 숨기고, 옵션으로 다시 보여줌", () => {
-    const now = new Date("2026-11-10T13:00:00+09:00");
     const open = { ...base, recruitment: "open" as const, deadline: { ...base.deadline, at: null, date: null } };
     const listed = {
       ...open,
@@ -191,7 +189,7 @@ describe("majorFit", () => {
       },
     };
     const ids = (filters = {}, major: "철학과" | "경영학부" | null = "철학과") =>
-      filterPostings([listed, any], filters, [], now, major).map(p => p.id);
+      filterPostings([listed, any], filters, [], major).map(p => p.id);
     assert.deepEqual(ids(), ["any"]);
     assert.deepEqual(ids({}, "경영학부").sort(), ["any", "listed"]);
     assert.deepEqual(ids({ others: "true" }).sort(), ["any", "listed"]);

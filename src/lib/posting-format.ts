@@ -22,6 +22,7 @@ export function nextDeadline(postings: readonly Posting[], now: Date): Posting |
 
 /** The side-nav shortcuts applied on top of the list filters. */
 export function matchesWhen(posting: Posting, when: string | undefined, now: Date): boolean {
+  if (when === "open") return eligibility(posting, [], now).status !== "closed";
   if (when === "soon") return isClosingSoon(posting, now);
   if (when === "new") return isNewPosting(posting, now);
   return true;

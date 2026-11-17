@@ -282,9 +282,8 @@ export type Filters = {
   duration?: string;
   stipend?: string;
   sort?: string;
-  closed?: string;
   saved?: string;
-  /** Side-nav shortcuts: "soon" (open, closing within three days) or "new" (first seen in the last three KST business days). */
+  /** Side-nav shortcuts: "open" (not closed), "soon" (open, closing within three days) or "new" (first seen in the last three KST business days). */
   when?: string;
   mine?: string;
   /** "true": keep postings restricted to other majors when a major is chosen (hidden by default). */
@@ -296,7 +295,6 @@ export function filterPostings(
   postings: Posting[],
   filters: Filters,
   favoriteIds: string[] = [],
-  now = new Date(),
   major: Major | null = null,
 ) {
   const query = (filters.q ?? "").toLocaleLowerCase().trim();
@@ -314,7 +312,6 @@ export function filterPostings(
       (!filters.duration || String(periodMonths(p.period)) === filters.duration) &&
       (!filters.stipend ||
         (p.stipend.unit === "month" && p.stipend.amount !== null && p.stipend.amount >= Number(filters.stipend))) &&
-      (filters.closed === "true" || eligibility(p, [], now).status !== "closed") &&
       (filters.saved !== "true" || favoriteIds.includes(p.id)) &&
       (!major || filters.others === "true" || majorFit(p, major) !== "other") &&
       (filters.mine !== "true" || !major || MINE_FITS.includes(majorFit(p, major)))

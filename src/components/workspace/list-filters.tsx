@@ -1,6 +1,6 @@
 "use client";
 
-// Search, filter selects, the major and closed checkboxes and the sort control above the postings.
+// Search, filter selects, the major checkboxes and the sort control above the postings.
 import { useMemo, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
@@ -56,26 +56,18 @@ function Filter(props: { label: string; value: string; options: readonly Option[
 }
 
 function Checks({ filters, updateFilters, majorCounts }: Pick<Props, "filters" | "updateFilters" | "majorCounts">) {
+  if (!majorCounts) return null;
   return (
     <HStack gap={3} align="center" wrap="wrap">
-      {majorCounts && (
-        <>
-          <CheckboxInput
-            label={`내 전공 관련만 (${majorCounts.related})`}
-            value={filters.mine === "true"}
-            onChange={checked => updateFilters({ mine: checked ? "true" : "" })}
-          />
-          <CheckboxInput
-            label="다른 전공 대상도 보기"
-            value={filters.others === "true"}
-            onChange={checked => updateFilters({ others: checked ? "true" : "" })}
-          />
-        </>
-      )}
       <CheckboxInput
-        label="마감 포함"
-        value={filters.closed === "true"}
-        onChange={checked => updateFilters({ closed: String(checked) })}
+        label={`내 전공 관련만 (${majorCounts.related})`}
+        value={filters.mine === "true"}
+        onChange={checked => updateFilters({ mine: checked ? "true" : "" })}
+      />
+      <CheckboxInput
+        label="다른 전공 대상도 보기"
+        value={filters.others === "true"}
+        onChange={checked => updateFilters({ others: checked ? "true" : "" })}
       />
     </HStack>
   );
@@ -85,7 +77,6 @@ function Checks({ filters, updateFilters, majorCounts }: Pick<Props, "filters" |
 function extraCount(filters: Filters): number {
   return (
     [filters.term, filters.location, filters.duration, filters.stipend].filter(Boolean).length +
-    (filters.closed === "true" ? 1 : 0) +
     (filters.mine === "true" ? 1 : 0) +
     (filters.others === "true" ? 1 : 0)
   );

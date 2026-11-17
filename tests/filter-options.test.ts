@@ -1,7 +1,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { durationOptions, periodMonths, regionOf, regionOptions, stipendOptions } from "../src/lib/filter-options";
-import { filterPostings, isNewPosting } from "../src/lib/domain";
+import { eligibility, filterPostings, isNewPosting } from "../src/lib/domain";
+import { matchesWhen } from "../src/lib/posting-format";
 import { samplePostings, DEMO_NOW } from "../src/lib/sample";
 
 const now = new Date(DEMO_NOW);
@@ -33,9 +34,9 @@ describe("실제 데이터 기반 필터 선택지", () => {
     assert.ok(stipendOptions(samplePostings).every(([, label]) => /\(\d+\)$/.test(label)));
   });
   it("지역·기간 필터가 환산 값으로 동작", () => {
-    const seoul = filterPostings(samplePostings, { location: "서울", closed: "true" }, [], now);
+    const seoul = filterPostings(samplePostings, { location: "서울" }, []);
     assert.ok(seoul.length > 0 && seoul.every(p => regionOf(p.location) === "서울"));
-    const four = filterPostings(samplePostings, { duration: "4", closed: "true" }, [], now);
+    const four = filterPostings(samplePostings, { duration: "4" }, []);
     assert.ok(four.length > 0 && four.every(p => periodMonths(p.period) === 4));
   });
 });
@@ -64,5 +65,18 @@ describe("신규 공고: 최근 3영업일 (한국 시간 기준)", () => {
     const sunday = new Date("2026-11-15T03:00:00Z"); // 일 12:00 KST
     assert.equal(seen("2026-11-11T01:00:00Z", sunday), true); // 수
     assert.equal(seen("2026-11-10T08:00:00Z", sunday), false); // 화
+  });
+});
+
+describe("전체 공고는 마감 포함, 모집 중은 따로", () => {
+  it("필터 없이도 마감 공고가 목록에 남음", () => {
+    const closed = samplePostings.filter(p => eligibility(p, [], now).status === "closed");
+    assert.ok(closed.length > 0);
+    assert.equal(filterPostings(samplePostings, {}, []).length, samplePostings.length);
+  });
+  it("모집 중(when=open)은 마감 공고 제외", () => {
+    const open = samplePostings.filter(p => matchesWhen(p, "open", now));
+    assert.ok(open.length < samplePostings.length);
+    assert.ok(open.every(p => eligibility(p, [], now).status !== "closed"));
   });
 });

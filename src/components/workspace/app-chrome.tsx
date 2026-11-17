@@ -66,7 +66,7 @@ export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): Rea
   );
 }
 
-export type When = "" | "soon" | "new";
+export type When = "" | "open" | "soon" | "new";
 
 type SideNavProps = {
   view: View;
@@ -107,8 +107,8 @@ function NextDeadline({ next, now, onOpen }: { next: Posting | null; now: Date; 
 
 export function AppSideNav(props: SideNavProps): React.ReactElement {
   const { view, filters, postings, now, navigate } = props;
-  // Same rule as the list: primary or secondary role, closed postings only when the list shows them.
-  const roleCount = (role: string) => filterPostings(postings, { role, closed: filters.closed }).length;
+  // Same rule as the list: primary or secondary role, closed postings included.
+  const roleCount = (role: string) => filterPostings(postings, { role }).length;
   const listView = view === "postings";
   const when = (filters.when ?? "") as When;
   return (
@@ -132,6 +132,12 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
           label="전체 공고"
           isSelected={listView && !when && !filters.role}
           onClick={() => props.selectWhen("")}
+          endContent={<Count value={postings.length} />}
+        />
+        <SideNavItem
+          label="모집 중"
+          isSelected={listView && when === "open"}
+          onClick={() => props.selectWhen("open")}
           endContent={<Count value={props.openCount} />}
         />
         <SideNavItem

@@ -137,15 +137,6 @@ export function ListMeta({
             <span className="vertical-line" />
           </>
         )}
-        <label className="check-label">
-          <input
-            type="checkbox"
-            checked={filters.closed === "true"}
-            onChange={e => updateFilters({ closed: String(e.target.checked) })}
-          />
-          마감 포함
-        </label>
-        <span className="vertical-line" />
         <label className="sort-label">
           <SlidersHorizontal size={13} />
           <select

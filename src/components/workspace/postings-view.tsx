@@ -34,7 +34,7 @@ type Props = {
 };
 
 const DEFAULT_SORT = "deadline";
-const WHEN_TITLES: Record<string, string> = { soon: "마감 임박", new: "새로 올라온 공고" };
+const WHEN_TITLES: Record<string, string> = { open: "모집 중인 공고", soon: "마감 임박", new: "새로 올라온 공고" };
 
 /** The page title for the list: 관심 공고, a side-nav shortcut, the chosen role, or 전체 공고 (as in the demo). */
 export function listTitle(filters: Filters): string {
@@ -46,15 +46,14 @@ export function PostingsView(props: Props): React.ReactElement {
   const { postings, favoriteIds, now } = props;
   // Deadline order is the default, as in the demo: the list opens on the deadline groups.
   const filters: Filters = { ...props.filters, sort: props.filters.sort || DEFAULT_SORT };
-  const filtered = filterPostings(postings, filters, favoriteIds, now, props.major).filter(p =>
+  const filtered = filterPostings(postings, filters, favoriteIds, props.major).filter(p =>
     matchesWhen(p, filters.when, now),
   );
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major
     ? {
-        all: filterPostings(postings, { ...filters, mine: "", others: "true" }, favoriteIds, now, props.major).length,
-        related: filterPostings(postings, { ...filters, mine: "true", others: "" }, favoriteIds, now, props.major)
-          .length,
+        all: filterPostings(postings, { ...filters, mine: "", others: "true" }, favoriteIds, props.major).length,
+        related: filterPostings(postings, { ...filters, mine: "true", others: "" }, favoriteIds, props.major).length,
       }
     : null;
   const rowProps: RowProps = {
