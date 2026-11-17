@@ -6,7 +6,6 @@ import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Divider } from "@astryxdesign/core/Divider";
-import { Drawer, DrawerHeader } from "@astryxdesign/core/Drawer";
 import { Layout, LayoutContent, LayoutFooter, LayoutHeader } from "@astryxdesign/core/Layout";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
@@ -14,6 +13,7 @@ import { eligibility, formatDate, type Application, type Decision, type Posting 
 import type { Major } from "@/lib/majors";
 import { Classification, Events, Facts, Majors, OriginalTexts } from "./posting-detail-sections";
 import { DeadlineBadge } from "./posting-row-parts";
+import { DetailFrame } from "./detail-frame";
 
 type Props = {
   posting: Posting;
@@ -68,63 +68,66 @@ function MoreDetails({ posting: p, decision, props }: { posting: Posting; decisi
   );
 }
 
-/** The posting in a side drawer, laid out as in the demo: badges, AI summary, facts, then HY-WEP's own texts. */
+/** The posting in a centered dialog (a drawer on a phone), laid out as in the demo: badges, AI summary, facts, then HY-WEP's own texts. */
 export function PostingDetail(props: Props) {
   const { posting: p, saved, onFavorite, close } = props;
   const decision = eligibility(p, props.applications, props.now);
   const closed = decision.status === "closed";
-  const onOpenChange = (open: boolean): void => {
-    if (!open) close();
-  };
   return (
-    <Drawer isOpen onOpenChange={onOpenChange} label={`${p.company} 공고 상세`} width={520} padding={0}>
-      <Layout
-        header={
-          <LayoutHeader hasDivider padding={4}>
-            <DrawerHeader title={p.title} subtitle={`${p.company} · ${p.department}`} onOpenChange={onOpenChange} />
-          </LayoutHeader>
-        }
-        footer={
-          <LayoutFooter hasDivider padding={4}>
-            <HStack gap={2} justify="end">
-              <Button
-                variant="secondary"
-                label={saved ? "저장됨" : "관심 저장"}
-                icon={<Bookmark size={16} fill={saved ? "currentColor" : "none"} />}
-                onClick={onFavorite}
-              />
-              <Button
-                variant="primary"
-                label={closed ? "마감됨" : "HY-WEP 지원"}
-                isDisabled={closed}
-                href={p.sourceUrl}
-                target="_blank"
-                rel="noreferrer"
-              />
-            </HStack>
-          </LayoutFooter>
-        }
-      >
-        <LayoutContent padding={5}>
-          <VStack gap={4}>
-            <BadgeRow posting={p} decision={decision} props={props} />
-            {(p.classification?.needsReview || p.classificationStale) && (
-              <Banner
-                status="warning"
-                title="직무 분류 확인 필요"
-                description="원문과 분류가 다를 수 있어 관리자가 검토 중입니다."
-                collapsible={false}
-              />
-            )}
-            <Classification posting={p} />
-            <Facts posting={p} />
-            <MoreDetails posting={p} decision={decision} props={props} />
-            <Divider />
-            <OriginalTexts posting={p} />
-            <Events posting={p} />
-          </VStack>
-        </LayoutContent>
-      </Layout>
-    </Drawer>
+    <DetailFrame
+      label={`${p.company} 공고 상세`}
+      title={p.title}
+      subtitle={`${p.company} · ${p.department}`}
+      close={close}
+      render={header => (
+        <Layout
+          header={
+            <LayoutHeader hasDivider padding={4}>
+              {header}
+            </LayoutHeader>
+          }
+          footer={
+            <LayoutFooter hasDivider padding={4}>
+              <HStack gap={2} justify="end">
+                <Button
+                  variant="secondary"
+                  label={saved ? "저장됨" : "관심 저장"}
+                  icon={<Bookmark size={16} fill={saved ? "currentColor" : "none"} />}
+                  onClick={onFavorite}
+                />
+                <Button
+                  variant="primary"
+                  label={closed ? "마감됨" : "HY-WEP 지원"}
+                  isDisabled={closed}
+                  href={p.sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              </HStack>
+            </LayoutFooter>
+          }
+        >
+          <LayoutContent padding={5}>
+            <VStack gap={4}>
+              <BadgeRow posting={p} decision={decision} props={props} />
+              {(p.classification?.needsReview || p.classificationStale) && (
+                <Banner
+                  status="warning"
+                  title="직무 분류 확인 필요"
+                  description="원문과 분류가 다를 수 있어 관리자가 검토 중입니다."
+                  collapsible={false}
+                />
+              )}
+              <Classification posting={p} />
+              <Facts posting={p} />
+              <MoreDetails posting={p} decision={decision} props={props} />
+              <Divider />
+              <OriginalTexts posting={p} />
+              <Events posting={p} />
+            </VStack>
+          </LayoutContent>
+        </Layout>
+      )}
+    />
   );
 }
