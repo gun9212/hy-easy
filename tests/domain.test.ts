@@ -110,6 +110,14 @@ describe("원문 정규화와 비교", () => {
     assert.ok(assertEvidence(input, { ...p.classification!, evidence }));
     assert.throws(() => assertEvidence(ci, { ...p.classification!, evidence }));
   });
+  it("다른 필드에 있는 근거는 인정하고 필드를 바로잡음", () => {
+    const input = { ...ci, qualifications: "포트폴리오 영업 업무를 주로 합니다." };
+    const checked = assertEvidence(input, {
+      ...p.classification!,
+      evidence: [{ field: "tasks", quote: "포트폴리오 영업 업무를 주로 합니다." }],
+    });
+    assert.deepEqual(checked.evidence, [{ field: "qualifications", quote: "포트폴리오 영업 업무를 주로 합니다." }]);
+  });
   it("공백뿐이거나 너무 짧은 근거는 거절", () =>
     assert.throws(() => assertEvidence(ci, { ...p.classification!, evidence: [{ field: "tasks", quote: "  ·  " }] })));
   it("주 직군과 보조 직군 중복 거절", () =>

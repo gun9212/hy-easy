@@ -11,13 +11,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { data, error } = await db.from("posting_view").select("document").eq("id", id).maybeSingle();
     if (error) throw error;
     if (!data) throw new HttpError(404, "공고를 찾을 수 없습니다.");
+    let checked;
     try {
       // Same fields the classifier saw, so evidence quoted from an attached file is accepted too.
-      assertEvidence(classificationInput(data.document as Posting), input.data);
+      // Saves the checked copy: a quote found under another field is stored with its real field.
+      checked = assertEvidence(classificationInput(data.document as Posting), input.data);
     } catch {
       throw new HttpError(400, "분류 근거가 원문과 일치하지 않습니다.");
     }
-    const result = await db.rpc("override_classification", { p_posting: id, p_result: input.data });
+    const result = await db.rpc("override_classification", { p_posting: id, p_result: checked });
     if (result.error) throw result.error;
     return Response.json({ ok: true });
   } catch (e) {

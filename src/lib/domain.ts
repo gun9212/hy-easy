@@ -253,18 +253,27 @@ export function remainingDays(posting: Posting, now = new Date()) {
 }
 /** A quote must carry at least this many visible characters to count as evidence. */
 const MIN_QUOTE_CHARS = 4;
+type EvidenceField = Classification["evidence"][number]["field"];
+const EVIDENCE_FIELDS: EvidenceField[] = ["practiceInfo", "qualifications", "tasks", "attachment"];
+/**
+ * Every quote must appear verbatim in the posting. Models sometimes quote the right sentence but name the wrong
+ * field (job duties written under 자격사항, cited as tasks), so a quote found in another field is accepted and its
+ * field corrected to where it actually is.
+ */
 export function assertEvidence(input: ClassificationInput, result: Classification): Classification {
   if (
     result.secondaryRoles.includes(result.primaryRole) ||
     new Set(result.secondaryRoles).size !== result.secondaryRoles.length
   )
     throw new Error("직군이 중복되었습니다.");
-  for (const e of result.evidence) {
+  const evidence = result.evidence.map(e => {
     const quote = collapseWhitespace(e.quote);
-    if (quote.length < MIN_QUOTE_CHARS || !collapseWhitespace(input[e.field] ?? "").includes(quote))
-      throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
-  }
-  return result;
+    const contains = (field: EvidenceField) => collapseWhitespace(input[field] ?? "").includes(quote);
+    const field = contains(e.field) ? e.field : EVIDENCE_FIELDS.find(contains);
+    if (quote.length < MIN_QUOTE_CHARS || !field) throw new Error("원문에서 분류 근거를 찾을 수 없습니다.");
+    return field === e.field ? e : { ...e, field };
+  });
+  return { ...result, evidence };
 }
 
 /**
