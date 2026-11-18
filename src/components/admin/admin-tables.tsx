@@ -13,6 +13,8 @@ export type Run = {
 };
 export type QueueItem = { posting_id: string; attempts: number; last_error: string | null };
 export type Version = { posting_id: string; captured_at: string };
+/** What the tables need to name a posting. */
+export type PostingName = Pick<Posting, "id" | "company" | "title">;
 export type Audit = { posting_id: string; edited_at: string; result: { primaryRole?: unknown } };
 
 export const RUN_STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
@@ -34,7 +36,7 @@ function seconds(run: Run): string {
   return `${Math.max(0, Math.round((Date.parse(run.finished_at) - Date.parse(run.started_at)) / 1000))}초`;
 }
 
-function postingName(postings: Posting[], id: string): { company: string; title: string } {
+function postingName(postings: PostingName[], id: string): { company: string; title: string } {
   const p = postings.find(posting => posting.id === id);
   return p ? { company: p.company, title: p.title } : { company: "삭제된 공고", title: "" };
 }
@@ -80,7 +82,7 @@ export function RunsTable({ runs }: { runs: Run[] }) {
 // The collector stops after this many failed tries; such rows wait until an admin retries them.
 export const MAX_ATTEMPTS = 3;
 
-export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: Posting[] }) {
+export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: PostingName[] }) {
   if (!queue.length) return <Empty text="분류를 기다리는 공고가 없습니다." />;
   const stuck = queue.filter(q => q.attempts >= MAX_ATTEMPTS).length;
   return (
@@ -98,7 +100,7 @@ export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: 
   );
 }
 
-function QueueRows({ queue, postings }: { queue: QueueItem[]; postings: Posting[] }) {
+function QueueRows({ queue, postings }: { queue: QueueItem[]; postings: PostingName[] }) {
   return (
     <div className="admin-table-wrap">
       <table className="admin-table">
@@ -133,7 +135,7 @@ function QueueRows({ queue, postings }: { queue: QueueItem[]; postings: Posting[
   );
 }
 
-export function ChangesTable({ versions, postings }: { versions: Version[]; postings: Posting[] }) {
+export function ChangesTable({ versions, postings }: { versions: Version[]; postings: PostingName[] }) {
   if (!versions.length) return <Empty text="최근 원문 변경이 없습니다." />;
   return (
     <div className="admin-table-wrap">
@@ -163,7 +165,7 @@ export function ChangesTable({ versions, postings }: { versions: Version[]; post
   );
 }
 
-export function AuditTable({ audit, postings }: { audit: Audit[]; postings: Posting[] }) {
+export function AuditTable({ audit, postings }: { audit: Audit[]; postings: PostingName[] }) {
   if (!audit.length) return <Empty text="관리자가 수정한 분류가 없습니다." />;
   return (
     <div className="admin-table-wrap">
