@@ -87,7 +87,9 @@ export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: 
     <>
       {stuck > 0 && (
         <div className="admin-retry-bar">
-          <p>{stuck}건이 {MAX_ATTEMPTS}번 실패해 자동 분류가 멈췄습니다.</p>
+          <p>
+            {stuck}건이 {MAX_ATTEMPTS}번 실패해 자동 분류가 멈췄습니다.
+          </p>
           <RetryButton label="멈춘 공고 모두 재시도" />
         </div>
       )}
