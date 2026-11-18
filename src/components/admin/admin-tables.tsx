@@ -1,5 +1,6 @@
 // Read-only tables for the admin page: collector runs, the classification queue, source changes and edits.
 import { formatDate, type Posting } from "@/lib/domain";
+import { RetryButton } from "./retry-button";
 
 export type Run = {
   id: string;
@@ -76,8 +77,26 @@ export function RunsTable({ runs }: { runs: Run[] }) {
   );
 }
 
+// The collector stops after this many failed tries; such rows wait until an admin retries them.
+export const MAX_ATTEMPTS = 3;
+
 export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: Posting[] }) {
   if (!queue.length) return <Empty text="분류를 기다리는 공고가 없습니다." />;
+  const stuck = queue.filter(q => q.attempts >= MAX_ATTEMPTS).length;
+  return (
+    <>
+      {stuck > 0 && (
+        <div className="admin-retry-bar">
+          <p>{stuck}건이 {MAX_ATTEMPTS}번 실패해 자동 분류가 멈췄습니다.</p>
+          <RetryButton label="멈춘 공고 모두 재시도" />
+        </div>
+      )}
+      <QueueRows queue={queue} postings={postings} />
+    </>
+  );
+}
+
+function QueueRows({ queue, postings }: { queue: QueueItem[]; postings: Posting[] }) {
   return (
     <div className="admin-table-wrap">
       <table className="admin-table">
@@ -86,6 +105,9 @@ export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: 
             <th>공고</th>
             <th className="num">시도</th>
             <th>마지막 오류</th>
+            <th>
+              <span className="visually-hidden">재시도</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -99,6 +121,7 @@ export function QueueTable({ queue, postings }: { queue: QueueItem[]; postings: 
                 </td>
                 <td className="num">{q.attempts}회</td>
                 <td>{q.last_error ?? "대기 중"}</td>
+                <td>{q.attempts > 0 && <RetryButton postingId={q.posting_id} label="재시도" />}</td>
               </tr>
             );
           })}

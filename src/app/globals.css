@@ -1805,6 +1805,27 @@
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
+.admin-retry-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-edge);
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+}
+.retry-action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+.retry-action [role="status"] {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
 .admin-empty {
   margin-top: var(--space-sm);
   padding: var(--space-md);

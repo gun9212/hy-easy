@@ -68,5 +68,19 @@ select pg_temp.assert((select document->>'classificationSource'='admin' from pub
 select pg_temp.assert((select (document->>'classificationStale')::boolean from public.posting_view where document->>'sourceId'='one'),'changed source flags manual correction for review');
 select pg_temp.assert((select count(*)=1 from public.classification_audit),'admin changes audited');
 reset role;
+
+set local role service_role;
+update public.classification_queue set attempts=3,last_error='CLASSIFICATION_REQUIRES_REVIEW';
+reset role;
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+do $$ begin begin perform public.retry_classification(); raise exception 'non-admin retry unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert(public.retry_classification((select id from public.postings where source_id='one'))=1,'admin retries one posting');
+select pg_temp.assert((select attempts=0 and last_error is null from public.classification_queue q join public.postings p on p.id=q.posting_id where p.source_id='one'),'retried posting is runnable again');
+select pg_temp.assert((select attempts=3 from public.classification_queue q join public.postings p on p.id=q.posting_id where p.source_id='two'),'single retry leaves other postings');
+select pg_temp.assert(public.retry_classification()=1,'admin retries every exhausted posting');
+select pg_temp.assert((select count(*)=0 from public.classification_queue where attempts>0),'no exhausted postings remain');
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;
