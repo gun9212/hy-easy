@@ -33,7 +33,8 @@ async function save(p: Posting, role: Role, summary: string, review: boolean): P
 export function AdminEditor({ posting: p }: { posting: Posting }) {
   const [role, setRole] = useState<Role>(p.classification?.primaryRole ?? "기타"),
     [summary, setSummary] = useState(p.classification?.summary ?? ""),
-    [review, setReview] = useState(p.classification?.needsReview ?? true),
+    // Off when there is no AI result yet: an admin who picks the role has done the review.
+    [review, setReview] = useState(p.classification?.needsReview ?? false),
     [message, setMessage] = useState(""),
     [busy, setBusy] = useState(false);
   const sources: [string, string][] = [

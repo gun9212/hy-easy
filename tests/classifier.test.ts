@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { modelPayload, parseModelResponse, estimateCost, trimToLimits } from "../src/lib/classifier";
+import Anthropic from "@anthropic-ai/sdk";
+import { modelPayload, parseModelResponse, estimateCost, trimToLimits, isServiceError } from "../src/lib/classifier";
 import { assertEvidence } from "../src/lib/domain";
 import { samplePostings } from "../src/lib/sample";
 import { classificationInput } from "../src/lib/normalize";
@@ -147,5 +148,20 @@ describe("trimToLimits majors", () => {
       majors: { requirement: "listed", required: [], preferred: [], related: [] },
     }) as typeof result;
     assert.equal(none.majors?.requirement, "unknown");
+  });
+});
+
+describe("모델 서비스 오류 구분 (재시도 횟수를 쓰지 않음)", () => {
+  const apiError = (status: number) => Anthropic.APIError.generate(status, { type: "error" }, "x", new Headers());
+  it("키 오류·요청 한도·서버 오류·연결 실패는 서비스 오류", () => {
+    for (const status of [401, 403, 429, 500, 529])
+      assert.equal(isServiceError(apiError(status)), true, String(status));
+    assert.equal(isServiceError(new Anthropic.APIConnectionError({ message: "down" })), true);
+    assert.equal(isServiceError({ response: { status: 503 } }), true); // Vertex (google-auth) error shape
+  });
+  it("잘못된 요청이나 공고 문제는 서비스 오류가 아님", () => {
+    assert.equal(isServiceError(apiError(400)), false);
+    assert.equal(isServiceError(new Error("원문에서 분류 근거를 찾을 수 없습니다.")), false);
+    assert.equal(isServiceError(null), false);
   });
 });

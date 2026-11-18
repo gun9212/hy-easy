@@ -244,6 +244,17 @@ export type ClassificationResult = {
   promptVersion: string;
   taxonomyVersion: string;
 };
+const SERVICE_STATUSES = new Set([401, 403, 408, 409, 429]);
+/**
+ * True when the model service failed (bad or expired key, rate limit, outage, network), not the posting.
+ * Such a failure says nothing about the posting, so the collector retries it without using up an attempt.
+ */
+export function isServiceError(e: unknown): boolean {
+  if (e instanceof Anthropic.APIConnectionError) return true;
+  const status =
+    e instanceof Anthropic.APIError ? e.status : (e as { response?: { status?: unknown } } | null)?.response?.status;
+  return typeof status === "number" && (SERVICE_STATUSES.has(status) || status >= 500);
+}
 async function callAnthropicApi(input: ClassificationInput, model: string): Promise<unknown> {
   // Reads ANTHROPIC_API_KEY. The SDK retries 429/5xx/connection errors itself.
   const client = new Anthropic({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 2 });

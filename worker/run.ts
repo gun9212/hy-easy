@@ -4,7 +4,7 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
-import { classify, PROMPT_VERSION, type Provider } from "../src/lib/classifier";
+import { classify, isServiceError, PROMPT_VERSION, type Provider } from "../src/lib/classifier";
 import type { Posting, PostingAttachment } from "../src/lib/domain";
 import {
   dismissDialogs,
@@ -234,16 +234,30 @@ try {
             .eq("input_hash", job.input_hash),
         );
       } catch (e) {
+        // A bad key, rate limit or outage is not this posting's fault: keep its attempts and stop this run's
+        // classification (the rest would fail the same way). The next run retries the same jobs.
+        const serviceError = isServiceError(e);
         // Structured log line: Cloud Logging counts these for the "AI classification failing" alert.
         console.error(
           JSON.stringify({
             severity: "ERROR",
             event: "classification_failed",
             postingId: job.posting_id,
-            attempt: job.attempts + 1,
+            attempt: serviceError ? job.attempts : job.attempts + 1,
+            serviceError,
             message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
           }),
         );
+        if (serviceError) {
+          check(
+            await db
+              .from("classification_queue")
+              .update({ last_error: "MODEL_SERVICE_ERROR" })
+              .eq("posting_id", job.posting_id)
+              .eq("input_hash", job.input_hash),
+          );
+          break;
+        }
         check(
           await db
             .from("classification_queue")
