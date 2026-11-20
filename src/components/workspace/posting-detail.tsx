@@ -15,6 +15,9 @@ import { Classification, Events, Facts, Majors, OriginalTexts } from "./posting-
 import { DeadlineBadge } from "./posting-row-parts";
 import { DetailFrame } from "./detail-frame";
 
+// The posting page itself has no apply action; students apply from HY-WEP's search list.
+const HYWEP_APPLY_URL = "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
+
 type Props = {
   posting: Posting;
   major: Major | null;
@@ -99,7 +102,7 @@ export function PostingDetail(props: Props) {
                   variant="primary"
                   label={closed ? "마감됨" : "HY-WEP 지원"}
                   isDisabled={closed}
-                  href={p.sourceUrl}
+                  href={HYWEP_APPLY_URL}
                   target="_blank"
                   rel="noreferrer"
                 />
