@@ -111,7 +111,7 @@ const claudeOutputSchema = withoutUnsupportedKeywords(outputSchema) as Record<st
 /**
  * Shared Claude request body. Haiku 5.5 accepts disabled thinking at effort high or below.
  * The system prompt (instructions + major list, about 10K tokens) is identical for every posting, so it is cached:
- * the collector classifies up to ten postings per run, seconds apart, so the default 5-minute cache stays warm within
+ * the collector classifies up to 40 postings per run, seconds apart, so the default 5-minute cache stays warm within
  * a run (the first call writes it, the rest read it). Only the posting text after it is billed at the full input price.
  */
 function claudeBody(text: string) {
