@@ -1,6 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { eligibility, simulate, filterPostings, assertEvidence, majorFit, type Application } from "../src/lib/domain";
+import {
+  eligibility,
+  simulate,
+  filterPostings,
+  assertEvidence,
+  majorFit,
+  verifySecondaryRoles,
+  type Application,
+  type ClassificationOutput,
+} from "../src/lib/domain";
 import { samplePostings, DEMO_NOW } from "../src/lib/sample";
 import { parseDeadline, parseStipend, sourceHash, stableHash, classificationInput } from "../src/lib/normalize";
 import { isSchoolClaims, isSchoolUser } from "../src/lib/auth-policy";
@@ -120,6 +129,91 @@ describe("원문 정규화와 비교", () => {
   });
   it("공백뿐이거나 너무 짧은 근거는 거절", () =>
     assert.throws(() => assertEvidence(ci, { ...p.classification!, evidence: [{ field: "tasks", quote: "  ·  " }] })));
+  describe("보조 직군 근거 검증", () => {
+    const input = { ...ci, tasks: "광고 소재를 기획하고\n메타 광고 캠페인을 직접 집행합니다. 매주 SQL 조회" };
+    type Claim = ClassificationOutput["secondaryEvidence"][number];
+    /** Model output whose secondaryRoles are the claimed roles, in order, unless given. */
+    const output = (claims: Claim[], secondaryRoles = claims.map(c => c.role)): ClassificationOutput => ({
+      ...p.classification!,
+      primaryRole: "기획",
+      evidence: [{ field: "tasks", quote: "광고 소재를 기획하고" }],
+      majors: p.classification!.majors!,
+      secondaryRoles,
+      secondaryEvidence: claims,
+    });
+    const roles = (claims: Claim[], posting = input) => verifySecondaryRoles(posting, output(claims)).secondaryRoles;
+    it("원문에 있는 인용은 줄바꿈 차이를 무시하고 인정, 저장 형식에는 인용을 남기지 않음", () => {
+      const checked = verifySecondaryRoles(
+        input,
+        output([{ role: "마케팅", quote: "기획하고 메타 광고 캠페인을 직접 집행합니다", field: "tasks" }]),
+      );
+      assert.deepEqual(checked.secondaryRoles, ["마케팅"]);
+      assert.equal("secondaryEvidence" in checked, false);
+    });
+    it("인용이 없거나 원문에 없거나 너무 짧은 보조 직군은 오류 없이 뺌", () => {
+      assert.deepEqual(verifySecondaryRoles(input, output([], ["마케팅"])).secondaryRoles, []);
+      assert.deepEqual(roles([{ role: "마케팅", quote: "인스타그램 계정을 운영합니다", field: "tasks" }]), []);
+      assert.deepEqual(roles([{ role: "마케팅", quote: "메타 광고", field: "tasks" }]), []);
+    });
+    it("자격사항에 적힌 업무 설명은 인정하고, 요구 역량 문장은 뺌", () => {
+      const posting = {
+        ...input,
+        qualifications:
+          "포트폴리오 영업 업무를 주로 합니다.\nPython으로 데이터 분석이 가능한 학생\n엑셀 활용 능력 우대",
+      };
+      assert.deepEqual(
+        roles([{ role: "영업", quote: "포트폴리오 영업 업무를 주로 합니다.", field: "tasks" }], posting),
+        ["영업"],
+      );
+      assert.deepEqual(
+        roles([{ role: "데이터·AI", quote: "Python으로 데이터 분석이 가능한 학생", field: "qualifications" }], posting),
+        [],
+      );
+      assert.deepEqual(
+        roles([{ role: "경영지원", quote: "엑셀 활용 능력 우대", field: "qualifications" }], posting),
+        [],
+      );
+    });
+    it("주 직군·중복 직군은 빼고 최대 2개", () => {
+      const quote = "메타 광고 캠페인을 직접 집행합니다";
+      const claimed = (["기획", "마케팅", "마케팅", "영업", "디자인"] as const).map(role => ({
+        role,
+        quote,
+        field: "tasks" as const,
+      }));
+      assert.deepEqual(roles(claimed), ["마케팅", "영업"]);
+    });
+    it("데이터·AI는 모델·파이프라인·Python 같은 작업어가 있고 모니터링·장비 제어가 아닐 때만 남김", () => {
+      const tasks = [
+        "MES·설비 모니터링 시스템으로 생산 데이터 기록",
+        "Python을 통한 양자시스템 장비 제어",
+        "Prophet 활용 통한 Monthly return forecasting 지원",
+        "교육자료 검색을 위한 챗봇 개발",
+      ];
+      const only = (quote: string) =>
+        roles([{ role: "데이터·AI", quote, field: "tasks" }], { ...input, tasks: `${input.tasks}\n${quote}` });
+      for (const quote of tasks.slice(0, 3)) assert.deepEqual(only(quote), [], quote);
+      assert.deepEqual(only(tasks[3]), ["데이터·AI"]);
+      assert.deepEqual(only("R&D 과제 결과 보고서 작성 지원"), []);
+      assert.deepEqual(only("R로 통계 모델을 만들어 수요를 예측"), ["데이터·AI"]);
+    });
+    it("배우는 내용·요구 경험은 모든 직군에서 빼고, 디자인·재무·회계·연구개발은 정의에 맞는 인용만 남김", () => {
+      const only = (role: Claim["role"], quote: string) =>
+        roles([{ role, quote, field: "tasks" }], { ...input, tasks: `${input.tasks}\n${quote}` });
+      assert.deepEqual(only("금융·보험", "M&A 절차를 실습을 통해 습득합니다."), []);
+      assert.deepEqual(only("데이터·AI", "SQL로 데이터를 집계하고 분석해 본 경험"), []);
+      assert.deepEqual(only("디자인", "생성형 AI를 활용한 사고 시나리오 영상 제작"), []);
+      assert.deepEqual(only("디자인", "영상 촬영·편집 및 홍보 콘텐츠 제작"), ["디자인"]);
+      assert.deepEqual(only("재무·회계", "4. Dealer Retail Revenue Report (Monthly)"), []);
+      assert.deepEqual(only("재무·회계", "월별 영업비용 마감 지원"), ["재무·회계"]);
+      assert.deepEqual(only("연구개발", "산업분석 및 경쟁사 분석 실습, 리서치 결과 보고"), []);
+      assert.deepEqual(only("연구개발", "광소자 설계 및 측정"), ["연구개발"]);
+    });
+    it("주 직군 근거가 원문에 없으면 지금처럼 오류", () =>
+      assert.throws(() =>
+        verifySecondaryRoles(input, { ...output([]), evidence: [{ field: "tasks", quote: "존재하지 않는 업무" }] }),
+      ));
+  });
   it("주 직군과 보조 직군 중복 거절", () =>
     assert.throws(() => assertEvidence(ci, { ...p.classification!, secondaryRoles: [p.classification!.primaryRole] })));
 });

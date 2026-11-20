@@ -39,28 +39,50 @@ export const majorsSchema = z
   })
   .strict();
 export type PostingMajors = z.infer<typeof majorsSchema>;
+const evidenceSchema = z.object({
+  field: z.enum(["practiceInfo", "qualifications", "tasks", "attachment"]),
+  quote: z.string().min(1).max(400),
+});
 export const classificationSchema = z
   .object({
     primaryRole: z.enum(ROLES),
     secondaryRoles: z.array(z.enum(ROLES)).max(2),
     summary: z.string().min(1).max(500),
-    evidence: z
-      .array(
-        z.object({
-          field: z.enum(["practiceInfo", "qualifications", "tasks", "attachment"]),
-          quote: z.string().min(1).max(400),
-        }),
-      )
-      .min(1)
-      .max(5),
+    evidence: z.array(evidenceSchema).min(1).max(5),
     needsReview: z.boolean(),
     // Optional so classifications stored before majors existed still parse.
     majors: majorsSchema.optional(),
   })
   .strict();
 export type Classification = z.infer<typeof classificationSchema>;
-/** What the model must return: the same shape with majors required. */
-export const classificationOutputSchema = classificationSchema.extend({ majors: majorsSchema });
+/** Most secondary-role quotes the model may give; at most two roles survive verifySecondaryRoles. */
+export const MAX_SECONDARY_EVIDENCE = 4;
+/**
+ * What the model must return: the stored shape with majors required, plus secondaryEvidence, a quote for each
+ * secondary role from the posting sentence where the student does that role's work. verifySecondaryRoles keeps only
+ * the roles whose quote checks out and drops secondaryEvidence.
+ * The field is last and the system prompt does not mention it on purpose. Making secondaryRoles a list of quoted
+ * claims, or adding a prompt rule on secondary quotes, made Haiku leave out correct roles (삼성생명 영업 0/4,
+ * 2026-11-20); a JSON-schema description on the field made it add wrong ones.
+ */
+export const classificationOutputSchema = z
+  .object({
+    primaryRole: classificationSchema.shape.primaryRole,
+    secondaryRoles: classificationSchema.shape.secondaryRoles,
+    summary: classificationSchema.shape.summary,
+    evidence: classificationSchema.shape.evidence,
+    needsReview: classificationSchema.shape.needsReview,
+    majors: majorsSchema,
+    secondaryEvidence: z
+      .array(
+        z
+          .object({ role: z.enum(ROLES), quote: evidenceSchema.shape.quote, field: evidenceSchema.shape.field })
+          .strict(),
+      )
+      .max(MAX_SECONDARY_EVIDENCE),
+  })
+  .strict();
+export type ClassificationOutput = z.infer<typeof classificationOutputSchema>;
 
 export type MajorFit = "required" | "preferred" | "adjacent" | "related" | "other" | "none";
 export const MAJOR_FIT_LABELS: Record<Exclude<MajorFit, "none">, string> = {
@@ -274,6 +296,63 @@ export function assertEvidence(input: ClassificationInput, result: Classificatio
     return field === e.field ? e : { ...e, field };
   });
   return { ...result, evidence };
+}
+
+/** A secondary role needs a longer quote than the primary role: a bare "SQL" or "데이터 분석" is not a task. */
+export const MIN_SECONDARY_QUOTE_CHARS = 8;
+/**
+ * Sentences that are not work the student does: a skill or experience the posting asks for ("SQL 가능한 학생",
+ * "분석해 본 경험", "Python 우대") or something the student only learns ("M&A 절차를 실습을 통해 습득합니다").
+ * The field alone cannot tell: some postings describe the job itself under 자격사항
+ * (삼성생명 "포트폴리오 영업 업무를 주로 합니다"), so quotes from any field are checked this way instead.
+ */
+const NOT_TASK_QUOTE =
+  /가능한(분|자|학생|사람)|가능자|우대|선호|수강자|경험자|본경험|한경험|능숙|다룰수있|할수있는(분|자|학생)|습득|배우|배웁|익히|익힙/;
+/**
+ * Role-specific checks on a secondary quote (matched against the quote with whitespace removed). Haiku keeps adding
+ * roles from sentences the prompt says do not count, so the prompt's role definitions are enforced here too.
+ * - 데이터·AI: the quote must name model, pipeline, crawler, dashboard, Python/R/SQL or statistics work, and must not
+ *   be about monitoring or looking up metrics, controlling equipment, fixing research code, or making content.
+ * - 디자인: not when the images or video come from generative AI.
+ * - 재무·회계, 연구개발: the quote must name that role's own work (money, accounts and IR; experiments, design and
+ *   testing), not a sales report or market research that only sounds like it.
+ */
+const SECONDARY_QUOTE_RULES: Partial<Record<Role, { requires?: RegExp; excludes?: RegExp }>> = {
+  "데이터·AI": {
+    requires:
+      /머신러닝|딥러닝|강화학습|인공지능|모델(을|의)?(학습|개발|훈련|구축)|파인튜닝|파이프라인|크롤|스크래핑|대시보드|통계|SQL|Python|파이썬|(^|[^a-z])R([^a-z&]|$)|챗봇|데이터(를)?(수집|가공|처리|구조화|연동)|machinelearning|deeplearning|pipeline|crawl|dashboard/i,
+    excludes: /모니터링|조회|제어|코딩개선|코드개선|영상|이미지|콘텐츠/,
+  },
+  디자인: { excludes: /생성형|AI(를|로)|AI기반|AI활용/i },
+  "재무·회계": {
+    requires:
+      /재무|회계|결산|세금|세무|급여|정산|결제|예산|비용|자금|증빙|전표|손익|P&L|가치평가|valuation|공시|IR|투자자|settlement/i,
+  },
+  연구개발: { requires: /실험|연구|시뮬레이션|설계|시제품|측정|시험|소재|공정|논문|검수|기술기준/ },
+};
+
+/**
+ * Keeps a secondary role only when one of its secondaryEvidence quotes is found verbatim in the posting, is not a
+ * skill requirement or something learned (NOT_TASK_QUOTE), and passes that role's SECONDARY_QUOTE_RULES. Unsupported roles are dropped silently (the
+ * list may end up empty, which is normal); the primary-role evidence is still checked strictly by assertEvidence.
+ * Returns the stored shape with at most two roles.
+ */
+export function verifySecondaryRoles(input: ClassificationInput, output: ClassificationOutput): Classification {
+  const supported = (role: Role) =>
+    output.secondaryEvidence.some(claim => {
+      if (claim.role !== role) return false;
+      const quote = collapseWhitespace(claim.quote);
+      if (quote.length < MIN_SECONDARY_QUOTE_CHARS) return false;
+      const rule = SECONDARY_QUOTE_RULES[role];
+      if (rule?.requires && !rule.requires.test(quote)) return false;
+      if (rule?.excludes?.test(quote) || NOT_TASK_QUOTE.test(quote)) return false;
+      return EVIDENCE_FIELDS.some(field => collapseWhitespace(input[field] ?? "").includes(quote));
+    });
+  const roles = [...new Set(output.secondaryRoles)]
+    .filter(role => role !== output.primaryRole && supported(role))
+    .slice(0, 2);
+  const { primaryRole, summary, evidence, needsReview, majors } = output;
+  return assertEvidence(input, { primaryRole, secondaryRoles: roles, summary, evidence, needsReview, majors });
 }
 
 /**

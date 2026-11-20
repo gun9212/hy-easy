@@ -8,7 +8,7 @@ import { classificationInput } from "../src/lib/normalize";
 const p = samplePostings[0],
   input = classificationInput(p),
   result = p.classification!;
-function response(stop = "end_turn", classification = result) {
+function response(stop = "end_turn", classification: object = { ...result, secondaryEvidence: [] }) {
   return {
     stop_reason: stop,
     content: [{ type: "thinking" }, { type: "text", text: JSON.stringify(classification) }],
@@ -55,12 +55,29 @@ it("스키마 위반 또는 원문과 다른 근거를 거절", () => {
     ),
   );
 });
+it("보조 직군은 원문 인용이 맞는 것만 남기고 저장 형식(Role[])으로 바꿈", () => {
+  const other = result.primaryRole === "기획" ? "마케팅" : "기획";
+  const output = {
+    ...result,
+    secondaryRoles: [other, "디자인", "데이터·AI"],
+    secondaryEvidence: [
+      { role: other, quote: input.tasks, field: "tasks" },
+      { role: "디자인", quote: "원문에 없는 영상 편집 업무", field: "tasks" },
+    ],
+  };
+  const parsed = parseModelResponse("anthropic", input, response("end_turn", output as never));
+  assert.deepEqual(parsed.classification.secondaryRoles, [other]);
+  assert.deepEqual(parsed.classification.evidence, result.evidence);
+  assert.equal("secondaryEvidence" in parsed.classification, false);
+});
 it("Gemini의 thought 블록을 설명으로 노출하지 않음", () => {
   const parsed = parseModelResponse("gemini", input, {
     candidates: [
       {
         finishReason: "STOP",
-        content: { parts: [{ thought: true, text: "hidden" }, { text: JSON.stringify(result) }] },
+        content: {
+          parts: [{ thought: true, text: "hidden" }, { text: JSON.stringify({ ...result, secondaryEvidence: [] }) }],
+        },
       },
     ],
     usageMetadata: { promptTokenCount: 3000, candidatesTokenCount: 500, thoughtsTokenCount: 50 },
@@ -92,9 +109,17 @@ it("정가와 긴 입력 구간 비용 계산", () => {
 });
 
 describe("모델 출력 정리 (스키마 제한 미지원 대응)", () => {
-  it("보조 직군: 중복·주 직군 제거 후 최대 2개", () => {
-    const raw = { ...result, primaryRole: "영업", secondaryRoles: ["영업", "마케팅", "마케팅", "기획", "디자인"] };
-    assert.deepEqual((trimToLimits(raw) as typeof result).secondaryRoles, ["마케팅", "기획"]);
+  it("보조 직군: 중복·주 직군 제거 후 최대 2개, 인용은 최대 4개", () => {
+    const claim = { role: "마케팅", quote: input.tasks, field: "tasks" };
+    const raw = {
+      ...result,
+      primaryRole: "영업",
+      secondaryRoles: ["영업", "마케팅", "마케팅", "기획", "디자인"],
+      secondaryEvidence: Array.from({ length: 6 }, () => claim),
+    };
+    const trimmed = trimToLimits(raw) as { secondaryRoles: string[]; secondaryEvidence: unknown[] };
+    assert.deepEqual(trimmed.secondaryRoles, ["마케팅", "기획"]);
+    assert.equal(trimmed.secondaryEvidence.length, 4);
   });
   it("근거는 최대 5개", () => {
     const evidence = Array.from({ length: 7 }, () => result.evidence[0]);
