@@ -28,8 +28,8 @@ const result = (patch: Partial<Classification> = {}): Classification => ({
 
 test("the committed golden set parses and has unique ids", () => {
   const set = goldenSetSchema.parse(JSON.parse(readFileSync("evals/classification-golden.json", "utf8")));
-  assert.equal(set.cases.length, 32);
-  assert.equal(new Set(set.cases.map(c => c.id)).size, 32);
+  assert.equal(set.cases.length, 34);
+  assert.equal(new Set(set.cases.map(c => c.id)).size, 34);
 });
 
 test("accepts any listed primary role and flags secondary roles outside the allowed set", () => {
