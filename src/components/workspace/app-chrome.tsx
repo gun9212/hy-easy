@@ -52,7 +52,7 @@ export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): Rea
           heading="HY-Easy"
           headingHref={mode === "demo" ? "/demo" : "/postings"}
           as={Link}
-          headerEndContent={mode === "demo" ? <Badge variant="info" label="데모" /> : undefined}
+          headerEndContent={mode === "demo" ? <span className="side-count">데모</span> : undefined}
         />
       }
       endContent={
@@ -84,7 +84,11 @@ type SideNavProps = {
 };
 
 function Count({ value, isStrong }: { value: number; isStrong?: boolean }): React.ReactElement {
-  return isStrong && value > 0 ? <Badge variant="warning" label={value} /> : <Text type="supporting">{value}</Text>;
+  return (
+    <span className="side-count" data-strong={isStrong && value > 0 ? "" : undefined}>
+      {value}
+    </span>
+  );
 }
 
 /** The demo's "다음 마감" card: the open posting that closes first, one click from its details. */

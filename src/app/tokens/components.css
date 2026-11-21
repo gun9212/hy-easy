@@ -10,5 +10,5 @@
 
   /* Summary stat · a figure is data, so it stays below the page title (--text-page-title) */
   --stat-value-size: var(--size-24);
-  --stat-value-weight: var(--weight-bold);
+  --stat-value-weight: var(--weight-semibold);
 }

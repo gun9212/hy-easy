@@ -13,7 +13,7 @@
 
       --color-accent: light-dark(var(--blue-700), var(--blue-300));
       --color-error: light-dark(var(--red-700), var(--red-300));
-      --color-success: light-dark(var(--green-700), var(--green-300));
+      --color-success: light-dark(var(--green-700), var(--green-500));
 
       --color-accent-muted: var(--color-accent-soft);
       --color-text-accent: light-dark(var(--blue-700), var(--blue-300));

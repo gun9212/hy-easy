@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@astryxdesign/core/Badge";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
@@ -12,10 +11,10 @@ import type { RowProps } from "./posting-row-parts";
 function GroupTitle({ group, count }: { group: DeadlineGroup; count: number }): React.ReactElement {
   return (
     <HStack gap={2} align="center" wrap="wrap">
-      <Text weight="bold" size="lg">
+      <Text weight="semibold" size="lg">
         {group}
       </Text>
-      <Badge variant={group === "3일 안에 마감" ? "warning" : "neutral"} label={`${count}개`} />
+      <span className="group-count">{count}개</span>
       <Text type="supporting">{DEADLINE_GROUP_HINTS[group]}</Text>
     </HStack>
   );

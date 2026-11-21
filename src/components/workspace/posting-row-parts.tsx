@@ -23,6 +23,15 @@ export type RowProps = {
   onFavorite: (id: string) => void;
 };
 
+/** The deadline as a figure: orange only inside three days, so the eye finds what closes first. */
+function DayMark({ tone, label }: { tone: "soon" | "plain" | "closed"; label: string }): React.ReactElement {
+  return (
+    <span className="day-mark" data-tone={tone}>
+      {label}
+    </span>
+  );
+}
+
 /** Same wording as before: 마감, 확인 필요, 오늘 마감, D-n (orange within three days). */
 export function DeadlineBadge({
   posting,
@@ -33,11 +42,11 @@ export function DeadlineBadge({
   applications: Application[];
   now: Date;
 }) {
-  if (eligibility(posting, applications, now).status === "closed") return <Badge variant="neutral" label="마감" />;
+  if (eligibility(posting, applications, now).status === "closed") return <DayMark tone="closed" label="마감" />;
   const days = remainingDays(posting, now);
-  if (days === null) return <Badge variant="neutral" label="확인 필요" />;
-  if (days <= 0) return <Badge variant="warning" label="오늘 마감" />;
-  return <Badge variant={days <= 3 ? "warning" : "neutral"} label={`D-${days}`} />;
+  if (days === null) return <DayMark tone="closed" label="확인 필요" />;
+  if (days <= 0) return <DayMark tone="soon" label="오늘 마감" />;
+  return <DayMark tone={days <= 3 ? "soon" : "plain"} label={`D-${days}`} />;
 }
 
 export function MajorFitBadge({ posting, major }: { posting: Posting; major: Major | null }) {

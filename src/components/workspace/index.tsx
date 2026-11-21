@@ -228,13 +228,10 @@ export function Workspace({
         >
           <VStack gap={4}>
             {mode === "demo" && (
-              <Banner
-                status="info"
-                title="데모 워크스페이스"
-                description="가상 기업·공고입니다. 일정 기준: 2026.11.10 13:00"
-                collapsible={false}
-                endContent={<Button variant="secondary" size="sm" label="로그인 안내" href="/login" as={Link} />}
-              />
+              <p className="demo-note">
+                <span>데모 · 가상 기업과 공고, 일정 기준 2026.11.10 13:00</span>
+                <Link href="/login">로그인 안내</Link>
+              </p>
             )}
             <HStack gap={3} align="end" justify="between" wrap="wrap">
               <VStack gap={1}>
@@ -316,7 +313,7 @@ export function Workspace({
           )}
           {toast && (
             <div className="toast" role="status">
-              <Info size={17} />
+              <Info size={16} />
               {toast}
               <button aria-label="알림 닫기" onClick={() => setToast("")}>
                 <X size={15} />

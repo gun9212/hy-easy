@@ -5,7 +5,8 @@
  * Colour comes from the Hanyang University palette (hanyang.ac.kr/colors-fonts, read 2026-11-10):
  * Hanyang Blue #0E4A84 (PANTONE 541C) is blue-700 and leads; Silver, Yellow Green and Orange sit at 500 in their
  * ramps and only appear beside the blue. The other steps are tints and shades of those four, plus a navy-tinted slate
- * so greys carry a trace of the brand blue.
+ * so light greys carry a trace of the brand blue; the dark
+ * steps are near-graphite so long sessions on the dark theme do not read as a blue screen.
  */
 :root {
   /* Hanyang brand colours, as published */
@@ -25,7 +26,7 @@
   --blue-700: var(--hy-blue);
   --blue-800: #0b3b6a;
   --blue-850: #33507a;
-  --blue-900: #1b2c44;
+  --blue-900: #1c2633;
   --blue-950: #0b1a2e;
 
   /* Slate · navy-tinted neutrals, light grounds to dark grounds */
@@ -35,18 +36,18 @@
   --slate-75: #f3f6fa;
   --slate-100: #e8edf4;
   --slate-150: #dde3ec;
-  --slate-200: #e6ecf5;
-  --slate-300: #c3cddb;
-  --slate-400: #a9b4c4;
+  --slate-200: #e7e9ed;
+  --slate-300: #c4c8cf;
+  --slate-400: #a1a6ae;
   --slate-500: #4b5567;
   --slate-600: #3a4a61;
-  --slate-700: #2a3648;
-  --slate-750: #222e40;
-  --slate-800: #1b2636;
-  --slate-825: #1a2434;
-  --slate-850: #141d2b;
+  --slate-700: #2c2f35;
+  --slate-750: #25282d;
+  --slate-800: #1f2125;
+  --slate-825: #1c1e22;
+  --slate-850: #17181b;
   --slate-900: #14243b;
-  --slate-950: #0d1420;
+  --slate-950: #111214;
   --black: #000000;
 
   /* Orange · Hanyang Orange at 500 */

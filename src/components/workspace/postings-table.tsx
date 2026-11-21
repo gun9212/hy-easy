@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { Badge } from "@astryxdesign/core/Badge";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Table, pixel, proportional, type TableColumn } from "@astryxdesign/core/Table";
 import { Text } from "@astryxdesign/core/Text";
@@ -42,7 +41,7 @@ function TitleCell({ posting: p, props }: { posting: Posting; props: RowProps })
         >
           {p.title}
         </button>
-        {isNewPosting(p, props.now) && <Badge variant="info" label="신규" />}
+        {isNewPosting(p, props.now) && <span className="new-mark">신규</span>}
         <MajorFitBadge posting={p} major={props.major} />
       </HStack>
       <Text type="supporting">

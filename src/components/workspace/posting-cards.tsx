@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@astryxdesign/core/Badge";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
@@ -28,7 +27,7 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
             <Text type="supporting" hasTabularNumbers>
               {deadlineShort(p)} 마감
             </Text>
-            {isNewPosting(p, props.now) && <Badge variant="info" label="신규" />}
+            {isNewPosting(p, props.now) && <span className="new-mark">신규</span>}
           </HStack>
           <HStack gap={1} align="center">
             <CompareBox posting={p} checked={props.compared.includes(p.id)} onCompare={props.onCompare} />

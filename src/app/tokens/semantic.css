@@ -31,11 +31,13 @@
   --color-accent-line: light-dark(var(--blue-200), var(--blue-850));
   --color-focus: var(--color-accent);
 
-  /* Status. Deadlines warn in Hanyang Orange, "can apply" reads in Hanyang Yellow Green. */
-  --color-warn: light-dark(var(--orange-700), var(--orange-300));
+  /* Status. Deadlines warn in Hanyang Orange, new and "can apply" read in Hanyang Yellow Green. On the dark ground
+     both official colours pass 4.5:1 as text (orange 6.7:1, yellow green 7.5:1), so dark uses them as published;
+     light needs the darker shades of the same hue for text and keeps the official colour for marks. */
+  --color-warn: light-dark(var(--orange-700), var(--orange-500));
   --color-warn-soft: light-dark(var(--orange-50), var(--orange-900));
   --color-warn-mark: var(--orange-500);
-  --color-ok: light-dark(var(--green-700), var(--green-300));
+  --color-ok: light-dark(var(--green-700), var(--green-500));
   --color-ok-soft: light-dark(
     color-mix(in oklab, var(--green-500) 16%, var(--slate-0)),
     color-mix(in oklab, var(--green-500) 18%, var(--slate-850))
@@ -63,7 +65,7 @@
   --font-display: var(--font-pretendard);
   --font-body: var(--font-pretendard);
   --font-outlier: var(--font-body);
-  --display-weight: var(--weight-bold);
+  --display-weight: var(--weight-semibold);
   --tracking-display: -0.01em;
   --text-xs: var(--size-13);
   --text-sm: var(--size-14);
