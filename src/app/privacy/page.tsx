@@ -58,7 +58,7 @@ export default function PrivacyPage() {
         <Link href="/" className="brand">
           <Image
             className="brand-symbol"
-            src="/brand/hyu-symbol.svg"
+            src="/brand/hy-easy-mark.svg"
             alt=""
             width={34}
             height={34}

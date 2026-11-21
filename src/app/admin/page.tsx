@@ -71,7 +71,7 @@ export default async function Admin() {
         <Link href="/postings" className="brand">
           <Image
             className="brand-symbol"
-            src="/brand/hyu-symbol.svg"
+            src="/brand/hy-easy-mark.svg"
             alt=""
             width={34}
             height={34}

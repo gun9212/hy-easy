@@ -5,7 +5,7 @@ import "./pretendard.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HY-Easy · 내게 맞는 현장실습 찾기",
+  title: "HY-Easy · 하이웹을 더 간단히",
   description: "한양대학교 현장실습 공고 비교와 지원 일정 관리",
   robots: { index: false, follow: false },
 };
