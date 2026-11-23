@@ -50,7 +50,10 @@ function TitleCell({ posting: p, props }: { posting: Posting; props: RowProps })
         <MajorFitBadge posting={p} major={props.major} />
       </HStack>
       <Text type="supporting">
-        {p.company} · {p.department}
+        <span className="company-name" data-closed={closed ? "" : undefined}>
+          {p.company}
+        </span>
+        {p.department && ` · ${p.department}`}
       </Text>
       {p.classification?.summary && (
         <Text size="sm" color="secondary" maxLines={1}>

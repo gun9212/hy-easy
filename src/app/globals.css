@@ -765,6 +765,15 @@
   font-size: var(--text-md);
   line-height: 1.4;
 }
+/* The company leads the muted line under a posting title, so it reads first when scanning. */
+.company-name {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.company-name[data-closed] {
+  color: inherit;
+  font-weight: 500;
+}
 .posting-subline {
   display: flex;
   flex-wrap: wrap;

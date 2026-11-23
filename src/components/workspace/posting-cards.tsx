@@ -45,7 +45,10 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
           </Text>
           <HStack gap={1} align="center" wrap="wrap">
             <Text type="supporting">
-              {p.company} · {p.classification?.primaryRole ?? "분류 대기"}
+              <span className="company-name" data-closed={closed ? "" : undefined}>
+                {p.company}
+              </span>{" "}
+              · {p.classification?.primaryRole ?? "분류 대기"}
             </Text>
             <MajorFitBadge posting={p} major={props.major} />
           </HStack>
