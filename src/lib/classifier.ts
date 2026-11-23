@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleAuth } from "google-auth-library";
-import { z } from "zod";
+import { z } from "./zod";
 import {
   classificationOutputSchema,
   MAX_SECONDARY_EVIDENCE,

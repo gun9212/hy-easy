@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 import { periodMonths, regionOf } from "./filter-options";
 import { neighborMajors, SEOUL_MAJORS, type Major } from "./majors";
 

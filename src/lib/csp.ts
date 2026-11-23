@@ -1,8 +1,8 @@
 // Content Security Policy. Pages get a fresh nonce per request (set in src/proxy.ts); Next.js puts it on its own
 // scripts, and 'strict-dynamic' lets those scripts load what they need (the Google sign-in client).
 
-/** Report-only first: violations are logged at /api/csp-report without blocking anything. */
-export const CSP_ENFORCED = false;
+/** Enforced since 2026-11-23 (a week of report-only logs held one violation: zod's eval probe, now off in src/lib/zod.ts). */
+export const CSP_ENFORCED = true;
 export const CSP_HEADER = CSP_ENFORCED ? "Content-Security-Policy" : "Content-Security-Policy-Report-Only";
 export const CSP_REPORT_PATH = "/api/csp-report";
 

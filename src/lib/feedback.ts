@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "./zod";
 
 export const FEEDBACK_MAX_CHARS = 2000;
 
