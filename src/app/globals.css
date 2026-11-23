@@ -154,10 +154,6 @@
   color: var(--color-accent);
   text-decoration: none;
 }
-.brand-symbol {
-  width: 34px;
-  height: 34px;
-}
 .brand-name {
   font-size: var(--text-xl);
   font-weight: 800;

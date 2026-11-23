@@ -1,7 +1,6 @@
 "use client";
 
 // Page chrome around the workspace: top bar, sidebar navigation and the compare dock.
-import Image from "next/image";
 import Link from "next/link";
 import { clearStoredPostings } from "./posting-store";
 import {
@@ -29,15 +28,6 @@ export function TopBar({ mode, userLabel, onMenu }: { mode: Mode; userLabel: str
           <Menu size={20} />
         </button>
         <Link href={mode === "demo" ? "/demo" : "/postings"} className="brand">
-          <Image
-            className="brand-symbol"
-            src="/brand/hy-easy-mark.svg"
-            alt=""
-            width={34}
-            height={34}
-            unoptimized
-            priority
-          />
           <span className="brand-name">HY-Easy</span>
         </Link>
         <span className="topbar-subtitle">한양인의 현장실습 탐색</span>

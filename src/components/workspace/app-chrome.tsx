@@ -47,8 +47,6 @@ export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): Rea
       label="HY-Easy"
       heading={
         <TopNavHeading
-          // eslint-disable-next-line @next/next/no-img-element
-          logo={<img src="/brand/hy-easy-mark.svg" alt="" width={30} height={30} />}
           heading="HY-Easy"
           headingHref={mode === "demo" ? "/demo" : "/postings"}
           as={Link}

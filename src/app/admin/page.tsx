@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin-editor";
@@ -79,15 +78,6 @@ export default async function Admin() {
     <div className="admin-page">
       <header className="login-header">
         <Link href="/postings" className="brand">
-          <Image
-            className="brand-symbol"
-            src="/brand/hy-easy-mark.svg"
-            alt=""
-            width={34}
-            height={34}
-            unoptimized
-            priority
-          />
           <span className="brand-name">HY-Easy</span>
         </Link>
         <Link className="back-link" href="/postings">

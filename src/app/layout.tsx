@@ -9,7 +9,7 @@ const TITLE = "HY-Easy · 하이웹을 더 간단히";
 const SHARE_DESCRIPTION = "한양대 HY-WEP 현장실습 공고를 직군·지원금·마감 기준으로 찾고 비교해요.";
 // Link previews in KakaoTalk, Everytime and messengers read these tags (they ignore robots noindex).
 // Bump ?v= when og.png changes: KakaoTalk caches previews by image URL.
-const SHARE_IMAGE = { url: "/og.png?v=2", width: 1200, height: 630, alt: "HY-Easy, 하는 일로 찾고 한눈에 비교하세요." };
+const SHARE_IMAGE = { url: "/og.png?v=3", width: 1200, height: 630, alt: "HY-Easy, 하는 일로 찾고 한눈에 비교하세요." };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

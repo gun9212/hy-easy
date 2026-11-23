@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 import { headers } from "next/headers";
@@ -145,15 +144,6 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="landing">
       <header className="landing-header">
         <Link href="/" className="brand">
-          <Image
-            className="brand-symbol"
-            src="/brand/hy-easy-mark.svg"
-            alt=""
-            width={34}
-            height={34}
-            unoptimized
-            priority
-          />
           <span className="brand-name">HY-Easy</span>
         </Link>
         <a href="https://hywep.hanyang.ac.kr/" target="_blank" rel="noreferrer">

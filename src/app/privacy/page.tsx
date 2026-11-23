@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: "개인정보처리방침 · HY-Easy" };
@@ -61,15 +60,6 @@ export default function PrivacyPage() {
     <main className="policy-page">
       <header className="login-header">
         <Link href="/" className="brand">
-          <Image
-            className="brand-symbol"
-            src="/brand/hy-easy-mark.svg"
-            alt=""
-            width={34}
-            height={34}
-            unoptimized
-            priority
-          />
           <span className="brand-name">HY-Easy</span>
         </Link>
       </header>
