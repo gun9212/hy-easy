@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PostingPicker } from "./posting-picker";
-import { ArrowRight, CalendarClock, Check, Clock3, Info } from "lucide-react";
+import { ArrowRight, CalendarClock, Check, Clock3, Info, Trash2 } from "lucide-react";
 import {
   APPLICATION_STATUSES,
   STATUS_LABELS,
@@ -16,7 +16,8 @@ import {
 } from "@/lib/domain";
 
 type RecordFn = (postingId: string, status: ApplicationStatus, confirmed: boolean) => Promise<void>;
-type Props = { postings: Posting[]; applications: Application[]; record: RecordFn; now: Date };
+type RemoveFn = (postingId: string) => Promise<void>;
+type Props = { postings: Posting[]; applications: Application[]; record: RecordFn; remove: RemoveFn; now: Date };
 
 const companyOf = (postings: Posting[], id: string | undefined) => postings.find(p => p.id === id);
 
@@ -29,7 +30,7 @@ function PanelHeading({ title, text }: { title: string; text: string }) {
   );
 }
 
-function StatusPanel({ postings, applications, record }: Omit<Props, "now">) {
+function StatusPanel({ postings, applications, record }: Pick<Props, "postings" | "applications" | "record">) {
   const active = applications.find(a => isBlocking(a.status));
   const [postingId, setPostingId] = useState(active?.postingId ?? "");
   const [status, setStatus] = useState<ApplicationStatus>(active?.status ?? "in_progress");
@@ -118,13 +119,14 @@ function StatusPanel({ postings, applications, record }: Omit<Props, "now">) {
   );
 }
 
-function ScenarioPanel({ postings, applications, now }: Omit<Props, "record">) {
+function ScenarioPanel({ postings, applications, now }: Pick<Props, "postings" | "applications" | "now">) {
   const active = applications.find(a => isBlocking(a.status));
   const [candidateId, setCandidateId] = useState("");
   const [releaseAt, setReleaseAt] = useState("");
   const candidates = useMemo(() => postings.filter(p => p.id !== active?.postingId), [postings, active?.postingId]);
   const candidate = companyOf(postings, candidateId);
-  const result = candidate && releaseAt ? simulate(candidate, `${releaseAt}:00+09:00`, now) : null;
+  const releaseIso = releaseAt.length === 16 ? `${releaseAt}:00+09:00` : `${releaseAt}+09:00`;
+  const result = candidate && releaseAt ? simulate(candidate, releaseIso, now) : null;
   return (
     <section className="planner-panel">
       <PanelHeading title="다음 지원 시나리오" text="탈락 처리 완료 시각을 가정해 마감과 비교해요." />
@@ -177,24 +179,88 @@ function ScenarioPanel({ postings, applications, now }: Omit<Props, "record">) {
   );
 }
 
-function History({ postings, applications }: Pick<Props, "postings" | "applications">) {
+function History({ postings, applications, remove }: Pick<Props, "postings" | "applications" | "remove">) {
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  async function confirmDelete(postingId: string) {
+    setError("");
+    setBusyId(postingId);
+    try {
+      await remove(postingId);
+      setConfirmId(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "삭제하지 못했습니다.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <section className="application-history">
       <h2>
         지원 기록 <span>{applications.length}</span>
       </h2>
+      {error && (
+        <div className="form-error history-error" role="alert">
+          {error}
+        </div>
+      )}
       {applications.length ? (
         <div className="history-list">
           {applications.map(a => {
             const p = companyOf(postings, a.postingId);
+            const name = p?.company ?? "등록된 공고";
+            const confirming = confirmId === a.postingId;
+            const busy = busyId === a.postingId;
             return (
               <div key={a.id}>
                 <div>
-                  <b>{p?.company ?? "등록된 공고"}</b>
+                  <b>{name}</b>
                   <small>{p?.title}</small>
                 </div>
                 <span className="role-tag">{STATUS_LABELS[a.status]}</span>
                 <time>{formatDate(a.updatedAt, true)}</time>
+                <div className="history-actions">
+                  {confirming ? (
+                    <>
+                      <button
+                        type="button"
+                        className="history-delete-confirm"
+                        disabled={busyId !== null}
+                        onClick={() => confirmDelete(a.postingId)}
+                      >
+                        {busy ? "삭제 중…" : "삭제 확인"}
+                      </button>
+                      <button
+                        type="button"
+                        className="history-delete-cancel"
+                        disabled={busyId !== null}
+                        onClick={() => {
+                          setConfirmId(null);
+                          setError("");
+                        }}
+                      >
+                        취소
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="history-delete"
+                      aria-label={`${name} 지원 기록 삭제`}
+                      disabled={busyId !== null}
+                      onClick={() => {
+                        setError("");
+                        setConfirmId(a.postingId);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      삭제
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -206,7 +272,7 @@ function History({ postings, applications }: Pick<Props, "postings" | "applicati
   );
 }
 
-export function Planner({ postings, applications, record, now }: Props) {
+export function Planner({ postings, applications, record, remove, now }: Props) {
   // Saved applications can arrive after the first render (demo storage, live data). Keying the form on the active
   // application resets its fields to that application whenever it loads or changes.
   const active = applications.find(a => isBlocking(a.status));
@@ -227,7 +293,7 @@ export function Planner({ postings, applications, record, now }: Props) {
         <StatusPanel key={statusKey} postings={postings} applications={applications} record={record} />
         <ScenarioPanel postings={postings} applications={applications} now={now} />
       </div>
-      <History postings={postings} applications={applications} />
+      <History postings={postings} applications={applications} remove={remove} />
     </div>
   );
 }

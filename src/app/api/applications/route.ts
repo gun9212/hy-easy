@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   try {
     sameOrigin(request);
     const { db } = await requireUser();
-    const input = schema.safeParse(await request.json());
+    const input = schema.safeParse(await request.json().catch(() => null));
     if (!input.success) throw new HttpError(400, "공고와 지원 상태를 확인해 주세요.");
     if (input.data.status === "rejected" && !input.data.confirmed)
       throw new HttpError(400, "HY-WEP 탈락 처리 완료를 확인한 뒤 기록해 주세요.");

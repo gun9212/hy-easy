@@ -52,6 +52,20 @@ select pg_temp.assert((select count(*)=0 from public.application_events),'other 
 select pg_temp.assert((select count(*)=0 from public.favorites),'other user favorites isolation');
 do $$ begin begin perform public.acquire_collector_lock('00000000-0000-4000-8000-000000000002'); raise exception 'school worker access unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 do $$ begin begin perform public.touch_postings('[]'); raise exception 'school touch access unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+select public.delete_application((select id from public.postings where source_id='two'));
+select set_config('test.uid','00000000-0000-4000-8000-000000000003',true);
+do $$ begin begin perform public.delete_application('00000000-0000-4000-8000-000000000001'); raise exception 'non-school delete_application unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert((select count(*)=2 from public.applications),'other user cannot delete application');
+select pg_temp.assert((select count(*)=4 from public.application_events),'other user cannot delete application events');
+select public.delete_application((select id from public.postings where source_id='two'));
+select pg_temp.assert((select count(*)=1 from public.applications),'owner deletes own application');
+select pg_temp.assert((select count(*)=3 from public.application_events),'owner delete clears matching application events');
+select public.record_application((select id from public.postings where source_id='two'),'in_progress');
+select pg_temp.assert((select count(*)=2 from public.applications),'deleting active application frees single-application lock');
+reset role;
+set local role anon;
+do $$ begin begin perform public.delete_application('00000000-0000-4000-8000-000000000001'); raise exception 'anonymous delete_application unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
 
 insert into public.admins values('00000000-0000-4000-8000-000000000001');

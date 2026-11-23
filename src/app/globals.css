@@ -1708,12 +1708,15 @@
   margin-top: var(--space-xs);
   font-size: var(--text-sm);
 }
+.history-error {
+  margin-top: var(--space-sm);
+}
 .history-list {
   margin-top: var(--space-sm);
 }
 .history-list > div {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) 0;
@@ -1728,6 +1731,51 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
   font-variant-numeric: tabular-nums;
+}
+.history-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+.history-delete,
+.history-delete-confirm,
+.history-delete-cancel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  min-height: 32px;
+  padding: 0 var(--space-xs);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.history-delete,
+.history-delete-cancel {
+  color: var(--color-muted);
+}
+.history-delete:hover,
+.history-delete-cancel:hover {
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+}
+.history-delete-confirm {
+  border-color: var(--color-error);
+  background: var(--color-error-soft);
+  color: var(--color-error);
+}
+.history-delete-confirm:hover {
+  background: var(--color-error);
+  color: var(--color-surface);
+}
+.history-delete:disabled,
+.history-delete-confirm:disabled,
+.history-delete-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .login-header,
 .login-footer {
@@ -2631,7 +2679,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .history-list .role-tag,
-  .history-list time {
+  .history-list time,
+  .history-list .history-actions {
     grid-column: 1;
     justify-self: start;
   }

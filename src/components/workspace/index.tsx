@@ -115,7 +115,7 @@ export function Workspace({
 }: Props) {
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const { postings, ready, lastCheckedAt, error: loadError } = usePostings(mode, initialPostings);
-  const { personal, toggleFavorite, recordApplication } = usePersonal(mode, {
+  const { personal, toggleFavorite, recordApplication, deleteApplication } = usePersonal(mode, {
     favoriteIds: initialFavorites,
     applications: initialApplications,
   });
@@ -175,6 +175,10 @@ export function Workspace({
   async function record(postingId: string, status: Parameters<typeof recordApplication>[1], confirmed: boolean) {
     await recordApplication(postingId, status, confirmed);
     setToast("지원 상태를 기록했어요.");
+  }
+  async function remove(postingId: string) {
+    await deleteApplication(postingId);
+    setToast("지원 기록을 삭제했어요.");
   }
   function compare(id: string) {
     if (compared.includes(id)) setCompared(compared.filter(v => v !== id));
@@ -259,7 +263,13 @@ export function Workspace({
                 공고를 불러오는 중…
               </Text>
             ) : view === "planner" ? (
-              <Planner postings={postings} applications={personal.applications} record={record} now={now} />
+              <Planner
+                postings={postings}
+                applications={personal.applications}
+                record={record}
+                remove={remove}
+                now={now}
+              />
             ) : (
               <PostingsView
                 postings={postings}

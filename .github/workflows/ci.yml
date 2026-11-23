@@ -22,7 +22,7 @@ jobs:
         run: |
           sudo systemctl start postgresql.service
           sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'create database hy_easy_test'
-          sudo -u postgres psql -v ON_ERROR_STOP=1 -d hy_easy_test -f tests/database-bootstrap.sql -f supabase/migrations/202611100001_initial.sql -f supabase/migrations/202611100002_list_sync.sql -f supabase/migrations/202611120001_posting_changed_at.sql -f supabase/migrations/202611180001_retry_classification.sql -f supabase/migrations/202611180002_rls_initplan.sql -f supabase/migrations/202611230001_feedback.sql -f supabase/migrations/202611230002_admin_user_stats.sql -f supabase/migrations/202611230003_usage_daily.sql -f tests/database-policies.sql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -d hy_easy_test -f tests/database-bootstrap.sql -f supabase/migrations/202611100001_initial.sql -f supabase/migrations/202611100002_list_sync.sql -f supabase/migrations/202611120001_posting_changed_at.sql -f supabase/migrations/202611180001_retry_classification.sql -f supabase/migrations/202611180002_rls_initplan.sql -f supabase/migrations/202611230001_feedback.sql -f supabase/migrations/202611230002_admin_user_stats.sql -f supabase/migrations/202611230003_usage_daily.sql -f supabase/migrations/202611230004_delete_application.sql -f tests/database-policies.sql
 
   # Production deploy to Vercel, only from main and only after every check above passed.
   deploy:

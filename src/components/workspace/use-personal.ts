@@ -41,14 +41,20 @@ function parsePersonal(raw: string): Personal {
   }
 }
 
-async function postJson(path: string, method: string, body: unknown): Promise<void> {
-  const response = await fetch(path, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function requestJson(
+  path: string,
+  method: string,
+  body?: unknown,
+  fallback = "저장하지 못했습니다.",
+): Promise<void> {
+  const response = await fetch(
+    path,
+    body === undefined
+      ? { method }
+      : { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+  );
   const data = (await response.json().catch(() => ({}))) as { error?: string };
-  if (!response.ok) throw new Error(data.error || "저장하지 못했습니다.");
+  if (!response.ok) throw new Error(data.error || fallback);
 }
 
 /**
@@ -61,22 +67,31 @@ export function usePersonal(mode: Mode, initial: Personal) {
   const [live, setLive] = useState<Personal>(initial);
   const personal = mode === "demo" ? demo : live;
 
-  function save(next: Personal): void {
+  function update(transform: (prev: Personal) => Personal): void {
     if (mode === "live") {
-      setLive(next);
+      setLive(transform);
       return;
     }
-    localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
+    const next = transform(parsePersonal(readDemoStorage()));
+    try {
+      localStorage.setItem(DEMO_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      return;
+    }
     window.dispatchEvent(new Event(DEMO_CHANGE_EVENT));
   }
 
   async function toggleFavorite(postingId: string): Promise<void> {
     const saved = personal.favoriteIds.includes(postingId);
-    if (mode === "live") await postJson(`/api/favorites/${postingId}`, saved ? "DELETE" : "POST", {});
-    const favoriteIds = saved
-      ? personal.favoriteIds.filter(id => id !== postingId)
-      : [...personal.favoriteIds, postingId];
-    save({ ...personal, favoriteIds });
+    if (mode === "live") await requestJson(`/api/favorites/${postingId}`, saved ? "DELETE" : "POST");
+    update(prev => {
+      const favoriteIds = saved
+        ? prev.favoriteIds.filter(id => id !== postingId)
+        : prev.favoriteIds.includes(postingId)
+          ? prev.favoriteIds
+          : [...prev.favoriteIds, postingId];
+      return { ...prev, favoriteIds };
+    });
   }
 
   async function recordApplication(postingId: string, status: ApplicationStatus, confirmed: boolean): Promise<void> {
@@ -84,16 +99,24 @@ export function usePersonal(mode: Mode, initial: Personal) {
     const otherActive = personal.applications.some(a => a.postingId !== postingId && isBlocking(a.status));
     if (otherActive && isBlocking(status))
       throw new Error("진행 중인 지원의 HY-WEP 탈락 처리 완료를 먼저 기록해 주세요.");
-    if (mode === "live") await postJson("/api/applications", "POST", { postingId, status, confirmed });
-    const existing = personal.applications.find(a => a.postingId === postingId);
-    const updated: Application = {
-      id: existing?.id ?? crypto.randomUUID(),
-      postingId,
-      status,
-      updatedAt: new Date().toISOString(),
-    };
-    save({ ...personal, applications: [updated, ...personal.applications.filter(a => a.postingId !== postingId)] });
+    if (mode === "live") await requestJson("/api/applications", "POST", { postingId, status, confirmed });
+    update(prev => {
+      const existing = prev.applications.find(a => a.postingId === postingId);
+      const updated: Application = {
+        id: existing?.id ?? crypto.randomUUID(),
+        postingId,
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+      return { ...prev, applications: [updated, ...prev.applications.filter(a => a.postingId !== postingId)] };
+    });
   }
 
-  return { personal, toggleFavorite, recordApplication };
+  async function deleteApplication(postingId: string): Promise<void> {
+    if (mode === "live")
+      await requestJson(`/api/applications/${postingId}`, "DELETE", undefined, "삭제하지 못했습니다.");
+    update(prev => ({ ...prev, applications: prev.applications.filter(a => a.postingId !== postingId) }));
+  }
+
+  return { personal, toggleFavorite, recordApplication, deleteApplication };
 }
