@@ -15,8 +15,8 @@
 @import url("./tokens/primitives.css");
 @import url("./tokens/semantic.css");
 @import url("./tokens/components.css");
-@import url("./base.css") layer(app-base);
-@import url("./app-base.css") layer(app-base);
+@import url("./base.css");
+@import url("./app-base.css");
 @import "@astryxdesign/core/reset.css";
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";
