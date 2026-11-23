@@ -15,6 +15,7 @@ import { eligibility, formatDate, isBlocking, type Application, type Filters, ty
 import { isClosingSoon } from "@/lib/posting-format";
 import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
+import { FeedbackDialog } from "./feedback-dialog";
 import { CompareDock, type View } from "./chrome";
 import { LayoutProvider } from "./layout-context";
 import { Planner } from "./planner";
@@ -121,6 +122,7 @@ export function Workspace({
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [compared, setCompared] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [detail, setDetail] = useState<Posting | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -213,6 +215,10 @@ export function Workspace({
               navigate={navigate}
               now={now}
               onOpen={setDetail}
+              onFeedback={() => {
+                setFeedbackOpen(true);
+                setMobileMenu(false);
+              }}
               selectWhen={when => {
                 updateFilters({ when, saved: "", role: "", q: "" });
                 setMobileMenu(false);
@@ -280,6 +286,9 @@ export function Workspace({
               <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
               <Text type="supporting">한양대학교 비공식 서비스</Text>
               <Link href="/privacy">개인정보처리방침</Link>
+              <button type="button" className="text-link" onClick={() => setFeedbackOpen(true)}>
+                피드백 보내기
+              </button>
             </HStack>
           </VStack>
           <CompareDock
@@ -309,6 +318,13 @@ export function Workspace({
               close={() => setCompareOpen(false)}
               applications={personal.applications}
               now={now}
+            />
+          )}
+          {feedbackOpen && (
+            <FeedbackDialog
+              mode={mode}
+              close={() => setFeedbackOpen(false)}
+              onSent={() => setToast("피드백을 보냈어요. 고마워요.")}
             />
           )}
           {toast && (

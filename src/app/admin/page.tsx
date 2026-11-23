@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin-editor";
+import { FeedbackList, type FeedbackItem } from "@/components/admin/feedback-list";
 import { AdminAlerts } from "@/components/admin/admin-alerts";
 import {
   AuditTable,
@@ -21,6 +22,7 @@ import { formatDate, type Posting } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
+const FEEDBACK_LIMIT = 50;
 const RECENT_LIMIT = 20;
 
 export default async function Admin() {
@@ -29,7 +31,7 @@ export default async function Admin() {
     throw e;
   });
   // Reads only what the page shows: the postings that need review and a count, not the whole posting list.
-  const [review, total, runs, queue, versions, audit] = await Promise.all([
+  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback] = await Promise.all([
     db
       .from("posting_view")
       .select("document")
@@ -50,9 +52,17 @@ export default async function Admin() {
       .from("classification_audit")
       .select("posting_id,edited_at,editor_id,result")
       .order("edited_at", { ascending: false })
+    db
+      .from("feedback")
+      .select("id,message,page,created_at,read_at")
+      .order("created_at", { ascending: false })
+      .limit(FEEDBACK_LIMIT),
+    db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
       .limit(RECENT_LIMIT),
   ]);
-  for (const r of [review, total, runs, queue, versions, audit]) if (r.error) throw r.error;
+  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback]) if (r.error) throw r.error;
+  const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
+  const unreadCount = unreadFeedback.count ?? 0;
   const reviewPostings = (review.data ?? []).map(row => row.document as Posting);
   const runRows = (runs.data ?? []) as Run[];
   const queueRows = (queue.data ?? []) as QueueItem[];
@@ -104,9 +114,24 @@ export default async function Admin() {
               ) : (
                 "기록 없음"
               )}
+          <div>
+            <dt>새 피드백</dt>
+            <dd>{unreadCount}건</dd>
+          </div>
             </dd>
           </div>
           <div>
+          <h2>
+            피드백 <span>새 피드백 {unreadCount}건</span>
+          </h2>
+          <p className="admin-note">
+            학생이 앱에서 보낸 익명 피드백입니다. 보낸 사람은 저장하지 않습니다.
+            {feedbackRows.length === FEEDBACK_LIMIT && ` 최근 ${FEEDBACK_LIMIT}건만 보여줍니다.`}
+          </p>
+          <FeedbackList items={feedbackRows} unread={unreadCount} />
+        </section>
+
+        <section className="admin-section">
             <dt>분류 대기</dt>
             <dd>{queueRows.length}건</dd>
           </div>

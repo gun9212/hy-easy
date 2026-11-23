@@ -82,5 +82,26 @@ select pg_temp.assert((select attempts=3 from public.classification_queue q join
 select pg_temp.assert(public.retry_classification()=1,'admin retries every exhausted posting');
 select pg_temp.assert((select count(*)=0 from public.classification_queue where attempts>0),'no exhausted postings remain');
 reset role;
+
+-- Feedback: school users add anonymous rows, only admins read them and mark them read.
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+insert into public.feedback(message,page) values('필터가 헷갈려요','/postings');
+select pg_temp.assert((select count(*)=0 from public.feedback),'non-admin cannot read feedback, even their own');
+do $$ begin begin insert into public.feedback(message) values('   '); raise exception 'blank feedback unexpectedly accepted'; exception when check_violation then null; end; end $$;
+-- RLS hides every row from a non-admin, so this update touches nothing (checked below as admin: still unread).
+update public.feedback set read_at=now();
+select set_config('test.uid','00000000-0000-4000-8000-000000000003',true);
+do $$ begin begin insert into public.feedback(message) values('spam'); raise exception 'non-school feedback unexpectedly accepted'; exception when insufficient_privilege then null; end; end $$;
+reset role;
+set local role anon;
+do $$ begin begin insert into public.feedback(message) values('anon'); raise exception 'anonymous feedback unexpectedly accepted'; exception when insufficient_privilege then null; end; end $$;
+reset role;
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert((select count(*)=1 and bool_and(read_at is null) from public.feedback),'admin reads new feedback');
+update public.feedback set read_at=now();
+select pg_temp.assert((select bool_and(read_at is not null) from public.feedback),'admin marks feedback read');
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;

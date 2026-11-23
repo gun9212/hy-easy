@@ -79,6 +79,7 @@ type SideNavProps = {
   isAdmin: boolean;
   navigate: (view: View) => void;
   selectWhen: (when: When) => void;
+  onFeedback: () => void;
   selectRole: (role: string) => void;
   onOpen: (posting: Posting) => void;
 };
@@ -118,6 +119,7 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
   return (
     <SideNav
       footer={
+          <Button variant="ghost" size="sm" label="피드백 보내기" onClick={props.onFeedback} />
         <VStack gap={2}>
           <NextDeadline next={nextDeadline(postings, now)} now={now} onOpen={props.onOpen} />
           <Button
