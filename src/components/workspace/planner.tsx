@@ -189,7 +189,6 @@ function History({ postings, applications }: Pick<Props, "postings" | "applicati
             const p = companyOf(postings, a.postingId);
             return (
               <div key={a.id}>
-                <span className="company-logo logo-1">{p?.company.slice(0, 1) ?? "H"}</span>
                 <div>
                   <b>{p?.company ?? "등록된 공고"}</b>
                   <small>{p?.title}</small>

@@ -79,7 +79,6 @@ export function Comparison({ postings, close, applications, now }: Props) {
               <th>비교 항목</th>
               {postings.map(p => (
                 <th key={p.id}>
-                  <span className="company-logo logo-0">{p.company.slice(0, 1)}</span>
                   <h3>{p.company}</h3>
                   <p>{p.title}</p>
                 </th>

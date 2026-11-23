@@ -716,10 +716,6 @@
 .postings-table tbody tr.row-selected {
   background: var(--color-accent-soft);
 }
-.postings-table tbody tr.row-selected .company-logo {
-  background: var(--color-surface);
-  box-shadow: inset 0 0 0 1px var(--color-accent-line);
-}
 .postings-table .select-cell {
   width: 56px;
   padding-left: var(--space-lg);
@@ -745,18 +741,6 @@
   color: var(--color-accent);
   text-decoration: underline;
   text-underline-offset: 0.2em;
-}
-.company-logo {
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-control);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: var(--text-lg);
-  font-weight: 700;
 }
 .posting-info {
   display: flex;
@@ -1154,11 +1138,6 @@
   align-items: center;
   gap: var(--space-md);
 }
-.detail-heading .company-logo {
-  width: 56px;
-  height: 56px;
-  font-size: var(--text-xl);
-}
 .detail-heading p {
   color: var(--color-muted);
   font-size: var(--text-sm);
@@ -1429,15 +1408,9 @@
   white-space: nowrap;
 }
 .comparison-table thead th {
-  vertical-align: bottom;
-}
-.comparison-table thead .company-logo {
-  width: 36px;
-  height: 36px;
-  font-size: var(--text-md);
+  vertical-align: top;
 }
 .comparison-table thead h3 {
-  margin-top: var(--space-xs);
   font-size: var(--text-md);
 }
 .comparison-table thead p {
@@ -1647,7 +1620,7 @@
 }
 .history-list > div {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) 0;
@@ -2367,9 +2340,6 @@
     width: auto;
     padding: 0;
   }
-  .postings-table .company-logo {
-    display: none;
-  }
   .stipend-cell b {
     font-size: var(--text-sm);
   }
@@ -2412,11 +2382,11 @@
     flex: 1 1 auto;
   }
   .history-list > div {
-    grid-template-columns: 44px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   .history-list .role-tag,
   .history-list time {
-    grid-column: 2;
+    grid-column: 1;
     justify-self: start;
   }
   .login-header,
