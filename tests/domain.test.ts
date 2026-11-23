@@ -7,6 +7,7 @@ import {
   assertEvidence,
   majorFit,
   verifySecondaryRoles,
+  postedAt,
   type Application,
   type ClassificationOutput,
 } from "../src/lib/domain";
@@ -318,5 +319,18 @@ describe("전공 분야", () => {
     assert.ok(neighborMajors("경영공학전공").includes("경영학부"));
     assert.ok(neighborMajors("경영공학전공").includes("산업공학과"));
     assert.ok(!neighborMajors("산업공학과").includes("경영학부"));
+  });
+});
+
+describe("postedAt", () => {
+  const base = samplePostings[0];
+  it("초기 일괄 수집(11/10)에 처음 본 공고는 등록 시각을 비운다", () => {
+    assert.equal(postedAt({ ...base, firstSeenAt: "2026-11-10T17:11:17+09:00" }), null);
+  });
+  it("그 뒤에 처음 본 공고는 처음 본 시각을 등록 시각으로 쓴다", () => {
+    assert.equal(postedAt({ ...base, firstSeenAt: "2026-11-11T09:00:48+09:00" }), "2026-11-11T09:00:48+09:00");
+  });
+  it("시각이 깨져 있으면 비운다", () => {
+    assert.equal(postedAt({ ...base, firstSeenAt: "invalid" }), null);
   });
 });

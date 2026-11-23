@@ -59,7 +59,6 @@ function MoreDetails({ posting: p, decision, props }: { posting: Posting; decisi
         </VStack>
         <Majors posting={p} major={props.major} />
         <HStack gap={3} wrap="wrap">
-          <Text type="supporting">최초 발견 {formatDate(p.firstSeenAt, true)}</Text>
           <Text type="supporting">최근 변경 {formatDate(p.updatedAt, true)}</Text>
           <Text type="supporting">최근 확인 {formatDate(p.lastCheckedAt, true)}</Text>
         </HStack>

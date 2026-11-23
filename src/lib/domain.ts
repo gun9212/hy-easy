@@ -245,6 +245,18 @@ export function isNewPosting(posting: Posting, now = new Date()) {
   const firstSeen = new Date(posting.firstSeenAt);
   return Number.isFinite(firstSeen.getTime()) && kstDate(firstSeen) >= newWindowStart(now);
 }
+/**
+ * The collector's first full sweep (2026-11-10 14:51–17:11 KST) picked up every posting already open, so its
+ * first-seen time says nothing about when HY-WEP published them. Postings first seen after that sweep were found
+ * within one collector interval of going up, so their first-seen time stands in for the registration time.
+ */
+export const TRACKING_START = "2026-11-11T00:00:00+09:00";
+
+/** When HY-WEP published the posting, as far as we can tell; null for postings that predate tracking. */
+export function postedAt(posting: Posting): string | null {
+  const seen = Date.parse(posting.firstSeenAt);
+  return Number.isFinite(seen) && seen >= Date.parse(TRACKING_START) ? posting.firstSeenAt : null;
+}
 export function kstDate(date: Date) {
   return new Date(date.getTime() + 9 * 3600_000).toISOString().slice(0, 10);
 }
