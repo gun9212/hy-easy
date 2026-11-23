@@ -1025,6 +1025,13 @@
   box-shadow: var(--shadow-float);
   animation: dock-in var(--dur-short) var(--ease-out);
 }
+/* The count and the two buttons keep to one line; on a phone they would otherwise break mid-word ("초기 / 화"). */
+.compare-dock > b,
+.dock-reset,
+.compare-dock .primary-button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 .dock-companies {
   display: flex;
   flex-wrap: wrap;
@@ -2184,6 +2191,15 @@
     bottom: var(--space-sm);
   }
   .dock-companies {
+    display: none;
+  }
+  /* A phone has room for the count and both buttons on one line only without the icon and "나란히". */
+  .compare-dock {
+    gap: var(--space-xs);
+    padding-left: var(--space-md);
+  }
+  .compare-dock > svg,
+  .dock-wide {
     display: none;
   }
   .detail-facts {

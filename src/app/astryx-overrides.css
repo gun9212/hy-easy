@@ -68,6 +68,11 @@
   border-radius: 3px;
   background: var(--color-warn-mark);
 }
+/* In the detail header the deadline is plain text, not a badge, so it keeps a wider step from the badges after it. */
+.detail-deadline {
+  display: inline-flex;
+  margin-inline-end: var(--space-2xs);
+}
 .day-mark[data-tone="closed"] {
   color: var(--color-muted);
   font-weight: var(--weight-regular);

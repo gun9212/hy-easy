@@ -39,8 +39,10 @@ const DECISION_BADGE: Record<Decision["status"], "success" | "warning" | "neutra
 /** The demo's badge row: deadline, role, programme type, plus whether the schedule allows applying. */
 function BadgeRow({ posting: p, decision, props }: { posting: Posting; decision: Decision; props: Props }) {
   return (
-    <HStack gap={1} wrap="wrap" align="center">
-      <DeadlineBadge posting={p} applications={props.applications} now={props.now} />
+    <HStack gap={2} wrap="wrap" align="center">
+      <span className="detail-deadline">
+        <DeadlineBadge posting={p} applications={props.applications} now={props.now} />
+      </span>
       {p.classification && <Badge variant="blue" label={p.classification.primaryRole} />}
       {p.programType && <Badge variant="neutral" label={p.programType} />}
       <Badge variant={DECISION_BADGE[decision.status]} label={decision.label} />

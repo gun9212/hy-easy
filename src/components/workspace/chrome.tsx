@@ -161,7 +161,7 @@ export function CompareDock({ selected, onRemove, onReset, onOpen }: DockProps) 
         초기화
       </button>
       <button className="primary-button" onClick={onOpen}>
-        나란히 비교하기 <ArrowRight size={15} />
+        <span className="dock-wide">나란히 </span>비교하기 <ArrowRight size={15} />
       </button>
     </div>
   );
