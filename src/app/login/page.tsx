@@ -16,11 +16,25 @@ const errors: Record<string, string> = {
 };
 const FEATURES = ["하는 일로 찾는 직군", "지원금·마감 나란히 비교", "지원 일정 관리"];
 
-/** Illustrative rows for the preview card. Fictional companies; marked aria-hidden as decoration. */
+/**
+ * The preview mirrors the app's posting card (src/components/workspace/posting-cards.tsx) with fictional postings:
+ * real ones are visible only to signed-in students. Marked aria-hidden as an illustration.
+ */
+const PREVIEW_MAIN = {
+  due: "오늘 마감",
+  time: "24:00",
+  title: "데이터 분석 인턴",
+  company: "온도랩",
+  role: "데이터·AI",
+  summary: "주문·재고 데이터를 SQL로 정리하고 주간 리포트 대시보드를 만드는 실습이에요.",
+  location: "서울 성동구",
+  ratio: "2.7 : 1",
+  counts: "지원 8 · 모집 3",
+  stipend: { prefix: "월", amount: "2,400,000", suffix: "원" },
+};
 const PREVIEW_ROWS = [
-  { role: "개발", company: "가상테크", title: "백엔드 개발 인턴", stipend: "월 220만원", due: "D-3", soon: true },
-  { role: "마케팅", company: "브랜드랩", title: "퍼포먼스 마케팅", stipend: "월 200만원", due: "D-6", soon: false },
-  { role: "데이터·AI", company: "온도랩", title: "데이터 분석 인턴", stipend: "월 240만원", due: "D-12", soon: false },
+  { due: "D-3", soon: true, title: "퍼포먼스 마케팅 인턴", company: "브랜드랩", role: "마케팅", ratio: "1.5 : 1" },
+  { due: "D-6", soon: false, title: "백엔드 개발 인턴", company: "가온소프트", role: "개발", ratio: "0.5 : 1" },
 ];
 
 /** The in-app browser notice for this request, or null in a normal browser. */
@@ -75,23 +89,48 @@ function SignIn({ error, notice }: { error?: string; notice: React.ReactNode }) 
 }
 
 function Preview() {
+  const main = PREVIEW_MAIN;
   return (
     <div className="landing-preview" aria-hidden="true">
       <div className="landing-preview-head">
-        <b>모집 중 공고</b>
         <span>마감 임박순</span>
+        <span>예시 화면</span>
       </div>
-      <ul>
+      <article className="preview-card">
+        <p className="preview-due">
+          <span className="preview-dot" />
+          <b>{main.due}</b>
+          <span>{main.time} 마감</span>
+        </p>
+        <h2>{main.title}</h2>
+        <p className="preview-meta">
+          {main.company} · {main.role}
+        </p>
+        <p className="preview-summary">{main.summary}</p>
+        <div className="preview-facts">
+          <div>
+            <span className="preview-meta">{main.location}</span>
+            <b className="preview-ratio">{main.ratio}</b>
+            <span className="preview-meta">{main.counts}</span>
+          </div>
+          <p className="preview-stipend">
+            <span>{main.stipend.prefix}</span>
+            <b>{main.stipend.amount}</b>
+            <span>{main.stipend.suffix}</span>
+          </p>
+        </div>
+      </article>
+      <ul className="preview-rows">
         {PREVIEW_ROWS.map(row => (
           <li key={row.title}>
-            <span className="landing-role">{row.role}</span>
-            <span className="landing-row-text">
+            <span className={row.soon ? "preview-day soon" : "preview-day"}>{row.due}</span>
+            <span className="preview-row-text">
               <b>{row.title}</b>
-              <small>
-                {row.company} · {row.stipend}
-              </small>
+              <span>
+                {row.company} · {row.role}
+              </span>
             </span>
-            <span className={row.soon ? "landing-due soon" : "landing-due"}>{row.due}</span>
+            <span className="preview-row-ratio">{row.ratio}</span>
           </li>
         ))}
       </ul>
@@ -123,14 +162,14 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       </header>
       <div className="landing-body">
         <section className="landing-copy">
-          <p className="landing-eyebrow">한양대 현장실습 공고</p>
+          <p className="landing-eyebrow">한양대 HY-WEP 현장실습 공고</p>
           <h1>
             하는 일로 찾고,
             <br />
             한눈에 비교하세요.
           </h1>
           <p className="landing-lead">
-            HY-WEP 공고를 직군·지원금·마감 기준으로 정리했어요. 학교 Google 계정으로 바로 시작할 수 있어요.
+            HY-WEP 공고를 직군·지원금·마감 기준으로 정리했어요. 지원 인원은 평일 낮 10분마다 새로 확인해요.
           </p>
           <SignIn error={error} notice={notice} />
           <ul className="landing-features">
