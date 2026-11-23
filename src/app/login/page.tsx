@@ -17,13 +17,13 @@ const FEATURES = ["하는 일로 찾는 직군", "지원금·마감 나란히 �
 
 /**
  * The preview mirrors the app's posting card (src/components/workspace/posting-cards.tsx) with fictional postings:
- * real ones are visible only to signed-in students. Marked aria-hidden as an illustration.
+ * real ones are visible only to signed-in students. Companies are "A사", "B사" so no real company is named. Marked aria-hidden as an illustration.
  */
 const PREVIEW_MAIN = {
   due: "오늘 마감",
   time: "24:00",
   title: "데이터 분석 인턴",
-  company: "온도랩",
+  company: "A사",
   role: "데이터·AI",
   summary: "주문·재고 데이터를 SQL로 정리하고 주간 리포트 대시보드를 만드는 실습이에요.",
   location: "서울 성동구",
@@ -32,8 +32,8 @@ const PREVIEW_MAIN = {
   stipend: { prefix: "월", amount: "2,400,000", suffix: "원" },
 };
 const PREVIEW_ROWS = [
-  { due: "D-3", soon: true, title: "퍼포먼스 마케팅 인턴", company: "브랜드랩", role: "마케팅", ratio: "1.5 : 1" },
-  { due: "D-6", soon: false, title: "백엔드 개발 인턴", company: "가온소프트", role: "개발", ratio: "0.5 : 1" },
+  { due: "D-3", soon: true, title: "퍼포먼스 마케팅 인턴", company: "B사", role: "마케팅", ratio: "1.5 : 1" },
+  { due: "D-6", soon: false, title: "백엔드 개발 인턴", company: "C사", role: "개발", ratio: "0.5 : 1" },
 ];
 
 /** The in-app browser notice for this request, or null in a normal browser. */

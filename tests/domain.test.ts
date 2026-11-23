@@ -96,7 +96,7 @@ describe("원문 정규화와 비교", () => {
   it("지원금순에서 미기재를 뒤로 정렬", () =>
     assert.equal(filterPostings(samplePostings, { sort: "stipend" }, []).at(-1)?.stipend.amount, null));
   it("기업별 여러 부서를 검색하고 관심 필터 적용", () => {
-    assert.equal(filterPostings(samplePostings, { q: "온도랩" }, []).length, 2);
+    assert.equal(filterPostings(samplePostings, { q: "A사" }, []).length, 2);
     assert.equal(filterPostings(samplePostings, { saved: "true" }, [p.id]).length, 1);
   });
   it("월 지원금 필터는 시간당·미기재 제외", () =>

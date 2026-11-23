@@ -1,11 +1,11 @@
 import type { Posting, PostingMajors, Role } from "./domain";
 import type { Major } from "./majors";
 
-// Fictional companies and dates. Never inserted into the production database.
+// Fictional companies (A사, B사, … so no name can be mistaken for a real company) and dates. Never inserted into the production database.
 export const DEMO_NOW = "2026-11-10T04:00:00.000Z";
 const seeds: [string, string, string, Role, number | null, string, number, string, string, string][] = [
   [
-    "온도랩",
+    "A사",
     "플랫폼개발팀",
     "백엔드 개발 인턴",
     "개발",
@@ -17,7 +17,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "서비스 API를 개발하고 테스트 코드를 작성합니다. SQL 쿼리와 서비스 로그를 점검합니다.",
   ],
   [
-    "노드앤코",
+    "B사",
     "데이터팀",
     "데이터 엔지니어링 인턴",
     "데이터·AI",
@@ -29,7 +29,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "Python으로 수집 작업을 작성하고 데이터 품질을 확인합니다. SQL로 분석용 테이블을 관리합니다.",
   ],
   [
-    "바운드스튜디오",
+    "C사",
     "프로덕트팀",
     "프로덕트 디자인 인턴",
     "디자인",
@@ -41,7 +41,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "사용자 인터뷰를 정리하고 Figma로 와이어프레임과 화면을 설계합니다.",
   ],
   [
-    "페이퍼웨이브",
+    "D사",
     "브랜드그로스팀",
     "콘텐츠 마케팅 인턴",
     "마케팅",
@@ -53,7 +53,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "SNS 콘텐츠를 기획하고 게시합니다. 캠페인 지표를 정리하고 개선 아이디어를 제안합니다.",
   ],
   [
-    "클라우드폴리오",
+    "E사",
     "서비스운영팀",
     "클라우드 운영 인턴",
     "인프라·보안",
@@ -65,7 +65,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "클라우드 모니터링과 배포 자동화를 보조하고 운영 문서를 작성합니다.",
   ],
   [
-    "온도랩",
+    "A사",
     "프로덕트기획팀",
     "서비스 기획 인턴",
     "기획",
@@ -77,7 +77,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "경쟁 서비스를 조사하고 사용자 요구사항을 정리합니다. 화면 정책과 기능 명세서를 작성합니다.",
   ],
   [
-    "그린팩트",
+    "F사",
     "품질관리팀",
     "품질 분석 인턴",
     "생산·품질",
@@ -89,7 +89,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "검사 결과를 기록하고 제품 품질 데이터를 집계합니다. 품질 기준 문서를 정리합니다.",
   ],
   [
-    "루프컴퍼니",
+    "G사",
     "경영지원팀",
     "경영지원 인턴",
     "경영지원",
@@ -101,7 +101,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "채용 일정을 정리하고 구성원 온보딩을 지원합니다. 사내 비품과 문서를 관리합니다.",
   ],
   [
-    "블루리프",
+    "H사",
     "재무팀",
     "재무·회계 인턴",
     "재무·회계",
@@ -113,7 +113,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "비용 증빙을 확인하고 전표 자료를 정리합니다. 월 결산에 필요한 자료를 취합합니다.",
   ],
   [
-    "메이커스리서치",
+    "I사",
     "소재연구팀",
     "소재 연구 인턴",
     "연구개발",
@@ -125,7 +125,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "소재 실험을 보조하고 측정 결과를 정리합니다. 실험 과정과 결과를 연구 노트에 기록합니다.",
   ],
   [
-    "포워드파트너스",
+    "J사",
     "사업개발팀",
     "B2B 영업 지원 인턴",
     "영업",
@@ -137,7 +137,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "고객사를 조사하고 제안 자료를 정리합니다. 고객 미팅과 영업 데이터 관리를 보조합니다.",
   ],
   [
-    "어라운드워크",
+    "K사",
     "운영팀",
     "사업 운영 인턴",
     "기타",
@@ -149,7 +149,7 @@ const seeds: [string, string, string, Role, number | null, string, number, strin
     "사업 운영에 필요한 자료를 정리하고 팀 업무를 지원합니다.",
   ],
   [
-    "모노스페이스",
+    "L사",
     "개발팀",
     "프론트엔드 개발 인턴",
     "개발",
