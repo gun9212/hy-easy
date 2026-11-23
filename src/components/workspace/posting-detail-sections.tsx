@@ -25,10 +25,9 @@ function majorsLine(p: Posting): string {
 /** The demo's six facts and the majors line, in one muted card. */
 export function Facts({ posting: p }: { posting: Posting }): React.ReactElement {
   const posted = postedAt(p);
-  const facts: [string, string][] = [
-    // Left out, not "미확인", for postings that predate tracking: we never knew their registration time.
-    ...(posted ? [["등록", formatDate(posted, true)] as [string, string]] : []),
-    ["마감", deadlineShort(p)],
+  const facts: [label: string, value: string, note?: string][] = [
+    // Registration time sits under the deadline; left out, not "미확인", for postings that predate tracking.
+    ["마감", deadlineShort(p), posted ? `등록 ${formatDate(posted, true)}` : undefined],
     ["실습지원비", stipendLabel(p)],
     ["지역", p.location || "미기재"],
     ["학기", p.term || "미기재"],
@@ -39,10 +38,15 @@ export function Facts({ posting: p }: { posting: Posting }): React.ReactElement 
     <Card variant="muted" padding={4}>
       <VStack gap={3}>
         <Grid columns={2} gap={3}>
-          {facts.map(([label, value]) => (
+          {facts.map(([label, value, note]) => (
             <VStack key={label} gap={0.5}>
               <Text type="supporting">{label}</Text>
               <Text weight="semibold">{value}</Text>
+              {note && (
+                <Text type="supporting" size="sm">
+                  {note}
+                </Text>
+              )}
             </VStack>
           ))}
         </Grid>
