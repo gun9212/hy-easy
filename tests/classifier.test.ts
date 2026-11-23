@@ -1,7 +1,14 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import Anthropic from "@anthropic-ai/sdk";
-import { modelPayload, parseModelResponse, estimateCost, trimToLimits, isServiceError } from "../src/lib/classifier";
+import {
+  ATTACHMENT_RULES,
+  modelPayload,
+  parseModelResponse,
+  estimateCost,
+  trimToLimits,
+  isServiceError,
+} from "../src/lib/classifier";
 import { assertEvidence } from "../src/lib/domain";
 import { samplePostings } from "../src/lib/sample";
 import { classificationInput } from "../src/lib/normalize";
@@ -31,6 +38,13 @@ for (const provider of ["claude", "anthropic"] as const) {
 it("Vertex 경로만 anthropic_version을 붙이고 직접 호출은 붙이지 않음", () => {
   assert.equal("anthropic_version" in modelPayload("claude", input), true);
   assert.equal("anthropic_version" in modelPayload("anthropic", input), false);
+});
+it("첨부 공고의 anthropic 직접 호출 페이로드에도 첨부 규칙(ATTACHMENT_RULES)을 포함", () => {
+  const withAttachment = { ...input, attachment: "1. 직무 내용 본문", department: "개발팀" };
+  const payload = modelPayload("anthropic", withAttachment) as {
+    messages: { content: { text: string }[] }[];
+  };
+  assert.equal(payload.messages[0].content[0].text.startsWith(ATTACHMENT_RULES), true);
 });
 it("직접 호출 응답도 같은 검증(거절·잘림 차단)을 거침", () => {
   assert.deepEqual(parseModelResponse("anthropic", input, response()).classification, result);

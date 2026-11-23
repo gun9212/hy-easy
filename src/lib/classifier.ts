@@ -266,17 +266,18 @@ export function isServiceError(e: unknown): boolean {
     e instanceof Anthropic.APIError ? e.status : (e as { response?: { status?: unknown } } | null)?.response?.status;
   return typeof status === "number" && (SERVICE_STATUSES.has(status) || status >= 500);
 }
-async function callAnthropicApi(input: ClassificationInput, model: string): Promise<unknown> {
+async function callAnthropicApi(body: ReturnType<typeof claudeBody>, model: string): Promise<unknown> {
   // Reads ANTHROPIC_API_KEY. The SDK retries 429/5xx/connection errors itself.
   const client = new Anthropic({ timeout: REQUEST_TIMEOUT_MS, maxRetries: 2 });
-  return client.messages.create({ model, ...claudeBody(JSON.stringify(input)) });
+  return client.messages.create({ model, ...body });
 }
 
 export async function classify(input: ClassificationInput, provider: Provider): Promise<ClassificationResult> {
   if (provider === "anthropic") {
     const model = modelFor(provider);
-    modelPayload(provider, input); // input validation (empty / oversized) shared with the other providers
-    const message = await callAnthropicApi(input, model);
+    // Uses the exact payload built by modelPayload (including ATTACHMENT_RULES when an attachment exists).
+    const body = modelPayload(provider, input) as ReturnType<typeof claudeBody>;
+    const message = await callAnthropicApi(body, model);
     return {
       ...parseModelResponse(provider, input, message),
       provider,
