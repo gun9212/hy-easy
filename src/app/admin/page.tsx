@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
 const RECENT_LIMIT = 20;
 const FEEDBACK_LIMIT = 50;
+type UserStats = { total: number; active7d: number; new7d: number };
 
 export default async function Admin() {
   const { db } = await requireAdmin().catch((e: unknown) => {
@@ -30,7 +31,7 @@ export default async function Admin() {
     throw e;
   });
   // Reads only what the page shows: the postings that need review and a count, not the whole posting list.
-  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback] = await Promise.all([
+  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats] = await Promise.all([
     db
       .from("posting_view")
       .select("document")
@@ -58,8 +59,12 @@ export default async function Admin() {
       .order("created_at", { ascending: false })
       .limit(FEEDBACK_LIMIT),
     db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
+    // Counts only (supabase/migrations/202611230002_admin_user_stats.sql): verified school accounts.
+    db.rpc("admin_user_stats"),
   ]);
-  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback]) if (r.error) throw r.error;
+  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats])
+    if (r.error) throw r.error;
+  const users = (userStats.data ?? { total: 0, active7d: 0, new7d: 0 }) as UserStats;
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
   const unreadCount = unreadFeedback.count ?? 0;
   const reviewPostings = (review.data ?? []).map(row => row.document as Posting);
@@ -117,6 +122,20 @@ export default async function Admin() {
           <div>
             <dt>새 피드백</dt>
             <dd>{unreadCount}건</dd>
+          </div>
+        </dl>
+        <dl className="admin-stats admin-users">
+          <div>
+            <dt>가입 학생</dt>
+            <dd>{users.total}명</dd>
+          </div>
+          <div>
+            <dt>최근 7일 접속</dt>
+            <dd>{users.active7d}명</dd>
+          </div>
+          <div>
+            <dt>최근 7일 신규</dt>
+            <dd>{users.new7d}명</dd>
           </div>
         </dl>
 

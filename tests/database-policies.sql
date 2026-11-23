@@ -103,5 +103,18 @@ select pg_temp.assert((select count(*)=1 and bool_and(read_at is null) from publ
 update public.feedback set read_at=now();
 select pg_temp.assert((select bool_and(read_at is not null) from public.feedback),'admin marks feedback read');
 reset role;
+
+-- User counts: admin only, verified school accounts only (a@, b@; not the gmail or the unconfirmed one).
+update auth.users set last_sign_in_at=now() where email='a@hanyang.ac.kr';
+update auth.users set last_sign_in_at=now()-interval '30 days', created_at=now()-interval '30 days' where email='b@hanyang.ac.kr';
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert(public.admin_user_stats()='{"total":2,"active7d":1,"new7d":1}'::jsonb,'admin sees school user counts');
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+do $$ begin begin perform public.admin_user_stats(); raise exception 'non-admin user stats unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+reset role;
+set local role anon;
+do $$ begin begin perform public.admin_user_stats(); raise exception 'anonymous user stats unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;
