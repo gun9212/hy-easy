@@ -1327,11 +1327,74 @@
   margin-top: var(--space-md);
   overflow-x: auto;
 }
+/* Equal posting columns (fixed layout) so long source text cannot widen one of them. */
 .comparison-table {
   width: 100%;
-  min-width: 720px;
+  min-width: calc(140px + var(--compare-columns, 2) * 240px);
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: var(--text-sm);
+}
+.comparison-table thead th:first-child {
+  width: 140px;
+}
+.compare-figure {
+  display: flex;
+  flex-direction: column;
+}
+.compare-figure b {
+  color: var(--color-ink);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.compare-figure span {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+.compare-toggle-row td {
+  padding: var(--space-sm) 0;
+}
+.compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 40px;
+  padding: 0 var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-ink-2);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color var(--dur-short) var(--ease-out);
+}
+.compare-toggle:hover {
+  background: var(--color-paper-2);
+}
+.compare-toggle svg {
+  transition: transform var(--dur-short) var(--ease-out);
+}
+.compare-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+.compare-group th {
+  padding-top: var(--space-lg);
+  color: var(--color-ink);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.comparison-table .compare-group th {
+  position: static;
+  box-shadow: none;
+}
+.comparison-table td.compare-source {
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.compare-empty {
+  color: var(--color-muted);
 }
 .comparison-table th,
 .comparison-table td {
