@@ -12,9 +12,11 @@ export default async function Postings({ searchParams }: { searchParams: Promise
     throw e;
   });
   // Postings are loaded by the browser (stored copy + changes only); the page carries just the student's own data.
+  // touch_activity marks today as a visit day for the admin page's daily count; a failure there never blocks the page.
   const [data, admin] = await Promise.all([
     loadPersonal(ctx.db, ctx.user.id),
     ctx.db.from("admins").select("user_id").eq("user_id", ctx.user.id).maybeSingle(),
+    Promise.resolve(ctx.db.rpc("touch_activity")).catch(() => null),
   ]);
   return (
     <Workspace

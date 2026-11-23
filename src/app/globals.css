@@ -1902,6 +1902,126 @@
   border-radius: var(--radius-card);
   background: var(--color-surface);
 }
+/* Daily usage charts: two single-series bar charts side by side, thin bars with 2px gaps, 4px rounded tops. */
+.usage-charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-sm);
+}
+.usage-chart {
+  margin: 0;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.usage-chart figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2xs) var(--space-sm);
+}
+.usage-chart figcaption span {
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+}
+.usage-chart figcaption b {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.usage-chart figcaption small {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.usage-plot {
+  position: relative;
+  /* Room above the tallest bar for its tooltip. */
+  margin-top: var(--space-lg);
+  padding-left: var(--space-lg);
+}
+.usage-max {
+  position: absolute;
+  top: 0;
+  left: 0;
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.usage-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+  border-top: 1px dashed var(--color-rule);
+  border-bottom: 1px solid var(--color-rule);
+}
+.usage-bar {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  outline-offset: 2px;
+}
+.usage-bar::before {
+  content: "";
+  width: 100%;
+  height: max(var(--h), 1px);
+  border-radius: 4px 4px 0 0;
+  background: var(--color-accent);
+}
+.usage-bar:hover::before,
+.usage-bar:focus-visible::before {
+  background: var(--color-accent-hover);
+}
+.usage-tip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  z-index: 1;
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-chip);
+  background: var(--color-panel);
+  color: var(--color-panel-ink);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-short) var(--ease-out);
+}
+.usage-bar:hover .usage-tip,
+.usage-bar:focus-visible .usage-tip {
+  opacity: 1;
+}
+.usage-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.usage-table {
+  margin-top: var(--space-sm);
+}
+.usage-table summary {
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+@media (max-width: 48rem) {
+  .usage-charts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Second row: who uses the service (counts only). */
 .admin-stats.admin-users {
   grid-template-columns: repeat(3, minmax(0, 1fr));

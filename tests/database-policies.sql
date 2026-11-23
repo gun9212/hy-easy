@@ -116,5 +116,24 @@ reset role;
 set local role anon;
 do $$ begin begin perform public.admin_user_stats(); raise exception 'anonymous user stats unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
+
+-- Daily usage: a visit is one row per student per day; only admins read the counts.
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select public.touch_activity();
+select public.touch_activity();
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+select public.touch_activity();
+do $$ begin begin perform * from public.activity_days; raise exception 'student read of activity unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+do $$ begin begin perform public.admin_usage_daily(7); raise exception 'non-admin usage unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+select set_config('test.uid','00000000-0000-4000-8000-000000000003',true);
+select public.touch_activity();
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert((select count(*)=7 from public.admin_usage_daily(7)),'one row per day');
+select pg_temp.assert((select active=2 and signups=1 from public.admin_usage_daily(7) order by day desc limit 1),'today: two school visitors (repeat visit and non-school ignored), one school sign-up');
+reset role;
+set local role anon;
+do $$ begin begin perform public.touch_activity(); raise exception 'anonymous touch unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;

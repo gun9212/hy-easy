@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin-editor";
 import { AdminAlerts } from "@/components/admin/admin-alerts";
 import { FeedbackList, type FeedbackItem } from "@/components/admin/feedback-list";
+import { UsageCharts, type UsageDay } from "@/components/admin/usage-charts";
 import {
   AuditTable,
   ChangesTable,
@@ -23,6 +24,7 @@ export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
 const RECENT_LIMIT = 20;
 const FEEDBACK_LIMIT = 50;
+const USAGE_DAYS = 30;
 type UserStats = { total: number; active7d: number; new7d: number };
 
 export default async function Admin() {
@@ -31,7 +33,7 @@ export default async function Admin() {
     throw e;
   });
   // Reads only what the page shows: the postings that need review and a count, not the whole posting list.
-  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats] = await Promise.all([
+  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats, usage] = await Promise.all([
     db
       .from("posting_view")
       .select("document")
@@ -61,8 +63,10 @@ export default async function Admin() {
     db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
     // Counts only (supabase/migrations/202611230002_admin_user_stats.sql): verified school accounts.
     db.rpc("admin_user_stats"),
+    // Per KST day for the last 30 days (supabase/migrations/202611230003_usage_daily.sql).
+    db.rpc("admin_usage_daily", { p_days: USAGE_DAYS }),
   ]);
-  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats])
+  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats, usage])
     if (r.error) throw r.error;
   const users = (userStats.data ?? { total: 0, active7d: 0, new7d: 0 }) as UserStats;
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
@@ -138,6 +142,16 @@ export default async function Admin() {
             <dd>{users.new7d}명</dd>
           </div>
         </dl>
+
+        <section className="admin-section">
+          <h2>
+            이용 추이 <span>최근 {USAGE_DAYS}일</span>
+          </h2>
+          <p className="admin-note">
+            접속 학생은 2026-11-23부터 공고 화면을 연 날을 학생당 하루 한 번 셉니다. 신규 가입은 가입일 기준입니다.
+          </p>
+          <UsageCharts days={(usage.data ?? []) as UsageDay[]} />
+        </section>
 
         <section className="admin-section">
           <h2>
