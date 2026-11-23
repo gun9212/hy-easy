@@ -8,6 +8,7 @@ import {
   matchesWhen,
   nextDeadline,
   postedShort,
+  safeHywepUrl,
   stipendParts,
 } from "../src/lib/posting-format";
 import { samplePostings } from "../src/lib/sample";
@@ -89,5 +90,19 @@ describe("postedShort", () => {
   });
   it("is null for postings from the initial sweep", () => {
     assert.equal(postedShort({ ...base, firstSeenAt: "2026-11-10T08:00:00.000Z" }), null);
+  });
+});
+
+describe("safeHywepUrl", () => {
+  it("allows only credential-free HTTPS URLs on hywep.hanyang.ac.kr", () => {
+    assert.equal(
+      safeHywepUrl("https://hywep.hanyang.ac.kr/compjoinsearch/view.do?id=42"),
+      "https://hywep.hanyang.ac.kr/compjoinsearch/view.do?id=42",
+    );
+    assert.equal(safeHywepUrl("http://hywep.hanyang.ac.kr/compjoinsearch/view.do?id=42"), null);
+    assert.equal(safeHywepUrl("https://evil.example/compjoinsearch/view.do"), null);
+    assert.equal(safeHywepUrl("javascript:alert(1)"), null);
+    assert.equal(safeHywepUrl("https://user@hywep.hanyang.ac.kr/"), null);
+    assert.equal(safeHywepUrl(""), null);
   });
 });

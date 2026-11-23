@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
+import { ArrowUpRight, Bookmark } from "lucide-react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -10,6 +10,7 @@ import { Layout, LayoutContent, LayoutFooter, LayoutHeader } from "@astryxdesign
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { eligibility, formatDate, type Application, type Decision, type Posting } from "@/lib/domain";
+import { safeHywepUrl } from "@/lib/posting-format";
 import type { Major } from "@/lib/majors";
 import { Classification, Events, Facts, Majors, OriginalTexts } from "./posting-detail-sections";
 import { DeadlineBadge } from "./posting-row-parts";
@@ -77,11 +78,12 @@ export function PostingDetail(props: Props) {
   const { posting: p, saved, onFavorite, close } = props;
   const decision = eligibility(p, props.applications, props.now);
   const closed = decision.status === "closed";
+  const sourceHref = safeHywepUrl(p.sourceUrl);
   return (
     <DetailFrame
       label={`${p.company} 공고 상세`}
       title={p.title}
-      subtitle={`${p.company} · ${p.department}`}
+      subtitle={p.department ? `${p.company} · ${p.department}` : p.company}
       close={close}
       render={header => (
         <Layout
@@ -92,7 +94,17 @@ export function PostingDetail(props: Props) {
           }
           footer={
             <LayoutFooter hasDivider padding={4}>
-              <HStack gap={2} justify="end">
+              <HStack gap={2} justify="end" wrap="wrap">
+                {sourceHref && (
+                  <Button
+                    variant="ghost"
+                    label="원문 보기"
+                    icon={<ArrowUpRight size={16} />}
+                    href={sourceHref}
+                    target="_blank"
+                    rel="noreferrer"
+                  />
+                )}
                 <Button
                   variant="secondary"
                   label={saved ? "저장됨" : "관심 저장"}

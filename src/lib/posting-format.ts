@@ -75,3 +75,19 @@ export function deadlineShort(posting: Posting): string {
   const time = seoulTime.format(new Date(at));
   return `${day} ${time === "00:00" && seoulDate.format(new Date(at)) !== date ? "24:00" : time}`;
 }
+
+const HYWEP_HOST = "hywep.hanyang.ac.kr";
+
+/** Accepts only credential-free HTTPS URLs on HY-WEP so stored source links cannot redirect elsewhere. */
+export function safeHywepUrl(raw: string | undefined): string | null {
+  if (!raw) return null;
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:" || parsed.hostname !== HYWEP_HOST || parsed.username || parsed.password) {
+      return null;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
