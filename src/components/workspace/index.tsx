@@ -2,16 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Info, X } from "lucide-react";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
+import { ToastViewport, useToast } from "@astryxdesign/core/Toast";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-import { eligibility, formatDate, isBlocking, type Application, type Filters, type Posting } from "@/lib/domain";
+import {
+  eligibility,
+  formatDate,
+  isBlocking,
+  normalizeFilters,
+  type Application,
+  type Filters,
+  type Posting,
+} from "@/lib/domain";
 import { isClosingSoon } from "@/lib/posting-format";
 import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
@@ -66,12 +74,12 @@ function viewOf(filters: Filters): View {
   return filters.saved === "true" ? "saved" : "postings";
 }
 
-function writeUrl(filters: Filters): void {
+function searchOf(filters: Filters): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
     if (value) params.set(key, value);
   });
-  window.history.replaceState(null, "", `${window.location.pathname}${params.size ? `?${params}` : ""}`);
+  return params.size ? `?${params}` : "";
 }
 
 function useClock(mode: Mode, initialNow: string): Date {
@@ -84,16 +92,6 @@ function useClock(mode: Mode, initialNow: string): Date {
   return now;
 }
 
-function useToast(): [string, (message: string) => void] {
-  const [toast, setToast] = useState("");
-  useEffect(() => {
-    if (!toast) return;
-    const id = setTimeout(() => setToast(""), TOAST_MS);
-    return () => clearTimeout(id);
-  }, [toast]);
-  return [toast, setToast];
-}
-
 /** The demo's one line under the title: what the list is, and when the collector last checked it. */
 function sourceLine(mode: Mode, lastChecked: string | undefined): string {
   if (mode === "demo") return "한양대학교 HY-WEP 현장실습 공고 · 가상 데이터";
@@ -101,7 +99,9 @@ function sourceLine(mode: Mode, lastChecked: string | undefined): string {
   return `한양대학교 HY-WEP 현장실습 공고 · ${checked} · 평일 09–18시 10분 간격 수집`;
 }
 
-export function Workspace({
+type InnerProps = Props & { theme: ThemeMode; onTheme: (theme: ThemeMode) => void };
+
+function WorkspaceInner({
   mode,
   postings: initialPostings,
   initialFavorites,
@@ -111,9 +111,9 @@ export function Workspace({
   initialMajor,
   userLabel,
   isAdmin,
-  initialTheme,
-}: Props) {
-  const [theme, setTheme] = useState<ThemeMode>(initialTheme);
+  theme,
+  onTheme,
+}: InnerProps) {
   const { postings, ready, lastCheckedAt, error: loadError } = usePostings(mode, initialPostings);
   const { personal, toggleFavorite, recordApplication, deleteApplication } = usePersonal(mode, {
     favoriteIds: initialFavorites,
@@ -123,42 +123,65 @@ export function Workspace({
   const [compared, setCompared] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [detail, setDetail] = useState<Posting | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useToast();
+  const showToast = useToast();
   const now = useClock(mode, initialNow);
   const { major, chooseMajor } = useMajor(mode, initialMajor);
+  const notify = (body: string, type: "info" | "error" = "info") =>
+    showToast({ body, type, isAutoHide: true, autoHideDuration: type === "error" ? 6_000 : TOAST_MS });
+
   async function changeMajor(next: Major | null) {
     try {
       await chooseMajor(next);
-      if (!next && (filters.mine || filters.others)) updateFilters({ mine: "", others: "" });
+      if (!next) {
+        setFilters(prev => {
+          if (!prev.mine && !prev.others) return prev;
+          const { page: _page, ...rest } = prev;
+          void _page;
+          return { ...rest, mine: "", others: "" };
+        });
+      }
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.");
+      notify(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.", "error");
     }
   }
   const view = viewOf(filters);
 
   useEffect(() => {
-    const onPop = () => setFilters(Object.fromEntries(new URLSearchParams(window.location.search)));
+    const onPop = () => setFilters(normalizeFilters(Object.fromEntries(new URLSearchParams(window.location.search))));
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  useEffect(() => {
+    const next = searchOf(filters);
+    if (next !== window.location.search) {
+      window.history.replaceState(null, "", `${window.location.pathname}${next}`);
+    }
+  }, [filters]);
+
   function updateFilters(patch: Filters) {
-    const { page: _page, ...rest } = filters;
-    void _page;
-    const next = { ...rest, ...patch };
-    setFilters(next);
-    writeUrl(next);
+    setFilters(prev => {
+      const { page: _page, ...rest } = prev;
+      void _page;
+      return { ...rest, ...patch };
+    });
   }
   function resetFilters() {
     setFilters({});
-    writeUrl({});
+    setMobileMenu(false);
   }
   function navigate(next: View) {
-    // A side-nav tab starts a fresh search: the text typed on the previous tab would hide this tab's postings.
-    updateFilters({ saved: next === "saved" ? "true" : next === "planner" ? "planner" : "", when: "", q: "" });
+    // A side-nav tab starts a fresh view so filters from the previous tab never hide saved postings.
+    const saved = next === "saved" ? "true" : next === "planner" ? "planner" : "";
+    setFilters(prev => {
+      const base: Filters = {};
+      if (saved) base.saved = saved;
+      if (prev.sort) base.sort = prev.sort;
+      return base;
+    });
     setMobileMenu(false);
   }
   async function favorite(id: string) {
@@ -167,22 +190,22 @@ export function Workspace({
     try {
       await toggleFavorite(id);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : "저장하지 못했습니다.");
+      notify(e instanceof Error ? e.message : "저장하지 못했습니다.", "error");
     } finally {
       setSaving(false);
     }
   }
   async function record(postingId: string, status: Parameters<typeof recordApplication>[1], confirmed: boolean) {
     await recordApplication(postingId, status, confirmed);
-    setToast("지원 상태를 기록했어요.");
+    notify("지원 상태를 기록했어요.");
   }
   async function remove(postingId: string) {
     await deleteApplication(postingId);
-    setToast("지원 기록을 삭제했어요.");
+    notify("지원 기록을 삭제했어요.");
   }
   function compare(id: string) {
     if (compared.includes(id)) setCompared(compared.filter(v => v !== id));
-    else if (compared.length === MAX_COMPARE) setToast(`공고는 최대 ${MAX_COMPARE}개까지 비교할 수 있어요.`);
+    else if (compared.length === MAX_COMPARE) notify(`공고는 최대 ${MAX_COMPARE}개까지 비교할 수 있어요.`);
     else setCompared([...compared, id]);
   }
 
@@ -199,155 +222,153 @@ export function Workspace({
       .map(p => p.lastCheckedAt)
       .sort()
       .at(-1);
-  const selected = postings.filter(p => compared.includes(p.id));
+  const selected = compared.map(id => postings.find(p => p.id === id)).filter((p): p is Posting => Boolean(p));
+  const detail = detailId ? (postings.find(p => p.id === detailId) ?? null) : null;
   const heading = HEADINGS[view];
 
   return (
-    <Theme theme={neutralTheme} mode={theme}>
-      <LayoutProvider initialNarrow={false}>
-        <AppShell
-          topNav={<AppTopNav mode={mode} userLabel={userLabel} theme={theme} onTheme={setTheme} />}
-          sideNav={
-            <AppSideNav
-              view={view}
-              filters={filters}
-              postings={postings}
-              openCount={stats.open}
-              favoriteCount={personal.favoriteIds.length}
-              hasActive={stats.hasActive}
-              isAdmin={isAdmin}
-              navigate={navigate}
-              now={now}
-              onOpen={setDetail}
-              onFeedback={() => {
-                setFeedbackOpen(true);
-                setMobileMenu(false);
-              }}
-              selectWhen={when => {
-                updateFilters({ when, saved: "", role: "", q: "" });
-                setMobileMenu(false);
-              }}
-              selectRole={role => {
-                updateFilters({ role: filters.role === role ? "" : role, saved: "", q: "" });
-                setMobileMenu(false);
-              }}
-            />
-          }
-          mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu }}
-          contentPadding={5}
-        >
-          <VStack gap={4}>
-            {mode === "demo" && (
-              <p className="demo-note">
-                <span>데모 · 가상 기업과 공고, 일정 기준 2026.11.10 13:00</span>
-                <Link href="/login">로그인 안내</Link>
-              </p>
-            )}
-            <HStack gap={3} align="end" justify="between" wrap="wrap">
-              <VStack gap={1}>
-                <Heading level={1}>{view === "planner" ? heading.title : listTitle(filters)}</Heading>
-                <Text type="supporting">{view === "planner" ? heading.text : sourceLine(mode, lastChecked)}</Text>
-              </VStack>
-              <Button variant="primary" label="HY-WEP 바로가기" href={HYWEP_URL} target="_blank" rel="noreferrer" />
-            </HStack>
-            {loadError && (
-              <Banner
-                status="error"
-                title={loadError}
-                description={postings.length ? "저장해 둔 목록을 보여드려요." : "새로고침해 주세요."}
-                collapsible={false}
-              />
-            )}
-            {!ready ? (
-              <Text type="supporting" role="status">
-                공고를 불러오는 중…
-              </Text>
-            ) : view === "planner" ? (
-              <Planner
-                postings={postings}
-                applications={personal.applications}
-                record={record}
-                remove={remove}
-                now={now}
-              />
-            ) : (
-              <PostingsView
-                postings={postings}
-                filters={filters}
-                major={major}
-                onMajor={changeMajor}
-                updateFilters={updateFilters}
-                resetFilters={resetFilters}
-                favoriteIds={personal.favoriteIds}
-                applications={personal.applications}
-                compared={compared}
-                now={now}
-                stats={stats}
-                onCompare={compare}
-                onOpenCompare={() =>
-                  compared.length ? setCompareOpen(true) : setToast("공고의 비교 체크박스를 선택해 주세요.")
-                }
-                onOpen={setDetail}
-                onFavorite={favorite}
-                onPlanner={() => navigate("planner")}
-              />
-            )}
-            <HStack gap={3} wrap="wrap">
-              <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
-              <Text type="supporting">한양대학교 비공식 서비스</Text>
-              <Link href="/privacy">개인정보처리방침</Link>
-              <button type="button" className="text-link" onClick={() => setFeedbackOpen(true)}>
-                피드백 보내기
-              </button>
-            </HStack>
+    <AppShell
+      topNav={<AppTopNav mode={mode} userLabel={userLabel} theme={theme} onTheme={onTheme} onHome={resetFilters} />}
+      sideNav={
+        <AppSideNav
+          view={view}
+          filters={filters}
+          postings={postings}
+          openCount={stats.open}
+          favoriteCount={personal.favoriteIds.length}
+          hasActive={stats.hasActive}
+          isAdmin={isAdmin}
+          navigate={navigate}
+          now={now}
+          onOpen={p => {
+            setDetailId(p.id);
+            setMobileMenu(false);
+          }}
+          onFeedback={() => {
+            setFeedbackOpen(true);
+            setMobileMenu(false);
+          }}
+          selectWhen={when => {
+            updateFilters({ when, saved: "", role: "", q: "" });
+            setMobileMenu(false);
+          }}
+          selectRole={role => {
+            updateFilters({ role: filters.role === role ? "" : role, when: "", saved: "", q: "" });
+            setMobileMenu(false);
+          }}
+        />
+      }
+      mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu }}
+      contentPadding={5}
+    >
+      <VStack gap={4} className={selected.length ? "has-compare-dock" : undefined}>
+        {mode === "demo" && (
+          <p className="demo-note">
+            <span>데모 · 가상 기업과 공고, 일정 기준 2026.11.10 13:00</span>
+            <Link href="/login">로그인 안내</Link>
+          </p>
+        )}
+        <HStack gap={3} align="end" justify="between" wrap="wrap">
+          <VStack gap={1}>
+            <Heading level={1}>{view === "planner" ? heading.title : listTitle(filters)}</Heading>
+            <Text type="supporting">{view === "planner" ? heading.text : sourceLine(mode, lastChecked)}</Text>
           </VStack>
-          <CompareDock
-            selected={selected}
-            onRemove={compare}
-            onReset={() => setCompared([])}
-            onOpen={() => setCompareOpen(true)}
+          <Button variant="primary" label="HY-WEP 바로가기" href={HYWEP_URL} target="_blank" rel="noreferrer" />
+        </HStack>
+        {loadError && (
+          <Banner
+            status="error"
+            title={loadError}
+            description={postings.length ? "저장해 둔 목록을 보여드려요." : "새로고침해 주세요."}
+            collapsible={false}
           />
-          {detail && (
-            <PostingDetail
-              posting={detail}
-              major={major}
-              applications={personal.applications}
-              now={now}
-              saved={personal.favoriteIds.includes(detail.id)}
-              onFavorite={() => favorite(detail.id)}
-              close={() => setDetail(null)}
-              onPlan={() => {
-                setDetail(null);
-                navigate("planner");
-              }}
-            />
-          )}
-          {compareOpen && (
-            <Comparison
-              postings={selected}
-              close={() => setCompareOpen(false)}
-              applications={personal.applications}
-              now={now}
-            />
-          )}
-          {feedbackOpen && (
-            <FeedbackDialog
-              mode={mode}
-              close={() => setFeedbackOpen(false)}
-              onSent={() => setToast("피드백을 보냈어요. 고마워요.")}
-            />
-          )}
-          {toast && (
-            <div className="toast" role="status">
-              <Info size={16} />
-              {toast}
-              <button aria-label="알림 닫기" onClick={() => setToast("")}>
-                <X size={15} />
-              </button>
-            </div>
-          )}
-        </AppShell>
-      </LayoutProvider>
+        )}
+        {!ready ? (
+          <Text type="supporting" role="status">
+            공고를 불러오는 중…
+          </Text>
+        ) : view === "planner" ? (
+          <Planner postings={postings} applications={personal.applications} record={record} remove={remove} now={now} />
+        ) : (
+          <PostingsView
+            postings={postings}
+            filters={filters}
+            major={major}
+            onMajor={changeMajor}
+            updateFilters={updateFilters}
+            resetFilters={resetFilters}
+            favoriteIds={personal.favoriteIds}
+            applications={personal.applications}
+            compared={compared}
+            now={now}
+            stats={stats}
+            onCompare={compare}
+            onOpenCompare={() =>
+              compared.length ? setCompareOpen(true) : notify("공고의 비교 체크박스를 선택해 주세요.")
+            }
+            onOpen={p => setDetailId(p.id)}
+            onFavorite={favorite}
+            onPlanner={() => navigate("planner")}
+          />
+        )}
+        <HStack gap={3} wrap="wrap">
+          <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
+          <Text type="supporting">한양대학교 비공식 서비스</Text>
+          <Link href="/privacy">개인정보처리방침</Link>
+          <button type="button" className="text-link" onClick={() => setFeedbackOpen(true)}>
+            피드백 보내기
+          </button>
+        </HStack>
+      </VStack>
+      <CompareDock
+        selected={selected}
+        onRemove={compare}
+        onReset={() => setCompared([])}
+        onOpen={() => setCompareOpen(true)}
+      />
+      {detail && (
+        <PostingDetail
+          posting={detail}
+          major={major}
+          applications={personal.applications}
+          now={now}
+          saved={personal.favoriteIds.includes(detail.id)}
+          onFavorite={() => favorite(detail.id)}
+          close={() => setDetailId(null)}
+          onPlan={() => {
+            setDetailId(null);
+            navigate("planner");
+          }}
+        />
+      )}
+      {compareOpen && (
+        <Comparison
+          postings={selected}
+          close={() => setCompareOpen(false)}
+          applications={personal.applications}
+          now={now}
+        />
+      )}
+      {feedbackOpen && (
+        <FeedbackDialog
+          mode={mode}
+          close={() => setFeedbackOpen(false)}
+          onSent={() => notify("피드백을 보냈어요. 고마워요.")}
+        />
+      )}
+    </AppShell>
+  );
+}
+
+export function Workspace(props: Props) {
+  const [theme, setTheme] = useState<ThemeMode>(props.initialTheme);
+  return (
+    <Theme theme={neutralTheme} mode={theme}>
+      <ToastViewport position="topEnd" maxVisible={3}>
+        <LayoutProvider initialNarrow={false}>
+          <WorkspaceInner {...props} theme={theme} onTheme={setTheme} />
+        </LayoutProvider>
+      </ToastViewport>
     </Theme>
   );
 }

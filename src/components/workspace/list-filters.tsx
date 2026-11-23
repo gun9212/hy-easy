@@ -95,9 +95,7 @@ export function ListFilters(props: Props): React.ReactElement {
     [postings],
   );
   const active = extraCount(filters);
-  // Open while any of those filters is set, so a filter never hides itself.
   const [isOpen, setIsOpen] = useState(active > 0);
-  const showMore = isOpen || active > 0;
   const hidden = majorCounts ? majorCounts.all - props.total : 0;
   return (
     <VStack gap={3}>
@@ -141,14 +139,14 @@ export function ListFilters(props: Props): React.ReactElement {
         <Button
           variant="ghost"
           label={active ? `필터 더보기 (${active})` : "필터 더보기"}
-          aria-expanded={showMore}
-          onClick={() => setIsOpen(!showMore)}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen(open => !open)}
         />
         <Text type="supporting">
           <b>{props.total}</b>개 공고{majorCounts && hidden > 0 ? ` · 전체 ${majorCounts.all}개` : ""}
         </Text>
       </HStack>
-      {showMore && (
+      {isOpen && (
         <HStack gap={2} align="center" wrap="wrap">
           <Filter
             label="학기"

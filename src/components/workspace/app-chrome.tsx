@@ -39,9 +39,15 @@ function LogoutButton(): React.ReactElement {
   );
 }
 
-type TopNavProps = { mode: Mode; userLabel: string; theme: ThemeMode; onTheme: (theme: ThemeMode) => void };
+type TopNavProps = {
+  mode: Mode;
+  userLabel: string;
+  theme: ThemeMode;
+  onTheme: (theme: ThemeMode) => void;
+  onHome: () => void;
+};
 
-export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): React.ReactElement {
+export function AppTopNav({ mode, userLabel, theme, onTheme, onHome }: TopNavProps): React.ReactElement {
   return (
     <TopNav
       label="HY-Easy"
@@ -50,6 +56,11 @@ export function AppTopNav({ mode, userLabel, theme, onTheme }: TopNavProps): Rea
           heading="HY-Easy"
           headingHref={mode === "demo" ? "/demo" : "/postings"}
           as={Link}
+          onClick={e => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+            e.preventDefault();
+            onHome();
+          }}
           headerEndContent={mode === "demo" ? <span className="side-count">데모</span> : undefined}
         />
       }
@@ -178,7 +189,7 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
             key={role}
             label={role}
             size="sm"
-            isSelected={filters.role === role}
+            isSelected={listView && filters.role === role}
             onClick={() => props.selectRole(role)}
             endContent={<Count value={roleCount(role)} />}
           />

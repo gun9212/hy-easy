@@ -996,10 +996,13 @@
 }
 
 /* ---------- Floating: compare dock, toast ---------- */
+.has-compare-dock {
+  padding-bottom: 88px;
+}
 .compare-dock {
   position: fixed;
   bottom: var(--space-lg);
-  left: calc(var(--sidebar) + var(--gutter));
+  left: calc(260px + var(--gutter));
   right: var(--gutter);
   z-index: var(--z-sticky);
   display: flex;
@@ -2516,18 +2519,16 @@
     text-align: left;
   }
   .compare-dock {
-    left: var(--space-sm);
+    left: calc(260px + var(--space-sm));
     right: var(--space-sm);
     bottom: var(--space-sm);
+    gap: var(--space-xs);
+    padding-left: var(--space-md);
   }
   .dock-companies {
     display: none;
   }
-  /* A phone has room for the count and both buttons on one line only without the icon and "나란히". */
-  .compare-dock {
-    gap: var(--space-xs);
-    padding-left: var(--space-md);
-  }
+  /* Compact screens have room for the count and both buttons on one line only without the icon and "나란히". */
   .compare-dock > svg,
   .dock-wide {
     display: none;
@@ -2549,6 +2550,12 @@
   }
   .planner-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Astryx AppShell folds SideNav below md (768px), so the compare dock spans the full width only below 768px. */
+@media (max-width: 47.999rem) {
+  .compare-dock {
+    left: var(--space-sm);
   }
 }
 @media (max-width: 40rem) {

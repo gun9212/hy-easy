@@ -52,8 +52,12 @@ export function PostingsView(props: Props): React.ReactElement {
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major
     ? {
-        all: filterPostings(postings, { ...filters, mine: "", others: "true" }, favoriteIds, props.major).length,
-        related: filterPostings(postings, { ...filters, mine: "true", others: "" }, favoriteIds, props.major).length,
+        all: filterPostings(postings, { ...filters, mine: "", others: "true" }, favoriteIds, props.major).filter(p =>
+          matchesWhen(p, filters.when, now),
+        ).length,
+        related: filterPostings(postings, { ...filters, mine: "true", others: "" }, favoriteIds, props.major).filter(
+          p => matchesWhen(p, filters.when, now),
+        ).length,
       }
     : null;
   const rowProps: RowProps = {
@@ -68,6 +72,18 @@ export function PostingsView(props: Props): React.ReactElement {
     onFavorite: props.onFavorite,
   };
   const savedView = filters.saved === "true";
+  const savedEmpty = savedView && favoriteIds.length === 0;
+  const savedFiltered = savedView && favoriteIds.length > 0;
+  const hasSearchOrFilter = Boolean(
+    filters.q ||
+      filters.role ||
+      filters.term ||
+      filters.location ||
+      filters.duration ||
+      filters.stipend ||
+      filters.mine === "true",
+  );
+  const hiddenByMajorOnly = savedFiltered && !hasSearchOrFilter && Boolean(props.major) && filters.others !== "true";
   return (
     <VStack gap={4}>
       <SummaryCards
@@ -91,11 +107,50 @@ export function PostingsView(props: Props): React.ReactElement {
       </Card>
       {filtered.length === 0 ? (
         <EmptyState
-          title={savedView ? "저장한 관심 공고가 없어요" : "조건에 맞는 공고가 없어요"}
-          description={
-            savedView ? "마음에 드는 공고의 북마크를 눌러 모아보세요." : "검색어나 필터를 바꿔 다시 찾아보세요."
+          title={
+            savedEmpty
+              ? "저장한 관심 공고가 없어요"
+              : savedFiltered
+                ? "조건에 맞는 관심 공고가 없어요"
+                : "조건에 맞는 공고가 없어요"
           }
-          actions={<Button variant="secondary" label="전체 공고 보기" onClick={props.resetFilters} />}
+          description={
+            savedEmpty
+              ? "마음에 드는 공고의 북마크를 눌러 모아보세요."
+              : hiddenByMajorOnly
+                ? "선택한 전공 대상에 해당하지 않는 관심 공고가 숨겨져 있어요."
+                : savedFiltered
+                  ? "검색어나 필터를 초기화하면 저장한 관심 공고를 다시 볼 수 있어요."
+                  : "검색어나 필터를 바꿔 다시 찾아보세요."
+          }
+          actions={
+            hiddenByMajorOnly ? (
+              <Button
+                variant="secondary"
+                label="다른 전공 대상도 보기"
+                onClick={() => props.updateFilters({ others: "true" })}
+              />
+            ) : savedFiltered ? (
+              <Button
+                variant="secondary"
+                label="필터 초기화"
+                onClick={() =>
+                  props.updateFilters({
+                    q: "",
+                    role: "",
+                    term: "",
+                    location: "",
+                    duration: "",
+                    stipend: "",
+                    mine: "",
+                    others: "",
+                  })
+                }
+              />
+            ) : (
+              <Button variant="secondary" label="전체 공고 보기" onClick={props.resetFilters} />
+            )
+          }
         />
       ) : filters.sort === "deadline" ? (
         <DeadlineGroups {...rowProps} />
