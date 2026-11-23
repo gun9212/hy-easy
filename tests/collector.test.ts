@@ -9,7 +9,14 @@ import {
   selectorsSchema,
   sourceUrl,
 } from "../worker/adapter";
-import { credentialsFromEnv, LoginFailed } from "../worker/portal-login";
+import {
+  credentialsFromEnv,
+  isLoginBlocked,
+  LoginBlocked,
+  LoginFailed,
+  parseLoginGuard,
+  recordLoginFailure,
+} from "../worker/portal-login";
 import {
   columnIndex,
   extractSourceId,
@@ -222,6 +229,39 @@ describe("운영자 자동 로그인 자격 증명", () => {
   });
   it("실패 메시지에 입력값이 들어가지 않음", () => {
     assert.equal(new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT").message, "LOGIN_FAILED: PORTAL_REJECTED_OR_TIMEOUT");
+    assert.equal(new LoginBlocked().message, "LOGIN_BLOCKED");
+  });
+  it("같은 자격 증명이 3회 연속 실패하면 계속 차단하고, 비밀번호가 바뀌면 자동으로 해제", () => {
+    const oldCreds = { id: "student", password: "old-password" };
+    const newCreds = { id: "student", password: "new-password" };
+    const g1 = recordLoginFailure(null, oldCreds);
+    assert.equal(g1.failures, 1);
+    assert.equal(isLoginBlocked(g1, oldCreds), false);
+    assert.equal(JSON.stringify(g1).includes("old-password"), false);
+    assert.equal(JSON.stringify(g1).includes("student"), false);
+
+    const g2 = recordLoginFailure(g1, oldCreds);
+    assert.equal(g2.failures, 2);
+    assert.equal(isLoginBlocked(g2, oldCreds), false);
+
+    const g3 = recordLoginFailure(g2, oldCreds);
+    assert.equal(g3.failures, 3);
+    // Stays blocked on 4th, 5th, ... runs without resetting.
+    assert.equal(isLoginBlocked(g3, oldCreds), true);
+    assert.equal(isLoginBlocked(parseLoginGuard(g3), oldCreds), true);
+    assert.equal(isLoginBlocked(g3, null), false);
+
+    // Updating the password in Secret Manager unblocks automatically; if the new password fails, count restarts at 1.
+    assert.equal(isLoginBlocked(g3, newCreds), false);
+    const fresh = recordLoginFailure(g3, newCreds);
+    assert.equal(fresh.failures, 1);
+    assert.notEqual(fresh.salt, g3.salt);
+    assert.equal(isLoginBlocked(fresh, newCreds), false);
+  });
+  it("손상되거나 빈 로그인 차단 상태는 안전하게 초기화", () => {
+    assert.equal(parseLoginGuard({}), null);
+    assert.equal(parseLoginGuard(null), null);
+    assert.equal(parseLoginGuard({ salt: "bad", credentialHash: "bad", failures: 3 }), null);
   });
 });
 

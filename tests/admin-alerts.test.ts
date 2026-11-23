@@ -30,3 +30,13 @@ test("a newest success means no streak", () => {
   assert.equal(failedStreak([run("success"), run("failed"), run("failed")]).count, 0);
   assert.equal(failedStreak([]).count, 0);
 });
+
+test("keeps counting streak when automatic login is blocked", () => {
+  const runs = [
+    run("session_expired", "LOGIN_BLOCKED"),
+    run("session_expired", "LOGIN_FAILED"),
+    run("session_expired", "LOGIN_FAILED"),
+    run("session_expired", "LOGIN_FAILED"),
+  ];
+  assert.deepEqual(failedStreak(runs), { count: 4, errorCode: "LOGIN_BLOCKED" });
+});

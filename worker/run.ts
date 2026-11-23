@@ -17,14 +17,24 @@ import {
   SessionExpired,
   sourceUrl,
 } from "./adapter";
-import { credentialsFromEnv, ensureSession, LoginFailed } from "./portal-login";
+import {
+  credentialsFromEnv,
+  ensureSession,
+  isLoginBlocked,
+  LoginBlocked,
+  LoginFailed,
+  parseLoginGuard,
+  recordLoginFailure,
+  type Credentials,
+  type LoginGuard,
+} from "./portal-login";
 import { loadSession, saveSession, sessionLocation } from "./session-store";
 import { listRowHash } from "./hywep-fields";
 import { planListSync } from "./list-sync";
 import { requeueStalePrompts } from "./requeue";
 import { withAttachment } from "./attachments";
 
-const MAX_LOGIN_FAILURES = 3;
+const LOGIN_GUARD_STATE = "hywep_login";
 
 const config = z
   .object({
@@ -86,9 +96,15 @@ const heartbeat = setInterval(() => {
 }, 30_000);
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 let state: State = { schedulesLoaded: false, queue: [], pending: [], seenPages: [], seenIds: [] };
+let loginGuard: LoginGuard | null = null;
+const credentials: Credentials | null = credentialsFromEnv();
 try {
   const stored = check(await db.from("collector_state").select("value").eq("name", "hywep").maybeSingle()).data;
   if (stored?.value && Object.keys(stored.value).length) state = stateSchema.parse(stored.value);
+  const storedGuard = check(
+    await db.from("collector_state").select("value").eq("name", LOGIN_GUARD_STATE).maybeSingle(),
+  ).data;
+  loginGuard = parseLoginGuard(storedGuard?.value);
   const sessionAt = sessionLocation();
   const storedSession = await loadSession(sessionAt);
   browser = await chromium.launch({ headless: true });
@@ -97,19 +113,21 @@ try {
   const page = await context.newPage();
   page.setDefaultTimeout(15_000);
   dismissDialogs(page);
-  // Stop retrying the password after 3 consecutive login failures to avoid locking the operator account.
-  const recent =
-    check(
-      await db
-        .from("collector_runs")
-        .select("error_code")
-        .neq("id", runId)
-        .order("started_at", { ascending: false })
-        .limit(MAX_LOGIN_FAILURES),
-    ).data ?? [];
-  const loginBlocked = recent.length === MAX_LOGIN_FAILURES && recent.every(r => r.error_code === "LOGIN_FAILED");
-  const session = await ensureSession(page, selectors, startUrl, loginBlocked ? null : credentialsFromEnv());
-  if (session === "logged_in") await saveSession(sessionAt, await context.storageState());
+  // Stop retrying the same password after 3 consecutive failures until Secret Manager credentials change.
+  const loginBlocked = isLoginBlocked(loginGuard, credentials);
+  const session = await ensureSession(page, selectors, startUrl, loginBlocked ? null : credentials).catch(
+    (e: unknown) => {
+      if (loginBlocked && e instanceof SessionExpired) throw new LoginBlocked();
+      throw e;
+    },
+  );
+  if (session === "logged_in") {
+    await saveSession(sessionAt, await context.storageState());
+    if (loginGuard) {
+      check(await db.from("collector_state").upsert({ name: LOGIN_GUARD_STATE, value: {} }));
+      loginGuard = null;
+    }
+  }
   const visited = new Set(state.seenIds);
   while (Date.now() < deadline - 30_000) {
     if (leaseLost) throw new Error("COLLECTOR_LEASE_LOST");
@@ -281,7 +299,16 @@ try {
       message: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
     }),
   );
-  if (e instanceof LoginFailed) {
+  if (e instanceof LoginBlocked) {
+    status = "session_expired";
+    errorCode = "LOGIN_BLOCKED";
+  } else if (e instanceof LoginFailed) {
+    if (credentials) {
+      const nextGuard = recordLoginFailure(loginGuard, credentials);
+      await Promise.resolve(db.from("collector_state").upsert({ name: LOGIN_GUARD_STATE, value: nextGuard })).catch(
+        () => undefined,
+      );
+    }
     status = "session_expired";
     errorCode = "LOGIN_FAILED";
   } else {

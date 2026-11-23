@@ -8,6 +8,8 @@ const IGNORED = new Set(["running", "skipped"]);
 
 const CAUSES: Record<string, string> = {
   LOGIN_FAILED: "포털 로그인 실패: 비밀번호가 바뀌었는지 확인하고 Secret Manager 값을 갱신하세요.",
+  LOGIN_BLOCKED:
+    "포털 로그인이 3회 연속 실패해 자동 로그인을 멈췄습니다. 비밀번호를 확인하고 Secret Manager 값을 갱신하면 다시 시도합니다.",
   SESSION_EXPIRED: "포털 세션 만료: 자동 로그인이 실패했습니다. 비밀번호와 Secret Manager 값을 확인하세요.",
   COLLECTION_FAILED: "수집 오류: HY-WEP 화면 구조가 바뀌었을 수 있습니다. Cloud Run 작업 로그를 확인하세요.",
 };

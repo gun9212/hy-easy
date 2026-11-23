@@ -63,7 +63,7 @@ resource "google_monitoring_alert_policy" "collector_failing" {
     mime_type = "text/markdown"
     content   = <<-EOT
       HY-Easy 수집기가 연속으로 실패하고 있습니다. https://hy-easy.vercel.app/admin 의 "최근 수집 실행"에서 오류 코드를 확인하세요.
-      - LOGIN_FAILED / SESSION_EXPIRED: 포털 비밀번호가 바뀌었는지 확인하고 Secret Manager 값을 갱신합니다(scripts/push-secrets.sh).
+      - LOGIN_FAILED / LOGIN_BLOCKED / SESSION_EXPIRED: 포털 비밀번호가 바뀌었는지 확인하고 Secret Manager 값을 갱신합니다(scripts/push-secrets.sh).
       - COLLECTION_FAILED: HY-WEP 화면 구조가 바뀌었을 수 있습니다. Cloud Run 작업 로그의 collection_failed 메시지를 개발자에게 전달하세요.
     EOT
   }
