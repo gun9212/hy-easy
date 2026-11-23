@@ -1417,6 +1417,10 @@
   color: var(--color-muted);
   font-weight: 400;
 }
+.modal > .modal-inner > .muted.small {
+  margin-top: var(--space-md);
+}
+
 /* ---------- Feedback ---------- */
 .feedback-note {
   margin-top: var(--space-sm);
@@ -1503,10 +1507,6 @@
   margin-top: var(--space-xs);
   color: var(--color-ink-2);
   font-size: var(--text-sm);
-}
-
-.modal > .modal-inner > .muted.small {
-  margin-top: var(--space-md);
 }
 
 /* ---------- Planner ---------- */

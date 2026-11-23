@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminEditor } from "@/components/admin-editor";
-import { FeedbackList, type FeedbackItem } from "@/components/admin/feedback-list";
 import { AdminAlerts } from "@/components/admin/admin-alerts";
+import { FeedbackList, type FeedbackItem } from "@/components/admin/feedback-list";
 import {
   AuditTable,
   ChangesTable,
@@ -22,8 +22,8 @@ import { formatDate, type Posting } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
-const FEEDBACK_LIMIT = 50;
 const RECENT_LIMIT = 20;
+const FEEDBACK_LIMIT = 50;
 
 export default async function Admin() {
   const { db } = await requireAdmin().catch((e: unknown) => {
@@ -52,13 +52,13 @@ export default async function Admin() {
       .from("classification_audit")
       .select("posting_id,edited_at,editor_id,result")
       .order("edited_at", { ascending: false })
+      .limit(RECENT_LIMIT),
     db
       .from("feedback")
       .select("id,message,page,created_at,read_at")
       .order("created_at", { ascending: false })
       .limit(FEEDBACK_LIMIT),
     db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
-      .limit(RECENT_LIMIT),
   ]);
   for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback]) if (r.error) throw r.error;
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
@@ -114,13 +114,23 @@ export default async function Admin() {
               ) : (
                 "기록 없음"
               )}
+            </dd>
+          </div>
+          <div>
+            <dt>분류 대기</dt>
+            <dd>{queueRows.length}건</dd>
+          </div>
+          <div>
+            <dt>직군 검토 필요</dt>
+            <dd>{reviewPostings.length}건</dd>
+          </div>
           <div>
             <dt>새 피드백</dt>
             <dd>{unreadCount}건</dd>
           </div>
-            </dd>
-          </div>
-          <div>
+        </dl>
+
+        <section className="admin-section">
           <h2>
             피드백 <span>새 피드백 {unreadCount}건</span>
           </h2>
@@ -130,16 +140,6 @@ export default async function Admin() {
           </p>
           <FeedbackList items={feedbackRows} unread={unreadCount} />
         </section>
-
-        <section className="admin-section">
-            <dt>분류 대기</dt>
-            <dd>{queueRows.length}건</dd>
-          </div>
-          <div>
-            <dt>직군 검토 필요</dt>
-            <dd>{reviewPostings.length}건</dd>
-          </div>
-        </dl>
 
         <section className="admin-section">
           <h2>
