@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { SiteAnalytics } from "@/components/site-analytics";
 import { readThemeMode } from "@/lib/theme-cookie";
 import "./pretendard.css";
 import "./globals.css";
@@ -42,7 +43,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const theme = await readThemeMode();
   return (
     <html lang="ko" data-theme={theme === "system" ? undefined : theme} suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        {children}
+        <SiteAnalytics />
+      </body>
     </html>
   );
 }
