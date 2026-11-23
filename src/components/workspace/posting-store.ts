@@ -8,26 +8,79 @@ const CACHE_VERSION = 1;
 const DB_NAME = "hy-easy";
 const STORE = "cache";
 const KEY = "postings";
+const IDB_TIMEOUT_MS = 1_500;
 
 export type StoredPostings = { syncedAt: string; lastCheckedAt: string | null; postings: Posting[] };
 type Record = StoredPostings & { version: number };
 
-function open(): Promise<IDBDatabase> {
+function withTimeout<T>(promise: Promise<T>, onTimeout?: () => void): Promise<T> {
   return new Promise((resolve, reject) => {
+    const id = setTimeout(() => {
+      onTimeout?.();
+      reject(new Error("IndexedDB timed out"));
+    }, IDB_TIMEOUT_MS);
+    promise.then(
+      value => {
+        clearTimeout(id);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(id);
+        reject(error);
+      },
+    );
+  });
+}
+
+function open(): Promise<IDBDatabase> {
+  if (typeof indexedDB === "undefined") return Promise.reject(new Error("IndexedDB unavailable"));
+  let settled = false;
+  const opening = new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1);
-    request.onupgradeneeded = () => request.result.createObjectStore(STORE);
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE);
+    };
+    request.onblocked = () => {
+      settled = true;
+      reject(new Error("IndexedDB open blocked"));
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => db.close();
+      if (settled) {
+        db.close();
+        return;
+      }
+      settled = true;
+      resolve(db);
+    };
+    request.onerror = () => {
+      settled = true;
+      reject(request.error);
+    };
+  });
+  return withTimeout(opening, () => {
+    settled = true;
   });
 }
 
 async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest): Promise<T> {
   const db = await open();
   try {
-    return await new Promise<T>((resolve, reject) => {
-      const request = action(db.transaction(STORE, mode).objectStore(STORE));
+    let tx: IDBTransaction | null = null;
+    const operation = new Promise<T>((resolve, reject) => {
+      tx = db.transaction(STORE, mode);
+      tx.onabort = () => reject(tx?.error ?? new Error("IndexedDB transaction aborted"));
+      const request = action(tx.objectStore(STORE));
       request.onsuccess = () => resolve(request.result as T);
       request.onerror = () => reject(request.error);
+    });
+    return await withTimeout(operation, () => {
+      try {
+        tx?.abort();
+      } catch {
+        // Transaction already finished or inactive.
+      }
     });
   } finally {
     db.close();

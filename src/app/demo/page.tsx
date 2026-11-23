@@ -2,10 +2,14 @@ import { notFound } from "next/navigation";
 import { Workspace } from "@/components/workspace";
 import { samplePostings, DEMO_NOW } from "@/lib/sample";
 import { demoEnabled } from "@/lib/supabase/server";
-import type { Filters } from "@/lib/domain";
+import { normalizeFilters } from "@/lib/domain";
 import { readThemeMode } from "@/lib/theme-cookie";
 export const dynamic = "force-dynamic";
-export default async function Demo({ searchParams }: { searchParams: Promise<Filters> }) {
+export default async function Demo({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!demoEnabled()) notFound();
   return (
     <Workspace
@@ -13,7 +17,7 @@ export default async function Demo({ searchParams }: { searchParams: Promise<Fil
       postings={samplePostings}
       initialFavorites={[]}
       initialApplications={[]}
-      initialFilters={await searchParams}
+      initialFilters={normalizeFilters(await searchParams)}
       initialNow={DEMO_NOW}
       initialMajor={null}
       userLabel="둘러보는 한양인"

@@ -406,6 +406,30 @@ export type Filters = {
   others?: string;
   page?: string;
 };
+const FILTER_KEYS: (keyof Filters)[] = [
+  "q",
+  "role",
+  "term",
+  "location",
+  "duration",
+  "stipend",
+  "sort",
+  "saved",
+  "when",
+  "mine",
+  "others",
+  "page",
+];
+/** Collapses Next.js duplicate query values (string[]) into single strings so filters never receive an array. */
+export function normalizeFilters(raw: Record<string, string | string[] | undefined>): Filters {
+  const filters: Filters = {};
+  for (const key of FILTER_KEYS) {
+    const value = raw[key];
+    const first = Array.isArray(value) ? value[0] : value;
+    if (typeof first === "string" && first) filters[key] = first;
+  }
+  return filters;
+}
 const MINE_FITS: MajorFit[] = ["required", "preferred", "adjacent", "related"];
 export function filterPostings(
   postings: Posting[],
@@ -413,7 +437,7 @@ export function filterPostings(
   favoriteIds: string[] = [],
   major: Major | null = null,
 ) {
-  const query = (filters.q ?? "").toLocaleLowerCase().trim();
+  const query = (typeof filters.q === "string" ? filters.q : "").toLocaleLowerCase().trim();
   const rows = postings.filter(p => {
     const role = p.classification;
     return (

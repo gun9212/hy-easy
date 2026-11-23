@@ -2,11 +2,15 @@ import { redirect } from "next/navigation";
 import { Workspace } from "@/components/workspace";
 import { requireUser, HttpError } from "@/lib/auth";
 import { loadPersonal } from "@/lib/data";
-import type { Filters } from "@/lib/domain";
+import { normalizeFilters } from "@/lib/domain";
 import { isMajor } from "@/lib/majors";
 import { readThemeMode } from "@/lib/theme-cookie";
 export const dynamic = "force-dynamic";
-export default async function Postings({ searchParams }: { searchParams: Promise<Filters> }) {
+export default async function Postings({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const ctx = await requireUser().catch((e: unknown) => {
     if (e instanceof HttpError) redirect(`/login${e.status === 403 ? "?error=school" : ""}`);
     throw e;
@@ -24,7 +28,7 @@ export default async function Postings({ searchParams }: { searchParams: Promise
       postings={null}
       initialFavorites={data.favoriteIds}
       initialApplications={data.applications}
-      initialFilters={await searchParams}
+      initialFilters={normalizeFilters(await searchParams)}
       initialNow={new Date().toISOString()}
       initialMajor={isMajor(ctx.user.user_metadata?.major) ? ctx.user.user_metadata.major : null}
       userLabel={ctx.user.email?.split("@")[0] ?? "한양인"}
