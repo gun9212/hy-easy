@@ -73,6 +73,54 @@
   max-width: 22rem;
   margin-top: var(--space-xl);
 }
+.in-app-notice {
+  width: 100%;
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-warn);
+  border-radius: 12px;
+  background: var(--color-warn-soft);
+  color: var(--color-ink);
+}
+.in-app-notice b {
+  display: block;
+  font-size: var(--text-md);
+}
+.in-app-notice p {
+  margin-top: var(--space-3xs);
+  color: var(--color-ink-2);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.in-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: var(--space-sm);
+}
+.in-app-open,
+.in-app-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border-radius: 10px;
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.in-app-open {
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+  text-decoration: none;
+}
+.in-app-copy {
+  border: 1px solid var(--color-ink-2);
+  background: transparent;
+  color: var(--color-ink);
+}
 .landing-signin .form-error {
   width: 100%;
   margin-bottom: var(--space-sm);

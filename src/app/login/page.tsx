@@ -1,7 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
+import { headers } from "next/headers";
 import { GoogleSignIn } from "@/components/google-sign-in";
+import { InAppNotice } from "@/components/in-app-notice";
+import { detectInAppBrowser, externalOpenUrl } from "@/lib/in-app-browser";
 import { demoEnabled, isConfigured } from "@/lib/supabase/server";
 import "./login.css";
 
@@ -20,9 +23,30 @@ const PREVIEW_ROWS = [
   { role: "데이터·AI", company: "온도랩", title: "데이터 분석 인턴", stipend: "월 240만원", due: "D-12", soon: false },
 ];
 
-function SignIn({ error }: { error?: string }) {
+/** The in-app browser notice for this request, or null in a normal browser. */
+async function inAppNotice() {
+  const requestHeaders = await headers();
+  const browser = detectInAppBrowser(requestHeaders.get("user-agent"));
+  if (!browser) return null;
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "hy-easy.vercel.app";
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const pageUrl = `${protocol}://${host}/login`;
+  const openUrl = externalOpenUrl(browser, pageUrl);
+  return (
+    <InAppNotice
+      appName={browser.name}
+      platform={browser.platform}
+      openUrl={openUrl}
+      pageUrl={pageUrl}
+      autoOpen={browser.kakao}
+    />
+  );
+}
+
+function SignIn({ error, notice }: { error?: string; notice: React.ReactNode }) {
   return (
     <div className="landing-signin">
+      {notice}
       {error && (
         <div className="form-error" role="alert">
           {errors[error] ?? errors.oauth}
@@ -77,6 +101,7 @@ function Preview() {
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
+  const notice = await inAppNotice();
   return (
     <main className="landing">
       <header className="landing-header">
@@ -107,7 +132,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           <p className="landing-lead">
             HY-WEP 공고를 직군·지원금·마감 기준으로 정리했어요. 학교 Google 계정으로 바로 시작할 수 있어요.
           </p>
-          <SignIn error={error} />
+          <SignIn error={error} notice={notice} />
           <ul className="landing-features">
             {FEATURES.map(text => (
               <li key={text}>
