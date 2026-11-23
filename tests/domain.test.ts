@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  deadlineLabel,
   eligibility,
   simulate,
   filterPostings,
@@ -69,6 +70,8 @@ describe("원문 정규화와 비교", () => {
   it("24시와 분 없는 시각", () => {
     assert.equal(parseDeadline("2026년 11월 22일 24시").at, "2026-11-22T15:00:00.000Z");
     assert.equal(parseDeadline("2026-11-22 18시").precision, "minute");
+    assert.equal(deadlineLabel({ ...p, deadline: parseDeadline("2026-11-22 24시까지") }), "11. 22. 24:00");
+    assert.equal(deadlineLabel({ ...p, deadline: parseDeadline("2026-11-22 18:00") }), "11. 22. 18:00");
   });
   it("잘못된 날짜·시각을 임의 보정하지 않음", () => {
     assert.equal(parseDeadline("2026-02-30 18:00").precision, "unknown");

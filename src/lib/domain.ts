@@ -268,16 +268,31 @@ export function formatDate(value: string | null, time = false) {
     timeZone: "Asia/Seoul",
     month: "numeric",
     day: "numeric",
-    ...(time ? { hour: "2-digit", minute: "2-digit", hour12: false } : {}),
+    ...(time ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" as const } : {}),
   }).format(date);
 }
 export function stipendLabel(posting: Posting) {
   return posting.stipend.raw || "미기재";
 }
 export function deadlineLabel(posting: Posting) {
-  return posting.deadline.precision === "minute"
-    ? formatDate(posting.deadline.at, true)
-    : posting.deadline.raw || "마감 미기재";
+  if (posting.deadline.precision !== "minute") return posting.deadline.raw || "마감 미기재";
+  const { at, date } = posting.deadline;
+  if (at && date) {
+    const parsed = new Date(at);
+    if (Number.isFinite(parsed.getTime()) && kstDate(parsed) !== date) {
+      const time = new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(parsed);
+      if (time === "00:00") {
+        const [, m, d] = date.split("-");
+        return `${Number(m)}. ${Number(d)}. 24:00`;
+      }
+    }
+  }
+  return formatDate(at, true);
 }
 export function remainingDays(posting: Posting, now = new Date()) {
   if (!posting.deadline.date) return null;
