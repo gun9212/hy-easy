@@ -115,9 +115,6 @@ export function GoogleSignIn({ clientId }: { clientId: string }) {
           로그인하는 중…
         </p>
       )}
-      <a className="google-fallback" href="/auth/login">
-        버튼이 보이지 않으면 이 링크로 로그인
-      </a>
     </>
   );
 }

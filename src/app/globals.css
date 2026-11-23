@@ -1796,14 +1796,6 @@
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
-.google-fallback {
-  margin-top: var(--space-xs);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
-}
-.google-fallback:hover {
-  color: var(--color-accent);
-}
 .setup-message {
   display: flex;
   flex-direction: column;
