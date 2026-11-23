@@ -137,13 +137,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
       </header>
       <div className="landing-body">
         <section className="landing-copy">
-          <p className="landing-eyebrow">한양대 HY-WEP 현장실습 공고</p>
-          <h1>
-            하는 일로 찾고,
-            <br />
-            한눈에 비교하세요.
-          </h1>
-          <p className="landing-lead">직군·지원금·마감으로 정리하고, 지원 인원은 10분마다 갱신해요.</p>
+          <h1>하이웹을 더 쉽게</h1>
           <SignIn error={error} notice={notice} />
         </section>
         <Preview />
