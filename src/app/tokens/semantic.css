@@ -60,6 +60,12 @@
       color-mix(in oklab, var(--black) 50%, transparent)
     );
   --shadow-card: none;
+  /* A card lifted under the pointer: softer and closer than a floating panel. */
+  --shadow-lift: 0 10px 24px
+    light-dark(
+      color-mix(in oklab, var(--slate-900) 12%, transparent),
+      color-mix(in oklab, var(--black) 45%, transparent)
+    );
 
   /* Type. Body copy never goes below 14px; the page title is the largest text on a screen. */
   --font-display: var(--font-pretendard);

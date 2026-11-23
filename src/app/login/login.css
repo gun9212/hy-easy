@@ -167,6 +167,46 @@
   color: var(--color-muted);
   font-size: var(--text-xs);
 }
+/* The example card lifts under the pointer like the app's posting cards; the page fades up once on load. */
+@keyframes landing-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.landing-copy,
+.landing-preview {
+  animation: landing-in var(--dur-long) var(--ease-out) both;
+}
+.landing-preview {
+  animation-delay: 120ms;
+}
+.preview-card {
+  transition:
+    transform var(--dur-short) var(--ease-out),
+    box-shadow var(--dur-short) var(--ease-out);
+}
+@media (hover: hover) {
+  .landing-preview:hover .preview-card {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lift);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-copy,
+  .landing-preview {
+    animation: none;
+  }
+  .preview-card,
+  .landing-preview:hover .preview-card {
+    transform: none;
+    transition: none;
+  }
+}
 .preview-card {
   padding: var(--space-lg);
   border: 1px solid var(--color-rule);

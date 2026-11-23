@@ -74,6 +74,9 @@ export function PostingsView(props: Props): React.ReactElement {
         stats={props.stats}
         newCount={postings.filter(p => isNewPosting(p, now)).length}
         next={nextDeadline(postings, now)}
+        when={filters.when}
+        // Same as the side navigation: a count opens its list, and the open card closes it again.
+        onSelect={when => props.updateFilters({ when: filters.when === when ? "" : when, saved: "", role: "", q: "" })}
       />
       <Card padding={4}>
         <ListFilters

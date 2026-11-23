@@ -19,7 +19,7 @@ import {
 function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps }): React.ReactElement {
   const closed = eligibility(p, props.applications, props.now).status === "closed";
   return (
-    <ClickableCard label={`${p.title}, ${p.company}`} onClick={() => props.onOpen(p)} padding={4}>
+    <ClickableCard label={`${p.title}, ${p.company}`} onClick={() => props.onOpen(p)} padding={4} className="lift-card">
       <VStack gap={2}>
         <HStack gap={1.5} align="center" justify="between">
           <HStack gap={1.5} align="center" wrap="wrap">
