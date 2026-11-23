@@ -1,4 +1,4 @@
-import { eligibility, isNewPosting, remainingDays, type Posting } from "./domain";
+import { eligibility, isNewPosting, postedAt, remainingDays, type Posting } from "./domain";
 
 /** Days counted as "closing soon" (the summary card, the side-nav shortcut and the orange D-day badge). */
 export const SOON_DAYS = 3;
@@ -58,6 +58,14 @@ const seoulTime = new Intl.DateTimeFormat("ko-KR", {
  * "11.13 18:00" for the list, as in the demo. A "24시까지" deadline is stored as the next day's 00:00; beside its own
  * date it reads "11.13 24:00", so it does not look like a time that has already passed.
  */
+/** The registration date as "11.20" in KST, or null for postings that predate tracking (see postedAt). */
+export function postedShort(posting: Posting): string | null {
+  const posted = postedAt(posting);
+  if (!posted) return null;
+  const [, m, d] = seoulDate.format(new Date(posted)).split("-");
+  return `${Number(m)}.${Number(d)}`;
+}
+
 export function deadlineShort(posting: Posting): string {
   const { at, date, precision, raw } = posting.deadline;
   if (!date) return raw || "마감 미기재";

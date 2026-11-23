@@ -5,7 +5,7 @@ import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { eligibility, isNewPosting, type Posting } from "@/lib/domain";
-import { deadlineShort } from "@/lib/posting-format";
+import { deadlineShort, postedShort } from "@/lib/posting-format";
 import {
   BookmarkButton,
   CompareBox,
@@ -27,6 +27,11 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
             <Text type="supporting" hasTabularNumbers>
               {deadlineShort(p)} 마감
             </Text>
+            {postedShort(p) && (
+              <Text type="supporting" size="sm" hasTabularNumbers>
+                · {postedShort(p)} 등록
+              </Text>
+            )}
             {isNewPosting(p, props.now) && <span className="new-mark">신규</span>}
           </HStack>
           <HStack gap={1} align="center">

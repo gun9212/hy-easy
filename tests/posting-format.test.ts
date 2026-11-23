@@ -7,6 +7,7 @@ import {
   isClosingSoon,
   matchesWhen,
   nextDeadline,
+  postedShort,
   stipendParts,
 } from "../src/lib/posting-format";
 import { samplePostings } from "../src/lib/sample";
@@ -78,5 +79,15 @@ describe("deadlineShort", () => {
       deadlineShort({ ...base, deadline: { raw: "", at: null, date: null, precision: "unknown" } }),
       "마감 미기재",
     );
+  });
+});
+
+describe("postedShort", () => {
+  it("uses the Seoul date of the first-seen time", () => {
+    // 23:30 UTC on 11/19 is 08:30 on 11/20 in Seoul.
+    assert.equal(postedShort({ ...base, firstSeenAt: "2026-11-19T23:30:00.000Z" }), "11.20");
+  });
+  it("is null for postings from the initial sweep", () => {
+    assert.equal(postedShort({ ...base, firstSeenAt: "2026-11-10T08:00:00.000Z" }), null);
   });
 });
