@@ -36,7 +36,9 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
           </HStack>
           <HStack gap={1} align="center">
             <CompareBox posting={p} checked={props.compared.includes(p.id)} onCompare={props.onCompare} />
-            <BookmarkButton posting={p} saved={props.favoriteIds.includes(p.id)} onFavorite={props.onFavorite} />
+            {!props.hideBookmark && (
+              <BookmarkButton posting={p} saved={props.favoriteIds.includes(p.id)} onFavorite={props.onFavorite} />
+            )}
           </HStack>
         </HStack>
         <VStack gap={0.5}>

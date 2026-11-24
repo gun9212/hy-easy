@@ -18,6 +18,7 @@ export type RowProps = {
   compared: string[];
   now: Date;
   major: Major | null;
+  hideBookmark?: boolean;
   onCompare: (id: string) => void;
   onOpen: (p: Posting) => void;
   onFavorite: (id: string) => void;
@@ -134,10 +135,10 @@ export function StipendAmount({ posting, justify = "end" }: { posting: Posting; 
 export function Competition({ posting, align = "end" }: { posting: Posting; align?: "start" | "end" }) {
   return (
     <VStack gap={0.5} align={align}>
-      <Text weight="semibold" hasTabularNumbers>
+      <Text weight="semibold" hasTabularNumbers maxLines={1}>
         {competitionRatio(posting)}
       </Text>
-      <Text type="supporting" hasTabularNumbers>
+      <Text type="supporting" hasTabularNumbers maxLines={1}>
         지원 {posting.applicants ?? "-"} · 모집 {posting.headcount ?? "-"}
       </Text>
     </VStack>

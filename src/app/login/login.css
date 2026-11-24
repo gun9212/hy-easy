@@ -1,13 +1,14 @@
 /*
- * Login landing (src/app/login/page.tsx). One column of copy with the sign-in right under the headline, and a
- * preview of the postings list beside it so the page shows what the service does instead of describing it.
- * Semantic tokens only (docs/DESIGN-SYSTEM.md).
+ * Login landing (src/app/login/page.tsx). Centered single-line hero above the real workspace postings table /
+ * side-by-side comparison table rendered with fictional sample postings. Semantic tokens only.
  */
 .landing {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
-  background: var(--color-paper);
+  background:
+    radial-gradient(680px 320px at 50% 0%, color-mix(in oklab, var(--color-accent) 8%, transparent), transparent 75%),
+    var(--color-paper);
 }
 .landing-header,
 .landing-footer {
@@ -16,11 +17,53 @@
   justify-content: space-between;
   gap: var(--space-md);
   width: 100%;
-  max-width: 1120px;
+  max-width: var(--container);
   margin: 0 auto;
   padding: var(--space-lg) var(--gutter);
 }
-.landing-header > a:last-child {
+.landing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.landing-theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+.landing-theme-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  min-height: 30px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  border-radius: var(--radius-chip);
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.landing-theme-switch button:hover {
+  color: var(--color-ink);
+}
+.landing-theme-switch button.is-active {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.landing-theme-switch button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+.landing-hywep-link {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3xs);
@@ -30,35 +73,44 @@
   font-weight: 500;
   text-decoration: none;
 }
-.landing-header > a:last-child:hover {
+.landing-hywep-link:hover {
   color: var(--color-accent);
 }
 
 .landing-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-3xl);
+  gap: var(--space-xl);
   flex: 1;
   width: 100%;
-  max-width: 1120px;
+  max-width: var(--container);
   margin: 0 auto;
-  padding: var(--space-2xl) var(--gutter) var(--space-3xl);
+  padding: var(--space-lg) var(--gutter) var(--space-2xl);
 }
-.landing-copy h1 {
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 40rem;
+}
+.landing-hero h1 {
   max-width: none;
-  margin-top: 0;
-  font-size: clamp(var(--text-2xl), 4.2vw, 2.75rem);
-  font-weight: 600;
-  line-height: 1.24;
-  letter-spacing: -0.01em;
+  margin: 0;
+  font-size: clamp(2.125rem, 5vw, 3.25rem);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
 }
 
 .landing-signin {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  max-width: 22rem;
+  align-items: center;
+  width: 100%;
+  max-width: 24rem;
   margin-top: var(--space-lg);
 }
 .in-app-notice {
@@ -66,9 +118,10 @@
   margin-bottom: var(--space-md);
   padding: var(--space-sm) var(--space-md);
   border: 1px solid var(--color-warn);
-  border-radius: 12px;
+  border-radius: var(--radius-card);
   background: var(--color-warn-soft);
   color: var(--color-ink);
+  text-align: left;
 }
 .in-app-notice b {
   display: block;
@@ -93,7 +146,7 @@
   gap: 6px;
   min-height: 44px;
   padding: 0 var(--space-md);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
@@ -112,11 +165,12 @@
 .landing-signin .form-error {
   width: 100%;
   margin-bottom: var(--space-sm);
+  text-align: left;
 }
 /* The Google button is an iframe with a light document; matching color-scheme keeps it from painting a white box
    around the button on the dark theme. */
 .landing-signin .google-button-slot {
-  justify-content: flex-start;
+  justify-content: center;
   margin-top: 0;
   color-scheme: light;
 }
@@ -124,38 +178,107 @@
 .landing-signin .setup-message {
   margin-top: 0;
 }
-.landing-signin-note a {
-  color: var(--color-ink-2);
-  text-underline-offset: 0.2em;
-}
-.landing-signin-note a:hover {
-  color: var(--color-accent);
+.landing-signin .setup-message {
+  text-align: left;
 }
 .landing-signin-note {
   margin-top: var(--space-xs);
   color: var(--color-muted);
   font-size: var(--text-sm);
 }
+.landing-signin-note a {
+  color: var(--color-accent);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.22em;
+}
+.landing-signin-note a:hover {
+  color: var(--color-accent-hover);
+}
 
-/*
- * Preview: the app's posting card with a fictional posting, the one place on this page with color (the orange
- * deadline and the large competition ratio). Hairlines and surface steps instead of shadows.
- */
+/* ---------- Live workspace preview frame ---------- */
 .landing-preview {
-  padding: var(--space-xs);
+  width: 100%;
+  padding: var(--space-md);
   border: 1px solid var(--color-rule);
-  /* Nested radius: the card inside keeps --radius-card (12) with 8 of padding, so the panel is 20. */
   border-radius: 20px;
   background: var(--color-paper-2);
+  box-shadow: var(--shadow-lift);
 }
-.landing-preview-head {
+.preview-table-frame {
+  width: 100%;
+  overflow-x: auto;
+}
+/* Quiet light-surface compare bar so the hero's sign-in button stays the single primary action on the page. */
+.preview-dock {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: var(--space-xs) var(--space-sm) var(--space-sm);
-  color: var(--color-muted);
-  font-size: var(--text-xs);
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-sm) var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-ink);
 }
-/* The example card lifts under the pointer like the app's posting cards; the page fades up once on load. */
+.preview-dock-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+  color: var(--color-ink-2);
+}
+.preview-dock-left > svg {
+  flex-shrink: 0;
+  color: var(--color-muted);
+}
+.preview-dock-count {
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.preview-dock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.preview-dock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  padding: 2px 4px 2px var(--space-xs);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper-2);
+  color: var(--color-ink-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.preview-dock-chip button {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.preview-dock-chip button:hover {
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+}
+.preview-dock-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-left: auto;
+}
+
 @keyframes landing-in {
   from {
     opacity: 0;
@@ -166,112 +289,18 @@
     transform: none;
   }
 }
-.landing-copy,
+.landing-hero,
 .landing-preview {
   animation: landing-in var(--dur-long) var(--ease-out) both;
 }
 .landing-preview {
-  animation-delay: 120ms;
-}
-.preview-card {
-  transition:
-    transform var(--dur-short) var(--ease-out),
-    box-shadow var(--dur-short) var(--ease-out);
-}
-@media (hover: hover) {
-  .landing-preview:hover .preview-card {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lift);
-  }
+  animation-delay: 100ms;
 }
 @media (prefers-reduced-motion: reduce) {
-  .landing-copy,
+  .landing-hero,
   .landing-preview {
     animation: none;
   }
-  .preview-card,
-  .landing-preview:hover .preview-card {
-    transform: none;
-    transition: none;
-  }
-}
-.preview-card {
-  padding: var(--space-lg);
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-card);
-  background: var(--color-surface);
-}
-.preview-due {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-}
-.preview-due b {
-  color: var(--color-warn);
-  font-weight: 500;
-}
-.preview-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-warn-mark);
-}
-.preview-card h2 {
-  margin-top: var(--space-sm);
-  font-size: var(--text-xl);
-  font-weight: 600;
-  line-height: 1.3;
-}
-.preview-meta {
-  margin-top: var(--space-3xs);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-}
-.preview-summary {
-  margin-top: var(--space-sm);
-  color: var(--color-ink-2);
-  font-size: var(--text-sm);
-  line-height: 1.6;
-}
-.preview-facts {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-top: var(--space-md);
-  padding-top: var(--space-md);
-  border-top: 1px solid var(--color-rule);
-}
-.preview-facts > div {
-  display: flex;
-  flex-direction: column;
-}
-.preview-facts .preview-meta {
-  margin-top: 0;
-}
-.preview-ratio {
-  margin: var(--space-2xs) 0 var(--space-3xs);
-  font-size: var(--text-2xl);
-  font-weight: 600;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.preview-stipend {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3xs);
-  color: var(--color-muted);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-.preview-stipend b {
-  color: var(--color-ink);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 .landing-footer {
@@ -290,12 +319,8 @@
 
 @media (max-width: 60rem) {
   .landing-body {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-2xl);
-    padding-top: var(--space-lg);
-  }
-  .landing-signin {
-    max-width: none;
+    gap: var(--space-lg);
+    padding-top: var(--space-md);
   }
 }
 @media (max-width: 40rem) {
@@ -305,10 +330,12 @@
     padding-left: var(--space-md);
     padding-right: var(--space-md);
   }
-  .landing-body {
-    padding-bottom: var(--space-xl);
+  .landing-preview {
+    padding: var(--space-sm);
+    border-radius: 16px;
   }
-  .preview-card {
-    padding: var(--space-md);
+  .preview-dock-chips,
+  .preview-dock-left > svg {
+    display: none;
   }
 }

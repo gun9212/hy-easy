@@ -122,19 +122,23 @@ function buildColumns(props: RowProps): TableColumn<Posting>[] {
     {
       key: "competition",
       header: "경쟁률",
-      width: pixel(112),
+      width: pixel(132),
       align: "end",
       renderCell: p => <Competition posting={p} />,
     },
-    {
-      key: "save",
-      header: "관심",
-      width: pixel(56),
-      align: "center",
-      renderCell: p => (
-        <BookmarkButton posting={p} saved={props.favoriteIds.includes(p.id)} onFavorite={props.onFavorite} />
-      ),
-    },
+    ...(props.hideBookmark
+      ? []
+      : [
+          {
+            key: "save",
+            header: "관심",
+            width: pixel(56),
+            align: "center" as const,
+            renderCell: (p: Posting) => (
+              <BookmarkButton posting={p} saved={props.favoriteIds.includes(p.id)} onFavorite={props.onFavorite} />
+            ),
+          },
+        ]),
   ];
 }
 

@@ -60,17 +60,13 @@ function SourceRows({ title, texts, count }: { title: string; texts: string[]; c
   );
 }
 
-export function Comparison({ postings, close, applications, now }: Props) {
+type TableProps = Pick<Props, "postings" | "applications" | "now">;
+
+export function ComparisonTable({ postings, applications, now }: TableProps) {
   const [showSource, setShowSource] = useState(false);
   const count = postings.length;
   return (
-    <Modal close={close} label="선택 공고 비교" wide>
-      <div className="modal-top">
-        <h2>같은 기준으로, 나란히 비교</h2>
-        <button className="icon-button" aria-label="비교 닫기" onClick={close}>
-          <X size={21} />
-        </button>
-      </div>
+    <>
       {count > 1 && <p className="compare-hint">옆으로 밀어서 다른 공고를 볼 수 있어요.</p>}
       <div className="comparison-scroll">
         <table className="comparison-table" style={{ "--compare-columns": count } as CSSProperties}>
@@ -133,6 +129,20 @@ export function Comparison({ postings, close, applications, now }: Props) {
       <p className="muted small">
         지원금은 지급 단위를 함께 확인하세요. 미기재·시급·총액은 월 지급액과 직접 비교하지 않습니다.
       </p>
+    </>
+  );
+}
+
+export function Comparison({ postings, close, applications, now }: Props) {
+  return (
+    <Modal close={close} label="선택 공고 비교" wide>
+      <div className="modal-top">
+        <h2>같은 기준으로, 나란히 비교</h2>
+        <button className="icon-button" aria-label="비교 닫기" onClick={close}>
+          <X size={21} />
+        </button>
+      </div>
+      <ComparisonTable postings={postings} applications={applications} now={now} />
     </Modal>
   );
 }
