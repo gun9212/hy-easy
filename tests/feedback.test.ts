@@ -1,6 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { FEEDBACK_MAX_CHARS, feedbackSchema } from "../src/lib/feedback";
+import {
+  ADMIN_FEEDBACK_PAGE_SIZE,
+  adminFeedbackMarkReadSchema,
+  FEEDBACK_MAX_CHARS,
+  feedbackSchema,
+  parseFeedbackQuery,
+} from "../src/lib/feedback";
 import { POST } from "../src/app/api/feedback/route";
 
 describe("feedbackSchema", () => {
@@ -30,4 +36,32 @@ it("feedback API refuses a cross-origin post before reading the session", async 
     }),
   );
   assert.equal(response.status, 403);
+});
+
+describe("admin feedback filter, pagination, and bulk-read schema", () => {
+  it("parses unread filter and clamps page numbers safely", () => {
+    assert.deepEqual(parseFeedbackQuery({}), { filter: "all", page: 1 });
+    assert.deepEqual(parseFeedbackQuery({ feedback: "unread", feedbackPage: "3" }), { filter: "unread", page: 3 });
+    assert.deepEqual(parseFeedbackQuery({ feedback: ["unread", "all"], feedbackPage: ["2", "9"] }), {
+      filter: "unread",
+      page: 2,
+    });
+    assert.deepEqual(parseFeedbackQuery({ feedback: "other", feedbackPage: "-5" }), { filter: "all", page: 1 });
+    assert.deepEqual(parseFeedbackQuery({ feedbackPage: "not-a-number" }), { filter: "all", page: 1 });
+  });
+
+  it("validates single-id, page-ids, and all-unread payloads", () => {
+    const u1 = "00000000-0000-4000-8000-000000000001";
+    const u2 = "00000000-0000-4000-8000-000000000002";
+    assert.equal(adminFeedbackMarkReadSchema.safeParse({}).success, true);
+    assert.equal(adminFeedbackMarkReadSchema.safeParse({ id: u1 }).success, true);
+    assert.equal(adminFeedbackMarkReadSchema.safeParse({ ids: [u1, u2] }).success, true);
+    assert.equal(adminFeedbackMarkReadSchema.safeParse({ id: u1, ids: [u2] }).success, false);
+    assert.equal(adminFeedbackMarkReadSchema.safeParse({ ids: [] }).success, false);
+    assert.equal(
+      adminFeedbackMarkReadSchema.safeParse({ ids: Array.from({ length: ADMIN_FEEDBACK_PAGE_SIZE + 1 }, () => u1) })
+        .success,
+      false,
+    );
+  });
 });

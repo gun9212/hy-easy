@@ -19,57 +19,84 @@ import {
 } from "@/components/admin/admin-tables";
 import { requireAdmin, HttpError } from "@/lib/auth";
 import { formatDate, type Posting } from "@/lib/domain";
+import { ADMIN_FEEDBACK_PAGE_SIZE, parseFeedbackQuery } from "@/lib/feedback";
 
 export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
 const RECENT_LIMIT = 20;
-const FEEDBACK_LIMIT = 50;
 const USAGE_DAYS = 30;
 type UserStats = { total: number; active7d: number; new7d: number };
 
-export default async function Admin() {
+export default async function Admin({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { db } = await requireAdmin().catch((e: unknown) => {
     if (e instanceof HttpError) redirect(e.status === 403 ? "/postings" : "/login");
     throw e;
   });
+  const { filter: feedbackFilter, page: feedbackPage } = parseFeedbackQuery(await searchParams);
+  const feedbackFrom = (feedbackPage - 1) * ADMIN_FEEDBACK_PAGE_SIZE;
+  const feedbackTo = feedbackFrom + ADMIN_FEEDBACK_PAGE_SIZE - 1;
+  let feedbackQuery = db
+    .from("feedback")
+    .select("id,message,page,created_at,read_at", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(feedbackFrom, feedbackTo);
+  if (feedbackFilter === "unread") feedbackQuery = feedbackQuery.is("read_at", null);
+
   // Reads only what the page shows: the postings that need review and a count, not the whole posting list.
-  const [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats, usage] = await Promise.all([
-    db
-      .from("posting_view")
-      .select("document")
-      // Unclassified, ambiguous or source-changed postings.
-      .or(
-        "document->>classification.is.null,document->classification->>needsReview.eq.true,document->>classificationStale.eq.true",
-      )
-      .order("first_seen_at", { ascending: false }),
-    db.from("postings").select("id", { count: "exact", head: true }),
-    db.from("collector_runs").select("*").order("started_at", { ascending: false }).limit(RECENT_LIMIT),
-    db.from("classification_queue").select("posting_id,attempts,last_error"),
-    db
-      .from("posting_versions")
-      .select("posting_id,captured_at")
-      .order("captured_at", { ascending: false })
-      .limit(RECENT_LIMIT),
-    db
-      .from("classification_audit")
-      .select("posting_id,edited_at,editor_id,result")
-      .order("edited_at", { ascending: false })
-      .limit(RECENT_LIMIT),
-    db
-      .from("feedback")
-      .select("id,message,page,created_at,read_at")
-      .order("created_at", { ascending: false })
-      .limit(FEEDBACK_LIMIT),
-    db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
-    // Counts only (supabase/migrations/202611230002_admin_user_stats.sql): verified school accounts.
-    db.rpc("admin_user_stats"),
-    // Per KST day for the last 30 days (supabase/migrations/202611230003_usage_daily.sql).
-    db.rpc("admin_usage_daily", { p_days: USAGE_DAYS }),
-  ]);
-  for (const r of [review, total, runs, queue, versions, audit, feedback, unreadFeedback, userStats, usage])
+  const [review, total, runs, queue, versions, audit, feedback, allFeedback, unreadFeedback, userStats, usage] =
+    await Promise.all([
+      db
+        .from("posting_view")
+        .select("document")
+        // Unclassified, ambiguous or source-changed postings.
+        .or(
+          "document->>classification.is.null,document->classification->>needsReview.eq.true,document->>classificationStale.eq.true",
+        )
+        .order("first_seen_at", { ascending: false }),
+      db.from("postings").select("id", { count: "exact", head: true }),
+      db.from("collector_runs").select("*").order("started_at", { ascending: false }).limit(RECENT_LIMIT),
+      db.from("classification_queue").select("posting_id,attempts,last_error"),
+      db
+        .from("posting_versions")
+        .select("posting_id,captured_at")
+        .order("captured_at", { ascending: false })
+        .limit(RECENT_LIMIT),
+      db
+        .from("classification_audit")
+        .select("posting_id,edited_at,editor_id,result")
+        .order("edited_at", { ascending: false })
+        .limit(RECENT_LIMIT),
+      feedbackQuery,
+      db.from("feedback").select("id", { count: "exact", head: true }),
+      db.from("feedback").select("id", { count: "exact", head: true }).is("read_at", null),
+      // Counts only (supabase/migrations/202611230002_admin_user_stats.sql): verified school accounts.
+      db.rpc("admin_user_stats"),
+      // Per KST day for the last 30 days (supabase/migrations/202611230003_usage_daily.sql).
+      db.rpc("admin_usage_daily", { p_days: USAGE_DAYS }),
+    ]);
+  for (const r of [
+    review,
+    total,
+    runs,
+    queue,
+    versions,
+    audit,
+    feedback,
+    allFeedback,
+    unreadFeedback,
+    userStats,
+    usage,
+  ])
     if (r.error) throw r.error;
   const users = (userStats.data ?? { total: 0, active7d: 0, new7d: 0 }) as UserStats;
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
+  const filteredFeedbackCount = feedback.count ?? feedbackRows.length;
+  const allFeedbackCount = allFeedback.count ?? filteredFeedbackCount;
   const unreadCount = unreadFeedback.count ?? 0;
   const reviewPostings = (review.data ?? []).map(row => row.document as Posting);
   const runRows = (runs.data ?? []) as Run[];
@@ -153,15 +180,23 @@ export default async function Admin() {
           <UsageCharts days={(usage.data ?? []) as UsageDay[]} />
         </section>
 
-        <section className="admin-section">
+        <section id="feedback" className="admin-section">
           <h2>
             피드백 <span>새 피드백 {unreadCount}건</span>
           </h2>
           <p className="admin-note">
-            학생이 앱에서 보낸 익명 피드백입니다. 보낸 사람은 저장하지 않습니다.
-            {feedbackRows.length === FEEDBACK_LIMIT && ` 최근 ${FEEDBACK_LIMIT}건만 보여줍니다.`}
+            학생이 앱에서 보낸 익명 피드백입니다. 보낸 사람은 저장하지 않습니다. 페이지당 {ADMIN_FEEDBACK_PAGE_SIZE}
+            건씩 보여줍니다.
           </p>
-          <FeedbackList items={feedbackRows} unread={unreadCount} />
+          <FeedbackList
+            items={feedbackRows}
+            unread={unreadCount}
+            total={filteredFeedbackCount}
+            allTotal={allFeedbackCount}
+            page={feedbackPage}
+            pageSize={ADMIN_FEEDBACK_PAGE_SIZE}
+            filter={feedbackFilter}
+          />
         </section>
 
         <section className="admin-section">
