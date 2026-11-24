@@ -17,7 +17,14 @@ import {
 
 type RecordFn = (postingId: string, status: ApplicationStatus, confirmed: boolean) => Promise<void>;
 type RemoveFn = (postingId: string) => Promise<void>;
-type Props = { postings: Posting[]; applications: Application[]; record: RecordFn; remove: RemoveFn; now: Date };
+type Props = {
+  postings: Posting[];
+  applications: Application[];
+  record: RecordFn;
+  remove: RemoveFn;
+  now: Date;
+  initialPostingId?: string | null;
+};
 
 const companyOf = (postings: Posting[], id: string | undefined) => postings.find(p => p.id === id);
 
@@ -30,10 +37,18 @@ function PanelHeading({ title, text }: { title: string; text: string }) {
   );
 }
 
-function StatusPanel({ postings, applications, record }: Pick<Props, "postings" | "applications" | "record">) {
+function StatusPanel({
+  postings,
+  applications,
+  record,
+  initialPostingId,
+}: Pick<Props, "postings" | "applications" | "record"> & { initialPostingId: string | null }) {
   const active = applications.find(a => isBlocking(a.status));
-  const [postingId, setPostingId] = useState(active?.postingId ?? "");
-  const [status, setStatus] = useState<ApplicationStatus>(active?.status ?? "in_progress");
+  const initialId = active?.postingId ?? initialPostingId ?? "";
+  const [postingId, setPostingId] = useState(initialId);
+  const [status, setStatus] = useState<ApplicationStatus>(
+    active?.status ?? applications.find(a => a.postingId === initialId)?.status ?? "in_progress",
+  );
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -119,9 +134,15 @@ function StatusPanel({ postings, applications, record }: Pick<Props, "postings" 
   );
 }
 
-function ScenarioPanel({ postings, applications, now }: Pick<Props, "postings" | "applications" | "now">) {
+function ScenarioPanel({
+  postings,
+  applications,
+  now,
+  initialPostingId,
+}: Pick<Props, "postings" | "applications" | "now"> & { initialPostingId: string | null }) {
   const active = applications.find(a => isBlocking(a.status));
-  const [candidateId, setCandidateId] = useState("");
+  const defaultCandidateId = initialPostingId && initialPostingId !== active?.postingId ? initialPostingId : "";
+  const [candidateId, setCandidateId] = useState(defaultCandidateId);
   const [releaseAt, setReleaseAt] = useState("");
   const candidates = useMemo(() => postings.filter(p => p.id !== active?.postingId), [postings, active?.postingId]);
   const candidate = companyOf(postings, candidateId);
@@ -272,11 +293,13 @@ function History({ postings, applications, remove }: Pick<Props, "postings" | "a
   );
 }
 
-export function Planner({ postings, applications, record, remove, now }: Props) {
+export function Planner({ postings, applications, record, remove, now, initialPostingId }: Props) {
   // Saved applications can arrive after the first render (demo storage, live data). Keying the form on the active
-  // application resets its fields to that application whenever it loads or changes.
+  // application or requested posting resets its fields whenever it loads or changes.
   const active = applications.find(a => isBlocking(a.status));
-  const statusKey = active ? `${active.postingId}:${active.status}` : "none";
+  const validInitialId = initialPostingId && postings.some(p => p.id === initialPostingId) ? initialPostingId : null;
+  const statusKey = active ? `${active.postingId}:${active.status}` : `none:${validInitialId ?? ""}`;
+  const scenarioKey = `${active?.postingId ?? "none"}:${validInitialId ?? ""}`;
   return (
     <div className="planner">
       <div className="planner-rule">
@@ -290,8 +313,20 @@ export function Planner({ postings, applications, record, remove, now }: Props) 
         </div>
       </div>
       <div className="planner-grid">
-        <StatusPanel key={statusKey} postings={postings} applications={applications} record={record} />
-        <ScenarioPanel postings={postings} applications={applications} now={now} />
+        <StatusPanel
+          key={statusKey}
+          postings={postings}
+          applications={applications}
+          record={record}
+          initialPostingId={validInitialId}
+        />
+        <ScenarioPanel
+          key={scenarioKey}
+          postings={postings}
+          applications={applications}
+          now={now}
+          initialPostingId={validInitialId}
+        />
       </div>
       <History postings={postings} applications={applications} remove={remove} />
     </div>

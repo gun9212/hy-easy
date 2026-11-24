@@ -165,12 +165,13 @@ function WorkspaceInner({
     setFilters({});
     setMobileMenu(false);
   }
-  function navigate(next: View) {
+  function navigate(next: View, postingId?: string) {
     // A side-nav tab starts a fresh view so filters from the previous tab never hide saved postings.
     const saved = next === "saved" ? "true" : next === "planner" ? "planner" : "";
     setFilters(prev => {
       const base: Filters = {};
       if (saved) base.saved = saved;
+      if (next === "planner" && postingId) base.posting = postingId;
       if (prev.sort) base.sort = prev.sort;
       return base;
     });
@@ -281,7 +282,14 @@ function WorkspaceInner({
             공고를 불러오는 중…
           </Text>
         ) : view === "planner" ? (
-          <Planner postings={postings} applications={personal.applications} record={record} remove={remove} now={now} />
+          <Planner
+            postings={postings}
+            applications={personal.applications}
+            record={record}
+            remove={remove}
+            now={now}
+            initialPostingId={filters.posting ?? null}
+          />
         ) : (
           <PostingsView
             postings={postings}
@@ -329,8 +337,9 @@ function WorkspaceInner({
           onFavorite={() => favorite(detail.id)}
           close={() => setDetailId(null)}
           onPlan={() => {
+            const targetId = detail.id;
             setDetailId(null);
-            navigate("planner");
+            navigate("planner", targetId);
           }}
         />
       )}

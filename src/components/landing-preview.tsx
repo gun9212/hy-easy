@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, GitCompareArrows, Plus, X } from "lucide-react";
 import { Badge } from "@astryxdesign/core/Badge";
+import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -20,11 +22,13 @@ const PREVIEW_NOW = new Date(DEMO_NOW);
 // Four fictional postings (A사–D사) sorted by deadline, matching the workspace's default view.
 const PREVIEW_POSTINGS: Posting[] = [samplePostings[2], samplePostings[0], samplePostings[1], samplePostings[3]];
 
-export function LandingPreview() {
+export function LandingPreview({ demoEnabled = false }: { demoEnabled?: boolean }) {
+  const router = useRouter();
   const [mode, setMode] = useState<"list" | "compare">("list");
   const [compared, setCompared] = useState<string[]>([PREVIEW_POSTINGS[0].id, PREVIEW_POSTINGS[1].id]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [planNotice, setPlanNotice] = useState<string>("");
 
   const selected = compared.map(id => PREVIEW_POSTINGS.find(p => p.id === id)).filter((p): p is Posting => Boolean(p));
   const unselected = PREVIEW_POSTINGS.filter(p => !compared.includes(p.id));
@@ -68,6 +72,12 @@ export function LandingPreview() {
               가상 공고 예시 · 눌러서 상세와 비교를 체험해 보세요
             </Text>
           </HStack>
+
+          {planNotice && (
+            <div role="status">
+              <Banner status="info" title="로그인 후 이용할 수 있어요" description={planNotice} collapsible={false} />
+            </div>
+          )}
 
           {mode === "list" ? (
             <>
@@ -163,7 +173,17 @@ export function LandingPreview() {
             saved={favoriteIds.includes(detail.id)}
             onFavorite={() => toggleFavorite(detail.id)}
             close={() => setDetailId(null)}
-            onPlan={() => setDetailId(null)}
+            onPlan={() => {
+              const target = detail;
+              setDetailId(null);
+              if (demoEnabled) {
+                router.push(`/demo?saved=planner&posting=${encodeURIComponent(target.id)}`);
+              } else {
+                setPlanNotice(
+                  `${target.company} 지원 일정 관리는 @hanyang.ac.kr 계정으로 로그인한 뒤 이용할 수 있어요.`,
+                );
+              }
+            }}
           />
         )}
       </section>

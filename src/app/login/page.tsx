@@ -73,5 +73,7 @@ function SignIn({ error, notice }: { error?: string; notice: React.ReactNode }) 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const [notice, theme] = await Promise.all([inAppNotice(), readThemeMode()]);
-  return <LandingShell initialTheme={theme} signIn={<SignIn error={error} notice={notice} />} />;
+  return (
+    <LandingShell initialTheme={theme} demoEnabled={demoEnabled()} signIn={<SignIn error={error} notice={notice} />} />
+  );
 }

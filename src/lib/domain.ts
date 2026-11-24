@@ -407,6 +407,8 @@ export type Filters = {
   mine?: string;
   /** "true": keep postings restricted to other majors when a major is chosen (hidden by default). */
   others?: string;
+  /** Pre-selected posting id when opening the planner from a posting detail. */
+  posting?: string;
   page?: string;
 };
 const FILTER_KEYS: (keyof Filters)[] = [
@@ -421,6 +423,7 @@ const FILTER_KEYS: (keyof Filters)[] = [
   "when",
   "mine",
   "others",
+  "posting",
   "page",
 ];
 /** Collapses Next.js duplicate query values (string[]) into single strings so filters never receive an array. */

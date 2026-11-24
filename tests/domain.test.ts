@@ -75,8 +75,14 @@ describe("원문 정규화와 비교", () => {
     assert.equal(deadlineLabel({ ...p, deadline: parseDeadline("2026-11-22 18:00") }), "11. 22. 18:00");
   });
   it("중복 쿼리 파라미터(string[])를 단일 문자열 필터로 정규화", () => {
-    const normalized = normalizeFilters({ q: ["데이터", "마케팅"], role: "개발", unknown: "x" });
-    assert.deepEqual(normalized, { q: "데이터", role: "개발" });
+    const normalized = normalizeFilters({
+      q: ["데이터", "마케팅"],
+      role: "개발",
+      saved: ["planner", "true"],
+      posting: ["p-1", "p-2"],
+      unknown: "x",
+    });
+    assert.deepEqual(normalized, { q: "데이터", role: "개발", saved: "planner", posting: "p-1" });
     assert.doesNotThrow(() => filterPostings(samplePostings, normalized, []));
   });
   it("잘못된 날짜·시각을 임의 보정하지 않음", () => {
