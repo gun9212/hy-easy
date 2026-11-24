@@ -37,26 +37,42 @@ test("sends only postings changed after since, minus the overlap", () => {
   assert.equal(buildSync(postings, at(base + 3 * 60 * 60_000)).postings.length, 0);
 });
 
-test("merges changed postings, live applicant counts and removals in server order", () => {
+test("merges changed postings, live applicant counts, per-posting lastCheckedAt, and removals in server order", () => {
   const changed = { ...postings[1], title: "새 제목" };
+  const fresherCheck = at(base + 24 * 60 * 60_000);
   const merged = mergeSync(postings, {
     full: false,
     postings: [changed],
     live: [
-      [postings[1].id, 42],
-      [postings[0].id, postings[0].applicants],
+      [postings[1].id, 42, fresherCheck],
+      [postings[0].id, postings[0].applicants, postings[0].lastCheckedAt],
+      [postings[2].id, postings[2].applicants, fresherCheck],
     ],
     syncedAt: null,
-    lastCheckedAt: null,
+    lastCheckedAt: fresherCheck,
   });
   assert.ok(merged);
   assert.deepEqual(
     merged.map(p => p.id),
-    [postings[1].id, postings[0].id],
+    [postings[1].id, postings[0].id, postings[2].id],
   );
   assert.equal(merged[0].title, "새 제목");
   assert.equal(merged[0].applicants, 42);
+  assert.equal(merged[0].lastCheckedAt, fresherCheck);
+  // Neither applicants nor lastCheckedAt changed: original reference is kept.
   assert.equal(merged[1], postings[0]);
+  // Unchanged content with unchanged applicants still receives the fresher per-posting check timestamp.
+  assert.equal(merged[2].lastCheckedAt, fresherCheck);
+  assert.equal(merged[2].applicants, postings[2].applicants);
+
+  // buildSync emits per-posting lastCheckedAt in live rows even when postings[] is empty.
+  const quiet = buildSync(
+    postings.map(p => ({ ...p, lastCheckedAt: fresherCheck })),
+    at(base + 3 * 60 * 60_000),
+  );
+  assert.equal(quiet.full, false);
+  assert.equal(quiet.postings.length, 0);
+  assert.deepEqual(quiet.live[0], [postings[0].id, postings[0].applicants, fresherCheck]);
 });
 
 test("asks for a full reload when a listed posting is missing from both copies", () => {

@@ -6,8 +6,8 @@ import type { Posting } from "./domain";
 /** Changes are re-sent from a little before the browser's copy, so a write racing the last sync is not missed. */
 export const SYNC_OVERLAP_MS = 5 * 60_000;
 
-/** [posting id, live applicant count], in display order (newest first). */
-export type LiveRow = [string, number | null];
+/** [posting id, live applicant count, per-posting lastCheckedAt], in display order (newest first). */
+export type LiveRow = [string, number | null, string?];
 export type SyncResponse = {
   full: boolean;
   postings: Posting[];
@@ -30,7 +30,7 @@ export function buildSync(all: Posting[], since: string | null): SyncResponse {
   return {
     full,
     postings,
-    live: all.map(p => [p.id, p.applicants]),
+    live: all.map(p => [p.id, p.applicants, p.lastCheckedAt]),
     syncedAt: latest(all.map(changedAtOf)),
     lastCheckedAt: latest(all.map(p => p.lastCheckedAt)),
   };
@@ -44,10 +44,15 @@ export function mergeSync(cached: Posting[], reply: SyncResponse): Posting[] | n
   const byId = new Map(cached.map(p => [p.id, p]));
   reply.postings.forEach(p => byId.set(p.id, p));
   const merged: Posting[] = [];
-  for (const [id, applicants] of reply.live) {
+  for (const [id, applicants, lastCheckedAt] of reply.live) {
     const posting = byId.get(id);
     if (!posting) return null;
-    merged.push(posting.applicants === applicants ? posting : { ...posting, applicants });
+    const nextCheckedAt = lastCheckedAt ?? posting.lastCheckedAt;
+    merged.push(
+      posting.applicants === applicants && posting.lastCheckedAt === nextCheckedAt
+        ? posting
+        : { ...posting, applicants, lastCheckedAt: nextCheckedAt },
+    );
   }
   return merged;
 }
