@@ -108,6 +108,11 @@ export type Posting = {
   classification: Classification | null;
   classificationSource: "ai" | "admin" | "sample" | null;
   classificationStale: boolean;
+  /**
+   * Set on the list copy the browser syncs: the source texts, attachment text and classification evidence are left
+   * out (see posting-body.ts) and fetched from /api/postings/[id] when a detail or comparison opens.
+   */
+  bodyOmitted?: true;
 };
 export type Application = { id: string; postingId: string; status: ApplicationStatus; updatedAt: string };
 export type Decision = { status: "available" | "blocked" | "closed" | "unknown"; label: string; reason: string };
@@ -385,22 +390,34 @@ export function normalizeFilters(raw: Record<string, string | string[] | undefin
   }
   return filters;
 }
+/** The search box text as matched: trimmed and lower-cased, or "" for no search. */
+export function searchQuery(q: unknown): string {
+  return (typeof q === "string" ? q : "").toLocaleLowerCase().trim();
+}
+/**
+ * Whether a posting's company, title, department, tasks, qualifications or attachment text contains the query.
+ * On a list copy without bodies (bodyOmitted) only the first three are present; the server answers for the rest
+ * (/api/postings/search), and filterPostings takes those ids as textMatchIds.
+ */
+export function matchesSearch(p: Posting, query: string): boolean {
+  return [p.company, p.title, p.department, p.tasks, p.qualifications, p.attachment?.text ?? ""]
+    .join(" ")
+    .toLowerCase()
+    .includes(query);
+}
 const MINE_FITS: MajorFit[] = ["required", "preferred", "adjacent", "related"];
 export function filterPostings(
   postings: Posting[],
   filters: Filters,
   favoriteIds: string[] = [],
   major: Major | null = null,
+  textMatchIds: ReadonlySet<string> | null = null,
 ) {
-  const query = (typeof filters.q === "string" ? filters.q : "").toLocaleLowerCase().trim();
+  const query = searchQuery(filters.q);
   const rows = postings.filter(p => {
     const role = p.classification;
     return (
-      (!query ||
-        [p.company, p.title, p.department, p.tasks, p.qualifications, p.attachment?.text ?? ""]
-          .join(" ")
-          .toLowerCase()
-          .includes(query)) &&
+      (!query || matchesSearch(p, query) || Boolean(textMatchIds?.has(p.id))) &&
       (!filters.role || role?.primaryRole === filters.role || role?.secondaryRoles.includes(filters.role as Role)) &&
       (!filters.term || p.term === filters.term) &&
       (!filters.location || regionOf(p.location) === filters.location) &&

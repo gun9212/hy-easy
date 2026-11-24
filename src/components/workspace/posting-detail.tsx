@@ -12,9 +12,11 @@ import { Text } from "@astryxdesign/core/Text";
 import { eligibility, formatDate, type Application, type Decision, type Posting } from "@/lib/domain";
 import { safeHywepUrl } from "@/lib/posting-format";
 import type { Major } from "@/lib/majors";
+import { BodyStatus } from "./body-status";
 import { Classification, Events, Facts, Majors, OriginalTexts } from "./posting-detail-sections";
 import { DeadlineBadge } from "./posting-row-parts";
 import { DetailFrame } from "./detail-frame";
+import { usePostingBodies } from "./use-posting-bodies";
 
 // The posting page itself has no apply action; students apply from HY-WEP's search list.
 const HYWEP_APPLY_URL = "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
@@ -75,7 +77,10 @@ function MoreDetails({ posting: p, decision, props }: { posting: Posting; decisi
 
 /** The posting in a centered dialog (a drawer on a phone), laid out as in the demo: badges, AI summary, facts, then HY-WEP's own texts. */
 export function PostingDetail(props: Props) {
-  const { posting: p, saved, onFavorite, close } = props;
+  const { saved, onFavorite, close } = props;
+  // The list copy opens at once; the source texts and evidence quotes arrive with the full posting.
+  const body = usePostingBodies([props.posting]);
+  const p = body.postings[0];
   const decision = eligibility(p, props.applications, props.now);
   const closed = decision.status === "closed";
   const sourceHref = safeHywepUrl(p.sourceUrl);
@@ -138,7 +143,11 @@ export function PostingDetail(props: Props) {
               <Facts posting={p} />
               <MoreDetails posting={p} decision={decision} props={props} />
               <Divider />
-              <OriginalTexts posting={p} />
+              {body.status === "ready" ? (
+                <OriginalTexts posting={p} />
+              ) : (
+                <BodyStatus status={body.status} retry={body.retry} />
+              )}
               <Events posting={p} />
             </VStack>
           </LayoutContent>

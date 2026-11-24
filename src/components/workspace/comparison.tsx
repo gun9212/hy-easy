@@ -5,7 +5,9 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { compareSections } from "@/lib/compare-text";
 import { deadlineLabel, eligibility, stipendLabel, type Application, type Posting } from "@/lib/domain";
 import { competitionRatio } from "@/lib/posting-format";
+import { BodyStatus } from "./body-status";
 import { Modal } from "./modal";
+import { usePostingBodies } from "./use-posting-bodies";
 
 type Props = { postings: Posting[]; close: () => void; applications: Application[]; now: Date };
 type Row = [label: string, render: (p: Posting) => ReactNode];
@@ -60,6 +62,41 @@ function SourceRows({ title, texts, count }: { title: string; texts: string[]; c
   );
 }
 
+/** The source-text rows, loading the full postings when first shown (the synced list leaves the texts out). */
+function SourceSection({ postings: listed, count }: { postings: Posting[]; count: number }) {
+  const body = usePostingBodies(listed);
+  if (body.status !== "ready") {
+    return (
+      <tr>
+        <td colSpan={count + 1}>
+          <BodyStatus status={body.status} retry={body.retry} />
+        </td>
+      </tr>
+    );
+  }
+  const postings = body.postings;
+  return (
+    <>
+      <SourceRows title="실습내용" texts={postings.map(p => p.tasks)} count={count} />
+      <SourceRows title="자격사항" texts={postings.map(p => p.qualifications)} count={count} />
+      {postings.some(p => p.attachment) && (
+        <tr>
+          <th>첨부 파일</th>
+          {postings.map(p => (
+            <td key={p.id} className="compare-source">
+              {p.attachment ? (
+                `${p.attachment.text.slice(0, COMPARE_ATTACHMENT_CHARS)}…`
+              ) : (
+                <span className="compare-empty">없음</span>
+              )}
+            </td>
+          ))}
+        </tr>
+      )}
+    </>
+  );
+}
+
 type TableProps = Pick<Props, "postings" | "applications" | "now">;
 
 export function ComparisonTable({ postings, applications, now }: TableProps) {
@@ -103,26 +140,7 @@ export function ComparisonTable({ postings, applications, now }: TableProps) {
                 </button>
               </td>
             </tr>
-            {showSource && (
-              <>
-                <SourceRows title="실습내용" texts={postings.map(p => p.tasks)} count={count} />
-                <SourceRows title="자격사항" texts={postings.map(p => p.qualifications)} count={count} />
-                {postings.some(p => p.attachment) && (
-                  <tr>
-                    <th>첨부 파일</th>
-                    {postings.map(p => (
-                      <td key={p.id} className="compare-source">
-                        {p.attachment ? (
-                          `${p.attachment.text.slice(0, COMPARE_ATTACHMENT_CHARS)}…`
-                        ) : (
-                          <span className="compare-empty">없음</span>
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                )}
-              </>
-            )}
+            {showSource && <SourceSection postings={postings} count={count} />}
           </tbody>
         </table>
       </div>

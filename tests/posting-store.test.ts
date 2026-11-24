@@ -29,8 +29,13 @@ describe("browser posting cache field allowlist", () => {
     assert.deepEqual(Object.keys(cached.attachment!).sort(), [...CACHED_ATTACHMENT_FIELDS].sort());
     assert.equal("unexpectedUserField" in cached, false);
     assert.equal("unexpectedAttachmentField" in cached.attachment!, false);
-    assert.equal(cached.tasks, base.tasks);
-    assert.equal(cached.attachment?.text, "업무 내용 안내");
+    // Only list copies are stored: source texts, attachment text and evidence quotes never reach IndexedDB.
+    assert.equal(cached.tasks, "");
+    assert.equal(cached.qualifications, "");
+    assert.equal(cached.attachment?.text, "");
+    assert.equal(cached.attachment?.fileName, "plan.pdf");
+    assert.equal(cached.bodyOmitted, true);
+    assert.equal(cached.classification?.summary, base.classification?.summary);
   });
 
   it("omits attachment and changedAt when absent", () => {
@@ -45,6 +50,8 @@ describe("browser posting cache field allowlist", () => {
     assert.doesNotMatch(privacy, /여기에는 개인정보가 들어가지\s*않습니다/);
     assert.match(privacy, /IndexedDB/);
     assert.match(privacy, /담당자\s*연락처/);
+    assert.match(privacy, /브라우저 저장소에 저장하지\s*않습니다/);
+    assert.doesNotMatch(privacy, /첨부\s*파일에서 추출한 텍스트 포함\)를 이용자의 브라우저 저장소/);
     assert.match(privacy, /로그아웃할 때\s*자동으로 지워집니다/);
   });
 });
