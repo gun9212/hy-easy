@@ -28,3 +28,7 @@ docs/classification-check.md
 
 # Classification eval sets contain HY-WEP posting snapshots (login-only); keep them local.
 evals/classification-*.json
+
+# Local database backup/restore artifacts must never be committed.
+restore/
+*.dump

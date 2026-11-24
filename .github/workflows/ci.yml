@@ -121,13 +121,9 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
       - if: steps.changes.outputs.collector == 'true'
         uses: google-github-actions/setup-gcloud@v2
-      - name: Verify gha-creds is excluded from Cloud Build upload
+      - name: Verify Cloud Build upload excludes private files and credentials
         if: steps.changes.outputs.collector == 'true'
-        run: |
-          if gcloud meta list-files-for-upload . | grep -q 'gha-creds-'; then
-            echo "::error::Cloud Build upload list includes a gha-creds file"
-            exit 1
-          fi
+        run: bash scripts/check-cloudbuild-upload.sh
       - name: Build the collector image
         if: steps.changes.outputs.collector == 'true'
         run: |
@@ -182,13 +178,9 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
       - if: steps.changes.outputs.backup == 'true'
         uses: google-github-actions/setup-gcloud@v2
-      - name: Verify gha-creds is excluded from Cloud Build upload
+      - name: Verify Cloud Build upload excludes private files and credentials
         if: steps.changes.outputs.backup == 'true'
-        run: |
-          if gcloud meta list-files-for-upload . | grep -q 'gha-creds-'; then
-            echo "::error::Cloud Build upload list includes a gha-creds file"
-            exit 1
-          fi
+        run: bash scripts/check-cloudbuild-upload.sh
       - name: Build the backup image
         if: steps.changes.outputs.backup == 'true'
         run: |

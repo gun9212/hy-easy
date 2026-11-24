@@ -36,7 +36,7 @@ case "${1:-}" in
     (cd "$ROOT" && scripts/push-secrets.sh "$PROJECT")
     ;;
   image)
-    (cd "$ROOT" && gcloud builds submit --project "$PROJECT" --region "$REGION" \
+    (cd "$ROOT" && bash scripts/check-cloudbuild-upload.sh && gcloud builds submit --project "$PROJECT" --region "$REGION" \
       --config infra/cloudbuild.yaml --substitutions=_IMAGE="$IMAGE" .)
     ;;
   job)
