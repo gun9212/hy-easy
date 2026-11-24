@@ -41,7 +41,9 @@ export default async function Admin({
   const feedbackTo = feedbackFrom + ADMIN_FEEDBACK_PAGE_SIZE - 1;
   let feedbackQuery = db
     .from("feedback")
-    .select("id,message,page,created_at,read_at", { count: "exact" })
+    // No count here: with an exact count PostgREST answers 416 (PGRST103) for a page past the end, e.g. unread page 2
+    // after everything was marked read. Totals come from the two head counts below.
+    .select("id,message,page,created_at,read_at")
     .order("created_at", { ascending: false })
     .order("id", { ascending: false })
     .range(feedbackFrom, feedbackTo);
@@ -79,6 +81,7 @@ export default async function Admin({
       // Per KST day for the last 30 days (supabase/migrations/202611230003_usage_daily.sql).
       db.rpc("admin_usage_daily", { p_days: USAGE_DAYS }),
     ]);
+  // A page past the end of the list shows the empty state instead of failing the whole admin page.
   for (const r of [
     review,
     total,
@@ -92,12 +95,12 @@ export default async function Admin({
     userStats,
     usage,
   ])
-    if (r.error) throw r.error;
+    if (r.error && !(r === feedback && r.error.code === "PGRST103")) throw r.error;
   const users = (userStats.data ?? { total: 0, active7d: 0, new7d: 0 }) as UserStats;
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
-  const filteredFeedbackCount = feedback.count ?? feedbackRows.length;
-  const allFeedbackCount = allFeedback.count ?? filteredFeedbackCount;
+  const allFeedbackCount = allFeedback.count ?? 0;
   const unreadCount = unreadFeedback.count ?? 0;
+  const filteredFeedbackCount = feedbackFilter === "unread" ? unreadCount : allFeedbackCount;
   const reviewPostings = (review.data ?? []).map(row => row.document as Posting);
   const runRows = (runs.data ?? []) as Run[];
   const queueRows = (queue.data ?? []) as QueueItem[];
