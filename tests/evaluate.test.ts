@@ -1,8 +1,17 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { goldenSetSchema, scoreCase, summarize, type GoldenCase } from "../evals/score";
-import type { Classification } from "../src/lib/domain";
+import {
+  caseInputHash,
+  findHoldoutLeakage,
+  goldenSetSchema,
+  scoreCase,
+  selectHoldoutCandidates,
+  summarize,
+  type GoldenCase,
+} from "../evals/score";
+import type { Classification, Posting } from "../src/lib/domain";
+import { samplePostings } from "../src/lib/sample";
 
 const golden: GoldenCase = {
   id: "a",
@@ -64,4 +73,72 @@ test("summary applies the release bars", () => {
   const bad = summarize([golden], [{ id: "a", result: result({ primaryRole: "마케팅" }) }]);
   assert.equal(bad.primaryAccuracy, 0);
   assert.equal(bad.passed, false);
+});
+
+test("flags forbidden majors as false-positive major extraction errors", () => {
+  const strictCase: GoldenCase = {
+    ...golden,
+    expected: {
+      ...golden.expected,
+      majors: { ...golden.expected.majors!, forbidden: ["경영학부"] },
+    },
+  };
+  const leaked = summarize(
+    [strictCase],
+    [
+      {
+        id: "a",
+        result: result({
+          majors: {
+            requirement: "listed",
+            required: ["기계공학부", "전기공학전공", "경영학부"],
+            preferred: [],
+            related: [],
+          },
+        }),
+      },
+    ],
+  );
+  assert.deepEqual(leaked.scores[0].majorsForbiddenHit, ["경영학부"]);
+  assert.equal(leaked.majorsForbiddenHits, 1);
+  assert.equal(leaked.passed, false);
+});
+
+test("findHoldoutLeakage detects both duplicate IDs and copied input texts", () => {
+  const sameId: GoldenCase = { ...golden, input: { practiceInfo: "", qualifications: "", tasks: "다른 업무" } };
+  const copiedText: GoldenCase = { ...golden, id: "brand-new-id" };
+  const unseen: GoldenCase = {
+    ...golden,
+    id: "unseen-1",
+    input: { practiceInfo: "새 실습", qualifications: "새 자격", tasks: "새 업무" },
+  };
+  assert.deepEqual(findHoldoutLeakage([golden], [sameId, copiedText, unseen]), {
+    duplicateIds: ["a"],
+    duplicateInputs: ["brand-new-id"],
+  });
+  assert.deepEqual(findHoldoutLeakage([golden], [unseen]), { duplicateIds: [], duplicateInputs: [] });
+});
+
+test("selectHoldoutCandidates excludes tuning IDs/input hashes and stratifies across primary roles", () => {
+  const pool: Posting[] = samplePostings.slice(0, 4);
+  const excluded = pool[0];
+  const excludedIds = new Set([excluded.sourceId]);
+  const excludedHashes = new Set([
+    caseInputHash({
+      practiceInfo: pool[1].practiceInfo,
+      qualifications: pool[1].qualifications,
+      tasks: pool[1].tasks,
+    }),
+  ]);
+  const picked = selectHoldoutCandidates(pool, excludedIds, excludedHashes, 4, "test-seed");
+  assert.equal(picked.length, 2);
+  assert.equal(
+    picked.some(p => p.id === excluded.id || p.id === pool[1].id),
+    false,
+  );
+  // Deterministic given the same seed.
+  assert.deepEqual(
+    picked.map(p => p.id),
+    selectHoldoutCandidates(pool, excludedIds, excludedHashes, 4, "test-seed").map(p => p.id),
+  );
 });
