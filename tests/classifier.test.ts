@@ -8,6 +8,8 @@ import {
   estimateCost,
   trimToLimits,
   isServiceError,
+  BilledClassificationError,
+  failedCallUsage,
 } from "../src/lib/classifier";
 import { assertEvidence } from "../src/lib/domain";
 import { samplePostings } from "../src/lib/sample";
@@ -202,5 +204,34 @@ describe("모델 서비스 오류 구분 (재시도 횟수를 쓰지 않음)", (
     assert.equal(isServiceError(apiError(400)), false);
     assert.equal(isServiceError(new Error("원문에서 분류 근거를 찾을 수 없습니다.")), false);
     assert.equal(isServiceError(null), false);
+  });
+});
+
+it("답을 받은 뒤의 실패(잘림·거절·스키마 위반)는 청구된 토큰과 원래 오류 코드를 함께 남김", () => {
+  for (const bad of [response("max_tokens"), response("refusal"), response("end_turn", { primaryRole: "없는 직군" })]) {
+    let caught: unknown;
+    try {
+      parseModelResponse("anthropic", input, bad);
+    } catch (e) {
+      caught = e;
+    }
+    assert.ok(caught instanceof BilledClassificationError);
+    assert.deepEqual(failedCallUsage(caught), {
+      inputTokens: 3000,
+      outputTokens: 500,
+      costUsd: estimateCost("anthropic", 3000, 500),
+    });
+  }
+  // The message stays the code the collector and queue script match on.
+  assert.throws(() => parseModelResponse("claude", input, response("max_tokens")), /MODEL_STOP_max_tokens/);
+});
+it("모델까지 가지 않은 실패는 호출로 기록하지 않고, API가 거절한 요청은 0원 호출로 기록", () => {
+  assert.equal(failedCallUsage(new Error("INPUT_REQUIRES_REVIEW")), null);
+  assert.equal(failedCallUsage(new Anthropic.APIConnectionError({ message: "down" })), null);
+  assert.deepEqual(failedCallUsage({ response: { status: 400 } }), { inputTokens: 0, outputTokens: 0, costUsd: 0 });
+  assert.deepEqual(failedCallUsage(new Anthropic.BadRequestError(400, undefined, "bad", new Headers())), {
+    inputTokens: 0,
+    outputTokens: 0,
+    costUsd: 0,
   });
 });

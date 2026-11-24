@@ -61,18 +61,26 @@ describe("database migration and production RPC checks", () => {
 
   it("accepts production history as recorded: applied-at versions and a baseline applied before history began", () => {
     const expectedNames = listMigrations(MIGRATIONS_DIR).map(m => m.name);
-    // Production on 2026-11-24: the first four files were applied before migration history was kept, and every
-    // migration from rls_initplan onward is recorded by name with the time it was applied.
-    const appliedNames = expectedNames.slice(expectedNames.indexOf("rls_initplan"));
+    // Production on 2026-11-24 as recorded: the first four files were applied before migration history was kept,
+    // and these were recorded by name with the time they were applied (20261120003321 … 20261123143000).
+    const appliedNames = ["rls_initplan", "feedback", "admin_user_stats", "usage_daily", "delete_application"];
+    const sinceLastRecorded = expectedNames.slice(expectedNames.indexOf("delete_application") + 1);
+    // Exactly the files added after delete_application are reported until production applies them.
     assert.deepEqual(
       findMissingProdSchema({ expectedNames, appliedNames, expectedRpcs: [], existingRpcs: [] }).missingMigrations,
+      sinceLastRecorded,
+    );
+    const allApplied = [...appliedNames, ...sinceLastRecorded];
+    assert.deepEqual(
+      findMissingProdSchema({ expectedNames, appliedNames: allApplied, expectedRpcs: [], existingRpcs: [] })
+        .missingMigrations,
       [],
     );
     // A new file after the recorded ones that production has not applied yet is caught.
     assert.deepEqual(
       findMissingProdSchema({
         expectedNames: [...expectedNames, "next_change"],
-        appliedNames,
+        appliedNames: allApplied,
         expectedRpcs: [],
         existingRpcs: [],
       }).missingMigrations,

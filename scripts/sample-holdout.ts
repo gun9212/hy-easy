@@ -49,7 +49,8 @@ async function main(): Promise<void> {
     split: "holdout",
     note: `프롬프트 조정에 쓰지 않은 홀드아웃 평가용 표본(${selected.length}건, seed=${seed}). expected 필드를 원문 기준으로 직접 기입한 뒤 evals/classification-holdout.json으로 저장하세요.`,
     cases: selected.map(p => ({
-      id: p.sourceId || p.id,
+      // posting UUID, the same key the tuning set uses, so the ID leakage check can match them.
+      id: p.id,
       label: `${p.company} / ${p.title}`,
       input: classificationInput(p),
       expected: {

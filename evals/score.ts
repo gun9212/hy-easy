@@ -78,8 +78,12 @@ export type Summary = {
 
 const ratio = (hit: number, total: number): number | null => (total ? hit / total : null);
 
-export function caseInputHash(input: GoldenCase["input"]): string {
-  return stableHash(input);
+/**
+ * Hash of the posting text both sets share. The attachment and department are left out: older golden cases were saved
+ * without them, so including them would let the same posting through as "different" once its attachment was read.
+ */
+export function caseInputHash(input: Pick<GoldenCase["input"], "practiceInfo" | "qualifications" | "tasks">): string {
+  return stableHash({ practiceInfo: input.practiceInfo, qualifications: input.qualifications, tasks: input.tasks });
 }
 
 /** Detects any posting shared between the prompt-tuning set and an unseen holdout set, by ID or input text hash. */
@@ -114,7 +118,7 @@ export function selectHoldoutCandidates(
   for (const posting of postings) {
     if (!posting.classification) continue;
     if (excludeIds.has(posting.id) || excludeIds.has(posting.sourceId)) continue;
-    const hash = stableHash(classificationInput(posting));
+    const hash = caseInputHash(classificationInput(posting));
     if (seenHashes.has(hash)) continue;
     seenHashes.add(hash);
     const bucket = posting.classification.primaryRole;

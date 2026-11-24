@@ -191,8 +191,8 @@ export default async function Admin({
             월간 AI 호출·비용 <span>최근 {AI_COST_MONTHS}개월</span>
           </h2>
           <p className="admin-note">
-            재분류로 기존 분류를 덮어쓴 호출까지 모두 누적 기록합니다. 수동 평가 실행이나 실패 재시도 비용은 Anthropic
-            콘솔 청구서와 함께 확인하세요.
+            수집기와 분류 대기열 스크립트의 호출을 재분류·실패(잘리거나 거절된 답의 토큰 포함)까지 모두 누적 기록합니다.
+            정답표 평가(evaluate)와 미리보기 스크립트 비용은 기록하지 않으니 Anthropic 콘솔 청구서와 함께 확인하세요.
           </p>
           <div className="admin-table-wrap">
             <table className="admin-table">

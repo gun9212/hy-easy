@@ -206,12 +206,42 @@ function trimMajors(raw: unknown): unknown {
   return { ...value, requirement, required, preferred, related };
 }
 
+export type CallUsage = { inputTokens: number; outputTokens: number; costUsd: number };
+
+/**
+ * The model answered (so the call was billed) but the answer could not be used: refusal, truncation, invalid JSON,
+ * schema or evidence violation. Keeps the original message, which callers use as the error code.
+ */
+export class BilledClassificationError extends Error {
+  readonly usage: CallUsage;
+  constructor(usage: CallUsage, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
+    this.name = "BilledClassificationError";
+    this.usage = usage;
+  }
+}
+
+const NO_USAGE: CallUsage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+/**
+ * What a failed classification cost, for the call ledger: the billed tokens when the model answered, zero when the
+ * API rejected the request, and null when no request reached the model (input refused locally, bad configuration,
+ * connection failure), so nothing is recorded as a call.
+ */
+export function failedCallUsage(e: unknown): CallUsage | null {
+  if (e instanceof BilledClassificationError) return e.usage;
+  if (e instanceof Anthropic.APIConnectionError) return null;
+  if (e instanceof Anthropic.APIError) return NO_USAGE;
+  const status = (e as { response?: { status?: unknown } } | null)?.response?.status;
+  return typeof status === "number" ? NO_USAGE : null;
+}
+
 export function parseModelResponse(provider: Provider, input: ClassificationInput, data: unknown) {
-  let text: string, inputTokens: number, outputTokens: number;
+  let stop: string, text: string, inputTokens: number, outputTokens: number;
   let cache = NO_CACHE;
   if (isClaude(provider)) {
     const result = claudeResponse.parse(data);
-    if (result.stop_reason !== "end_turn") throw new Error(`MODEL_STOP_${result.stop_reason}`);
+    stop = result.stop_reason === "end_turn" ? "" : result.stop_reason;
     text = result.content
       .filter(c => c.type === "text")
       .map(c => c.text ?? "")
@@ -225,7 +255,7 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
   } else {
     const result = geminiResponse.parse(data),
       candidate = result.candidates[0];
-    if (candidate.finishReason !== "STOP") throw new Error(`MODEL_STOP_${candidate.finishReason}`);
+    stop = candidate.finishReason === "STOP" ? "" : candidate.finishReason;
     text = candidate.content.parts
       .filter(p => !p.thought)
       .map(p => p.text ?? "")
@@ -233,16 +263,20 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
     inputTokens = result.usageMetadata.promptTokenCount;
     outputTokens = result.usageMetadata.candidatesTokenCount + result.usageMetadata.thoughtsTokenCount;
   }
-  const output = classificationOutputSchema.parse(trimToLimits(JSON.parse(text)));
-  const classification = verifySecondaryRoles(input, output);
-  return {
-    classification,
+  const usage: CallUsage = {
     // Stored input_tokens keep meaning "whole prompt"; the cache split only changes the price.
     inputTokens: inputTokens + cache.writeTokens + cache.readTokens,
     outputTokens,
-    cacheReadTokens: cache.readTokens,
     costUsd: estimateCost(provider, inputTokens, outputTokens, cache),
   };
+  try {
+    if (stop) throw new Error(`MODEL_STOP_${stop}`);
+    const output = classificationOutputSchema.parse(trimToLimits(JSON.parse(text)));
+    const classification = verifySecondaryRoles(input, output);
+    return { classification, ...usage, cacheReadTokens: cache.readTokens };
+  } catch (e) {
+    throw new BilledClassificationError(usage, e);
+  }
 }
 export type ClassificationResult = {
   classification: Classification;

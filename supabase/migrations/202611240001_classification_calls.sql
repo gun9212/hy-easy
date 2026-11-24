@@ -17,6 +17,8 @@ create table public.classification_calls (
 );
 
 create index classification_calls_called_at on public.classification_calls(called_at desc);
+-- Deleting a posting sets posting_id to null here; the index keeps that from scanning the whole ledger.
+create index classification_calls_posting_id on public.classification_calls(posting_id);
 
 alter table public.classification_calls enable row level security;
 revoke all on public.classification_calls from public, anon, authenticated;

@@ -119,6 +119,16 @@ test("findHoldoutLeakage detects both duplicate IDs and copied input texts", () 
   assert.deepEqual(findHoldoutLeakage([golden], [unseen]), { duplicateIds: [], duplicateInputs: [] });
 });
 
+test("findHoldoutLeakage still matches a tuning posting whose attachment was read after it was labeled", () => {
+  // Older tuning cases were saved without attachment/department; the same posting later gains them.
+  const withAttachment: GoldenCase = {
+    ...golden,
+    id: "re-collected",
+    input: { ...golden.input, attachment: "첨부 본문", department: "개발팀" },
+  };
+  assert.deepEqual(findHoldoutLeakage([golden], [withAttachment]).duplicateInputs, ["re-collected"]);
+});
+
 test("selectHoldoutCandidates excludes tuning IDs/input hashes and stratifies across primary roles", () => {
   const pool: Posting[] = samplePostings.slice(0, 4);
   const excluded = pool[0];

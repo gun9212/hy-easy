@@ -6,6 +6,7 @@ import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
 import {
   classify,
+  failedCallUsage,
   isServiceError,
   modelFor,
   PROMPT_VERSION,
@@ -243,6 +244,8 @@ try {
       ).data ?? [];
     for (const job of queue) {
       if (Date.now() > deadline - 35_000 || leaseLost) break;
+      // Set once this job's model call is in the ledger, so a later save failure is not logged a second time.
+      let recorded = false;
       try {
         const row = check(
           await db.from("postings").select("document,classification_hash").eq("id", job.posting_id).single(),
@@ -250,6 +253,22 @@ try {
         if (!row || row.classification_hash !== job.input_hash) continue;
         const result = await classify(classificationInput(row.document as Posting), provider);
         const calledAt = new Date().toISOString();
+        // The call is billed whether or not the result saves, so it goes in the ledger first.
+        await recordClassificationCall(db, {
+          postingId: job.posting_id,
+          inputHash: job.input_hash,
+          provider,
+          model: result.model,
+          promptVersion: result.promptVersion,
+          taxonomyVersion: result.taxonomyVersion,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costUsd: result.costUsd,
+          status: "succeeded",
+          source: "collector",
+          calledAt,
+        });
+        recorded = true;
         check(
           await db.from("classifications").upsert({
             posting_id: job.posting_id,
@@ -265,20 +284,6 @@ try {
             created_at: calledAt,
           }),
         );
-        await recordClassificationCall(db, {
-          postingId: job.posting_id,
-          inputHash: job.input_hash,
-          provider,
-          model: result.model,
-          promptVersion: result.promptVersion,
-          taxonomyVersion: result.taxonomyVersion,
-          inputTokens: result.inputTokens,
-          outputTokens: result.outputTokens,
-          costUsd: result.costUsd,
-          status: "succeeded",
-          source: "collector",
-          calledAt,
-        });
         check(
           await db
             .from("classification_queue")
@@ -311,19 +316,20 @@ try {
           );
           break;
         }
-        await recordClassificationCall(db, {
-          postingId: job.posting_id,
-          inputHash: job.input_hash,
-          provider,
-          model: modelFor(provider),
-          promptVersion: PROMPT_VERSION,
-          taxonomyVersion: TAXONOMY_VERSION,
-          inputTokens: 0,
-          outputTokens: 0,
-          costUsd: 0,
-          status: "failed",
-          source: "collector",
-        });
+        // Only calls that reached the model are logged, with the tokens a refused or truncated answer still billed.
+        const usage = recorded ? null : failedCallUsage(e);
+        if (usage)
+          await recordClassificationCall(db, {
+            postingId: job.posting_id,
+            inputHash: job.input_hash,
+            provider,
+            model: modelFor(provider),
+            promptVersion: PROMPT_VERSION,
+            taxonomyVersion: TAXONOMY_VERSION,
+            ...usage,
+            status: "failed",
+            source: "collector",
+          });
         check(
           await db
             .from("classification_queue")
