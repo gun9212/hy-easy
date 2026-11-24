@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import {
   caseInputHash,
   findHoldoutLeakage,
@@ -35,8 +35,10 @@ const result = (patch: Partial<Classification> = {}): Classification => ({
   ...patch,
 });
 
-test("the committed golden set parses and has unique ids", () => {
-  const set = goldenSetSchema.parse(JSON.parse(readFileSync("evals/classification-golden.json", "utf8")));
+// The golden set is local-only (gitignored: HY-WEP postings are login-only), so CI skips this check.
+const GOLDEN_PATH = "evals/classification-golden.json";
+test("the local golden set parses and has unique ids", { skip: !existsSync(GOLDEN_PATH) }, () => {
+  const set = goldenSetSchema.parse(JSON.parse(readFileSync(GOLDEN_PATH, "utf8")));
   assert.equal(set.cases.length, 34);
   assert.equal(new Set(set.cases.map(c => c.id)).size, 34);
 });

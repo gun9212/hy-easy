@@ -21,3 +21,6 @@ infra/*.tfvars
 .vercel
 .hallmark/before*
 .hallmark/before/
+
+# Classification eval sets contain HY-WEP posting snapshots (login-only); keep them local.
+evals/classification-*.json
