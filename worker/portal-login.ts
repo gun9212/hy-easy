@@ -20,14 +20,23 @@ const HASH_BYTES = 32;
 export type Credentials = { id: string; password: string };
 export type SessionResult = "reused" | "logged_in";
 
+export type LoginFailureReason =
+  | "PORTAL_NOT_REACHED"
+  | "PORTAL_FORM_FILL_FAILED"
+  | "PORTAL_REJECTED_OR_TIMEOUT"
+  | "POST_LOGIN_NAVIGATION_FAILED"
+  | "NOT_AUTHENTICATED_AFTER_LOGIN";
+
 export class LoginFailed extends Error {
+  readonly reason: LoginFailureReason;
   /**
-   * False when the failure happened before the password was submitted (the portal could not be reached), so it
-   * says nothing about the password and must not count toward the lockout guard.
+   * False when the failure happened before the password was submitted (the portal could not be reached or form fill
+   * failed), so it says nothing about the password and must not count toward the lockout guard.
    */
   readonly credentialsSubmitted: boolean;
-  constructor(reason: string, credentialsSubmitted = true) {
+  constructor(reason: LoginFailureReason, credentialsSubmitted = true) {
     super(`LOGIN_FAILED: ${reason}`);
+    this.reason = reason;
     this.credentialsSubmitted = credentialsSubmitted;
   }
 }
@@ -97,7 +106,9 @@ async function isAuthenticated(page: Page, s: Selectors): Promise<boolean> {
 
 /** Logs in with the operator's portal account. Throws LoginFailed without revealing input values. */
 export async function loginWithPassword(page: Page, credentials: Credentials): Promise<void> {
-  await page.goto(HYWEP_INDEX, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS });
+  await page.goto(HYWEP_INDEX, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS }).catch(() => {
+    throw new LoginFailed("PORTAL_NOT_REACHED", false);
+  });
   await Promise.all([
     page.waitForURL(PORTAL_LOGIN, { timeout: LOGIN_TIMEOUT_MS }),
     page.evaluate(STUDENT_LOGIN_SCRIPT),
@@ -105,8 +116,19 @@ export async function loginWithPassword(page: Page, credentials: Credentials): P
     throw new LoginFailed("PORTAL_NOT_REACHED", false);
   });
 
-  await page.locator(PORTAL_FORM.id).fill(credentials.id);
-  await page.locator(PORTAL_FORM.password).fill(credentials.password);
+  // Catch Playwright form-fill errors and replace them with a fixed code so credentials never appear in error text.
+  await page
+    .locator(PORTAL_FORM.id)
+    .fill(credentials.id)
+    .catch(() => {
+      throw new LoginFailed("PORTAL_FORM_FILL_FAILED", false);
+    });
+  await page
+    .locator(PORTAL_FORM.password)
+    .fill(credentials.password)
+    .catch(() => {
+      throw new LoginFailed("PORTAL_FORM_FILL_FAILED", false);
+    });
   await Promise.all([
     page.waitForURL(HYWEP_PAGE, { timeout: LOGIN_TIMEOUT_MS }),
     page.locator(PORTAL_FORM.submit).click(),
@@ -131,7 +153,9 @@ export async function ensureSession(
   if (!credentials) throw new SessionExpired();
 
   await loginWithPassword(page, credentials);
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: LOGIN_TIMEOUT_MS }).catch(() => {
+    throw new LoginFailed("POST_LOGIN_NAVIGATION_FAILED", false);
+  });
   if (!(await isAuthenticated(page, s))) throw new LoginFailed("NOT_AUTHENTICATED_AFTER_LOGIN");
   return "logged_in";
 }

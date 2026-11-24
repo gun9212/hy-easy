@@ -7,13 +7,17 @@ import {
   parseScheduleOverride,
   redirectedAway,
   selectorsSchema,
+  SessionExpired,
   sourceUrl,
 } from "../worker/adapter";
+import { safeCollectorErrorCode } from "../worker/error-codes";
 import {
   credentialsFromEnv,
+  ensureSession,
   isLoginBlocked,
   LoginBlocked,
   LoginFailed,
+  loginWithPassword,
   parseLoginGuard,
   recordLoginFailure,
 } from "../worker/portal-login";
@@ -267,6 +271,90 @@ describe("운영자 자동 로그인 자격 증명", () => {
     assert.equal(parseLoginGuard({}), null);
     assert.equal(parseLoginGuard(null), null);
     assert.equal(parseLoginGuard({ salt: "bad", credentialHash: "bad", failures: 3 }), null);
+  });
+  it("포털 폼 입력 실패는 고정 코드(PORTAL_FORM_FILL_FAILED)로 바꾸고 자격 증명을 숨김", async () => {
+    const secret = { id: "2026000001", password: "SuperSecretPortalPassword!99" };
+    for (const failSelector of ["#uid", "#upw"] as const) {
+      const fakePage = {
+        goto: async () => null,
+        waitForURL: async () => undefined,
+        evaluate: async () => undefined,
+        locator: (selector: string) => ({
+          fill: async (value: string) => {
+            if (selector === failSelector) {
+              throw new Error(`locator.fill(${JSON.stringify(value)}): Timeout 15000ms exceeded on ${selector}`);
+            }
+          },
+          click: async () => undefined,
+        }),
+      } as unknown as Parameters<typeof loginWithPassword>[0];
+
+      await assert.rejects(
+        () => loginWithPassword(fakePage, secret),
+        (err: unknown) => {
+          assert.ok(err instanceof LoginFailed);
+          assert.equal(err.reason, "PORTAL_FORM_FILL_FAILED");
+          assert.equal(err.credentialsSubmitted, false);
+          assert.equal(err.message, "LOGIN_FAILED: PORTAL_FORM_FILL_FAILED");
+          assert.equal(err.message.includes(secret.id), false);
+          assert.equal(err.message.includes(secret.password), false);
+          assert.equal(safeCollectorErrorCode(err), "LOGIN_FAILED:PORTAL_FORM_FILL_FAILED");
+          return true;
+        },
+      );
+    }
+  });
+  it("포털 초기 이동 또는 로그인 후 복귀 실패도 고정 코드로 처리", async () => {
+    const secret = { id: "student", password: "pw" };
+    const unreachablePage = {
+      goto: async () => {
+        throw new Error("net::ERR_CONNECTION_REFUSED");
+      },
+    } as unknown as Parameters<typeof loginWithPassword>[0];
+    await assert.rejects(
+      () => loginWithPassword(unreachablePage, secret),
+      (err: unknown) =>
+        err instanceof LoginFailed && err.reason === "PORTAL_NOT_REACHED" && err.credentialsSubmitted === false,
+    );
+
+    const selectors = selectorsSchema.parse(JSON.parse(readFileSync("worker/selectors.example.json", "utf8")));
+    let gotoCount = 0;
+    const postNavFailPage = {
+      goto: async () => {
+        gotoCount += 1;
+        if (gotoCount === 3) throw new Error("page.goto: Timeout 30000ms exceeded");
+        return null;
+      },
+      waitForURL: async () => undefined,
+      evaluate: async () => undefined,
+      locator: () => ({
+        count: async () => 0,
+        fill: async () => undefined,
+        click: async () => undefined,
+      }),
+    } as unknown as Parameters<typeof ensureSession>[0];
+    await assert.rejects(
+      () => ensureSession(postNavFailPage, selectors, "https://hywep.hanyang.ac.kr/compjoinsearch/list.do", secret),
+      (err: unknown) =>
+        err instanceof LoginFailed &&
+        err.reason === "POST_LOGIN_NAVIGATION_FAILED" &&
+        err.credentialsSubmitted === false,
+    );
+  });
+  it("오류 코드 변환기는 알려진 코드만 반환하고 원문 예외는 숨김", () => {
+    assert.equal(safeCollectorErrorCode(new LoginBlocked()), "LOGIN_BLOCKED");
+    assert.equal(
+      safeCollectorErrorCode(new LoginFailed("PORTAL_FORM_FILL_FAILED", false)),
+      "LOGIN_FAILED:PORTAL_FORM_FILL_FAILED",
+    );
+    assert.equal(safeCollectorErrorCode(new SessionExpired()), "SESSION_EXPIRED");
+    assert.equal(safeCollectorErrorCode(new Error("LIST_STRUCTURE_CHANGED")), "LIST_STRUCTURE_CHANGED");
+    assert.equal(safeCollectorErrorCode(new Error("ATTACHMENT_HTTP_503")), "ATTACHMENT_HTTP_503");
+    assert.equal(safeCollectorErrorCode(new Error("ATTACHMENT_NOT_PDF:docx")), "ATTACHMENT_NOT_PDF");
+    assert.equal(
+      safeCollectorErrorCode(new Error('locator.fill("SuperSecretPw!"): Timeout'), "PROBE_FAILED"),
+      "PROBE_FAILED",
+    );
   });
 });
 

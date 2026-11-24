@@ -11,9 +11,10 @@ const CAUSES: Record<string, string> = {
   LOGIN_BLOCKED:
     "포털 로그인이 3회 연속 실패해 자동 로그인을 멈췄습니다. 비밀번호를 확인하고 Secret Manager 값을 갱신하면 다시 시도합니다. 비밀번호가 맞다면 collector_state의 hywep_login 값을 비우세요.",
   SESSION_EXPIRED: "포털 세션 만료: 자동 로그인이 실패했습니다. 비밀번호와 Secret Manager 값을 확인하세요.",
-  COLLECTION_FAILED: "수집 오류: HY-WEP 화면 구조가 바뀌었을 수 있습니다. Cloud Run 작업 로그를 확인하세요.",
+  COLLECTION_FAILED:
+    "수집 오류: HY-WEP 화면 구조가 바뀌었을 수 있습니다. Cloud Run 작업 로그의 collection_failed 오류 코드(errorCode·reason)를 확인하세요.",
   DETAIL_READ_FAILED:
-    "공고 상세 조회 실패: HY-WEP 상세 화면 구조가 바뀌었거나 일시 오류일 수 있습니다. Cloud Run 작업 로그의 detail_read_failed 메시지를 확인하세요.",
+    "공고 상세 조회 실패: HY-WEP 상세 화면 구조가 바뀌었거나 일시 오류일 수 있습니다. Cloud Run 작업 로그의 detail_read_failed 오류 코드(errorCode·reason)를 확인하세요.",
 };
 
 /** Number of finished runs at the head of the list that failed, and the newest error code. */

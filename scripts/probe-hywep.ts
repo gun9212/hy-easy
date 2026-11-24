@@ -15,6 +15,7 @@ import {
   selectorsSchema,
 } from "../worker/adapter";
 import { credentialsFromEnv, ensureSession } from "../worker/portal-login";
+import { safeCollectorErrorCode } from "../worker/error-codes";
 
 const LIST_URL = process.env.HYWEP_LIST_URL || "https://hywep.hanyang.ac.kr/compjoinsearch/list.do";
 const SELECTORS_FILE = process.env.HYWEP_SELECTORS_FILE || "worker/selectors.example.json";
@@ -57,7 +58,10 @@ async function main(): Promise<void> {
     const attachmentFlag = process.argv.indexOf("--attachment");
     if (attachmentFlag >= 0) {
       const id = process.argv[attachmentFlag + 1] ?? "";
-      if (!/^\d+$/.test(id)) throw new Error("사용법: npm run collector:probe -- --attachment <공고 ID>");
+      if (!/^\d+$/.test(id)) {
+        console.error("사용법: npm run collector:probe -- --attachment <공고 ID>");
+        throw new Error("INVALID_ATTACHMENT_ARG");
+      }
       const row = { id, url: fillTemplate(selectors.detailUrlTemplate, { id }), fields: {} };
       const posting = await readDetail(page, selectors, row);
       console.log(`상세 #${id} ${posting.company} / ${posting.department}`);
@@ -104,6 +108,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(`PROBE_FAILED: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`PROBE_FAILED: ${safeCollectorErrorCode(error, "PROBE_FAILED")}`);
   process.exitCode = 1;
 });
