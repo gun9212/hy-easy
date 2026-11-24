@@ -36,14 +36,17 @@ const PROCESSORS: [string, string, string][] = [
   ["Google", "Google 계정 로그인", "미국 등"],
 ];
 
-function Table({ head, rows }: { head: string[]; rows: string[][] }) {
+function Table({ caption, head, rows }: { caption: string; head: string[]; rows: string[][] }) {
   return (
-    <div className="policy-table-wrap">
+    <div className="policy-table-wrap" role="region" aria-label={caption} tabIndex={0}>
       <table className="policy-table">
+        <caption className="sr-only">{caption}</caption>
         <thead>
           <tr>
             {head.map(h => (
-              <th key={h}>{h}</th>
+              <th scope="col" key={h}>
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
@@ -51,7 +54,9 @@ function Table({ head, rows }: { head: string[]; rows: string[][] }) {
           {rows.map(row => (
             <tr key={row[0]}>
               {row.map((cell, i) => (
-                <td key={i}>{cell}</td>
+                <td key={i} data-label={head[i]}>
+                  {cell}
+                </td>
               ))}
             </tr>
           ))}
@@ -79,7 +84,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2>1. 처리하는 개인정보와 목적</h2>
-          <Table head={["항목", "내용", "목적"]} rows={COLLECTED} />
+          <Table caption="처리하는 개인정보와 목적" head={["항목", "내용", "목적"]} rows={COLLECTED} />
           <p>
             현장실습 공고 정보는 운영자가 한양대 학생 계정으로 HY-WEP에 로그인해 확인한 기업 공고를 모은 것으로,
             HY-WEP과 마찬가지로 인증된 한양대 학생만 볼 수 있습니다. 일부 공고 원문에는 기업이 적어 둔 담당자 연락처가
@@ -112,7 +117,11 @@ export default function PrivacyPage() {
         <section>
           <h2>3. 처리 위탁과 국외 이전</h2>
           <p>서비스 운영을 위해 아래 업체에 처리를 맡깁니다. 각 업체는 맡긴 업무 외에 정보를 쓰지 않습니다.</p>
-          <Table head={["업체", "맡긴 업무", "처리 위치"]} rows={PROCESSORS} />
+          <Table
+            caption="개인정보 처리 위탁 및 국외 이전"
+            head={["업체", "맡긴 업무", "처리 위치"]}
+            rows={PROCESSORS}
+          />
           <p>
             Vercel과 Google을 거치는 과정에서 정보가 국외 서버로 전송될 수 있습니다. 전송은 서비스 이용 시 암호화된
             연결로 이뤄지며, 이용을 원하지 않으면 로그인하지 않거나 삭제를 요청할 수 있습니다.
