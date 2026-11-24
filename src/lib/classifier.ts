@@ -1,13 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleAuth } from "google-auth-library";
 import { z } from "./zod";
-import {
-  classificationOutputSchema,
-  MAX_SECONDARY_EVIDENCE,
-  verifySecondaryRoles,
-  type ClassificationInput,
-  type Classification,
-} from "./domain";
+import { classificationOutputSchema } from "./classification-schema";
+import { MAX_SECONDARY_EVIDENCE, verifySecondaryRoles, type ClassificationInput, type Classification } from "./domain";
 import { majorsPromptText } from "./majors";
 /** "claude": Claude on Vertex AI (GCP auth). "anthropic": Claude via the Anthropic API (ANTHROPIC_API_KEY). "gemini": Gemini on Vertex AI. */
 export type Provider = "claude" | "anthropic" | "gemini";
