@@ -4,9 +4,10 @@
 
 - **언제**: 매일 03:00, 15:00 (KST). Cloud Scheduler `hy-easy-backup-night`, `hy-easy-backup-day`가 Cloud Run 작업 `hy-easy-backup`(서울, `asia-northeast3`)을 실행합니다.
 - **어디에**: 비공개 버킷 `hy-easy-hy-easy-db-backup`(서울). 공개 접근 차단, 생성 후 23일이 지나면 자동 삭제되며 Cloud Storage 소프트 삭제로 7일간 추가 복구할 수 있습니다(총 30일 후 영구 삭제).
-- **무엇을**: 실행마다 `YYYY-MM-DD_HHMM/` 폴더에 두 파일을 만듭니다.
+- **무엇을**: 실행마다 하나의 `REPEATABLE READ` 스냅샷(`pg_export_snapshot()`)에서 `YYYY-MM-DD_HHMM/` 폴더에 세 파일을 만듭니다.
   - `public.dump`: `public` 스키마 전체(구조 + 데이터). 공고, 분류, 관심 공고, 지원 기록, 관리자 등.
   - `auth.dump`: `auth.users`, `auth.identities` 데이터. 학생 기록이 가리키는 계정 ID, 이메일, 전공(`user_metadata.major`).
+  - `manifest.json`: 같은 스냅샷 시점의 테이블별 행 수 기준표. 복구 연습 검증의 기준값으로 씁니다.
 - **권한**: 백업 계정(`hy-easy-backup`)은 객체 생성만 할 수 있습니다. 읽기, 덮어쓰기, 삭제는 못 하므로 이 계정이 탈취돼도 기존 백업은 안전합니다. 읽기는 프로젝트 소유자·편집자·뷰어(현재 운영자 본인)만 할 수 있습니다.
 - **접속 정보**: Secret Manager `hy-easy-db-url`(Supabase session pooler, 5432 포트). Supabase DB 비밀번호를 바꾸면 `scripts/push-secrets.sh hy-easy hy-easy-db-url`로 갱신합니다.
 - **알림**: 백업이 실패하거나 14시간 넘게 성공이 없으면 운영자 메일로 알립니다(`infra/backup.tf`의 `HY-Easy DB 백업 실패`).
@@ -40,7 +41,7 @@
 
 ## 복구 연습
 
-`backup/restore-test.sh`는 백업을 빈 Postgres 17에 넣고, `supabase/privileges.sql` 적용과 `tests/database-privileges.sql` 권한 검증을 거친 뒤 실제 DB와 행 수를 비교하고 계정과 끊긴 학생 기록이 없는지 셉니다. 실제 DB는 읽기만 합니다.
+`backup/restore-test.sh`는 백업을 빈 Postgres 17에 넣고, `supabase/privileges.sql` 적용과 `tests/database-privileges.sql` 권한 검증, 같은 스냅샷에서 기록한 `manifest.json` 행 수 대조, 주요 외래키·계정 참조 무결성(고아 행 0건)을 검사합니다. 어느 하나라도 기준을 벗어나면 0이 아닌 종료 코드로 실패합니다. 실제 DB는 `auth` 테이블 구조 조회에만 읽기 전용으로 씁니다.
 
 ```
 docker build -t hy-easy-backup backup
