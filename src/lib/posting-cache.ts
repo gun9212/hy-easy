@@ -1,7 +1,9 @@
 // Server-side cache of the posting list. Every school user sees the same postings and the collector changes them at
 // most every ten minutes, so one read serves all requests on this server instance for a minute.
-// Callers must check the user first (requireUser): the cache is filled with the caller's own RLS client.
+// Callers must pass requireUser first, and every call re-checks public.is_school_user() in the database so cache hits
+// and concurrent misses enforce the exact same eligibility policy as RLS on posting_view.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { HttpError } from "./auth";
 import { loadPostings } from "./data";
 import type { Posting } from "./domain";
 
@@ -11,13 +13,19 @@ type Entry = { loadedAt: number; postings: Posting[] };
 let entry: Entry | null = null;
 let inflight: Promise<Posting[]> | null = null;
 
+async function assertDbSchoolUser(db: SupabaseClient): Promise<void> {
+  const { data, error } = await db.rpc("is_school_user");
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
+}
+
 export async function cachedPostings(db: SupabaseClient, now: number = Date.now()): Promise<Posting[]> {
+  await assertDbSchoolUser(db);
   if (entry && now - entry.loadedAt < POSTING_CACHE_TTL_MS) return entry.postings;
-  // Concurrent misses share one database read.
+  // Concurrent misses share one database read after each caller passes the DB school-user check.
   inflight ??= loadPostings(db)
     .then(postings => {
-      // An empty list means the read saw nothing (e.g. a caller the database does not treat as a school user);
-      // keeping it would show every student an empty list for a minute.
+      // An empty list means the read saw nothing; keeping it would show every student an empty list for a minute.
       if (postings.length) entry = { loadedAt: Date.now(), postings };
       return postings;
     })
@@ -25,4 +33,10 @@ export async function cachedPostings(db: SupabaseClient, now: number = Date.now(
       inflight = null;
     });
   return inflight;
+}
+
+/** Test helper to clear module cache state between isolated test cases. */
+export function resetPostingCacheForTest(): void {
+  entry = null;
+  inflight = null;
 }

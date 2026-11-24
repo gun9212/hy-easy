@@ -70,25 +70,60 @@ test("asks for a full reload when a listed posting is missing from both copies",
   assert.equal(mergeSync(postings, reply), null);
 });
 
-test("server cache reads once per minute and shares concurrent reads", async () => {
-  const { cachedPostings, POSTING_CACHE_TTL_MS } = await import("../src/lib/posting-cache");
+test("server cache reads once per minute and shares concurrent reads among DB-verified school users", async () => {
+  const { cachedPostings, POSTING_CACHE_TTL_MS, resetPostingCacheForTest } = await import("../src/lib/posting-cache");
+  resetPostingCacheForTest();
   let reads = 0;
-  const db = {
-    from: () => ({
-      select: () => ({
-        order: async () => {
-          reads += 1;
-          return { data: postings.map(p => ({ document: p })), error: null };
-        },
+  let schoolChecks = 0;
+  const makeDb = (isSchool: boolean, delayMs = 0) =>
+    ({
+      rpc: async (name: string) => {
+        assert.equal(name, "is_school_user");
+        schoolChecks += 1;
+        return { data: isSchool, error: null };
+      },
+      from: () => ({
+        select: () => ({
+          order: async () => {
+            reads += 1;
+            if (delayMs) await new Promise(resolve => setTimeout(resolve, delayMs));
+            return { data: isSchool ? postings.map(p => ({ document: p })) : [], error: null };
+          },
+        }),
       }),
-    }),
-  } as unknown as Parameters<typeof cachedPostings>[0];
+    }) as unknown as Parameters<typeof cachedPostings>[0];
+
+  const schoolDb = makeDb(true, 15);
+  const blockedDb = makeDb(false);
   const now = Date.now();
-  const [a, b] = await Promise.all([cachedPostings(db, now), cachedPostings(db, now)]);
+
+  // Cache miss: blocked user is rejected before touching posting_view.
+  await assert.rejects(() => cachedPostings(blockedDb, now), { status: 403 });
+  assert.equal(reads, 0);
+
+  // Concurrent misses: verified users share one read while a concurrent ineligible user is still rejected with 403.
+  const pA = cachedPostings(schoolDb, now);
+  const pB = cachedPostings(schoolDb, now);
+  const pBlocked = assert.rejects(() => cachedPostings(blockedDb, now), { status: 403 });
+  const [a, b] = await Promise.all([pA, pB, pBlocked]);
   assert.equal(reads, 1);
   assert.equal(a, b);
-  await cachedPostings(db, now + 1000);
+
+  // Cache hit: verified user gets cached postings, ineligible user gets the same 403 rejection.
+  const hit = await cachedPostings(schoolDb, now + 1000);
+  assert.equal(hit, a);
   assert.equal(reads, 1);
-  await cachedPostings(db, Date.now() + POSTING_CACHE_TTL_MS + 1);
+  await assert.rejects(() => cachedPostings(blockedDb, now + 1000), { status: 403 });
+  assert.equal(reads, 1);
+  assert.equal(schoolChecks, 6);
+
+  // After TTL expires, verified user refreshes the cache.
+  await cachedPostings(schoolDb, Date.now() + POSTING_CACHE_TTL_MS + 1);
   assert.equal(reads, 2);
+
+  // RPC failure fails closed even when cache is warm.
+  const brokenDb = {
+    rpc: async () => ({ data: null, error: { message: "rpc unavailable" } }),
+  } as unknown as Parameters<typeof cachedPostings>[0];
+  await assert.rejects(() => cachedPostings(brokenDb, Date.now()), /rpc unavailable/);
 });
