@@ -71,13 +71,21 @@ SQL
 fi
 
 pg_restore --no-owner --data-only -d "$LOCAL" "$DUMP_DIR/auth.dump"
-# The dump recreates the public schema itself.
-psql -q "$LOCAL" -v ON_ERROR_STOP=1 -c "drop schema public cascade"
-pg_restore --no-owner --no-privileges -d "$LOCAL" "$DUMP_DIR/public.dump"
-
-# 1. Restore role REVOKE/GRANT rules and verify anon, authenticated, admin, and service_role permissions.
-psql -v ON_ERROR_STOP=1 "$LOCAL" -f "$PRIVILEGES_SQL" >/dev/null
-psql -v ON_ERROR_STOP=1 "$LOCAL" -f "$PRIVILEGES_TEST_SQL"
+# 1. Atomically restore public schema + canonical REVOKE/GRANT rules, then verify effective privileges.
+if [ -f "$SCRIPT_DIR/restore-public.sh" ]; then
+  DB_URL="$LOCAL" PUBLIC_DUMP="$DUMP_DIR/public.dump" \
+    PRIVILEGES_SQL="$PRIVILEGES_SQL" PRIVILEGES_TEST_SQL="$PRIVILEGES_TEST_SQL" \
+    sh "$SCRIPT_DIR/restore-public.sh"
+else
+  {
+    printf 'DROP SCHEMA IF EXISTS public CASCADE;\n'
+    pg_restore --no-owner --no-privileges --file=- "$DUMP_DIR/public.dump"
+    sed -e '/^[[:space:]]*[Bb][Ee][Gg][Ii][Nn];[[:space:]]*$/d' \
+        -e '/^[[:space:]]*[Cc][Oo][Mm][Mm][Ii][Tt];[[:space:]]*$/d' \
+        "$PRIVILEGES_SQL"
+  } | psql "$LOCAL" --single-transaction -v ON_ERROR_STOP=1 -q >/dev/null
+  psql -v ON_ERROR_STOP=1 "$LOCAL" -f "$PRIVILEGES_TEST_SQL"
+fi
 
 # 2. Verify restored row counts match the snapshot manifest recorded at backup time.
 COUNT_SQL="SELECT 'auth.users', count(*) FROM auth.users

@@ -17,25 +17,29 @@
 
 최대 12시간치 변경을 잃을 수 있습니다. 걸리는 시간은 30분 정도입니다.
 
-1. **백업 내려받기**
+1. **외부 접근 격리 및 수집기 중지**: 복구 도중 외부 API 요청이나 수집기 실행이 반쯤 복구된 DB에 닿지 않도록 먼저 차단합니다.
+   ```
+   scripts/deploy-collector.sh schedule-off
+   gcloud run jobs executions list --job hy-easy-collector --project hy-easy --region asia-northeast1 --limit 3
+   gcloud run jobs executions list --job hy-easy-backup --project hy-easy --region asia-northeast3 --limit 3
+   ```
+   실행 중인 작업이 없는지 확인합니다. 복구는 **새로 만든 격리 Supabase 프로젝트**에 진행해 검증과 변경 이력 재반영이 끝날 때까지 외부 트래픽과 완전히 분리하는 것을 원칙으로 합니다. 불가피하게 기존 프로젝트에 덮어쓰는 경우 Vercel 트래픽을 유지보수 상태로 차단하고 Supabase API 외부 접근을 막은 뒤 진행합니다.
+2. **백업 내려받기**
    ```
    gcloud storage ls gs://hy-easy-hy-easy-db-backup/
    gcloud storage cp -r gs://hy-easy-hy-easy-db-backup/<YYYY-MM-DD_HHMM> ./restore
    ```
-2. **복구할 Supabase 프로젝트 준비**: 새 프로젝트를 만들거나 기존 프로젝트를 씁니다. Supabase가 `auth` 스키마와 역할(`anon`, `authenticated`, `service_role`)을 만들어 둡니다. Google 로그인 설정과 Site URL은 새 프로젝트라면 다시 등록합니다.
-3. **계정 먼저 넣기**: 학생 기록이 계정 ID를 참조하므로 순서가 중요합니다. 기존 프로젝트라면 남아 있는 계정과 겹치지 않는지 먼저 확인합니다.
+3. **복구할 Supabase 프로젝트 준비**: 새 격리 프로젝트를 준비합니다(Supabase가 `auth` 스키마와 역할 `anon`, `authenticated`, `service_role`을 미리 만들어 둡니다). Google 로그인 설정과 Site URL은 전환 전에 등록하되, 검증이 끝날 때까지 Vercel 환경 변수와 Secret Manager `hy-easy-db-url`은 아직 바꾸지 않습니다.
+4. **계정 먼저 넣기**: 학생 기록이 계정 ID를 참조하므로 순서가 중요합니다. 기존 프로젝트라면 남아 있는 계정과 겹치지 않는지 먼저 확인합니다.
    ```
    pg_restore --no-owner --data-only -d "$DB_URL" restore/auth.dump
    ```
-4. **public 스키마와 권한 넣기**: 덤프가 스키마를 직접 만들므로 기존 `public`을 비운 뒤 넣고, `supabase/privileges.sql`로 역할별 `REVOKE`와 `GRANT`를 모두 되살립니다(기존 프로젝트라면 되돌릴 수 없으니 주의).
+5. **`public` 스키마와 권한을 단일 트랜잭션으로 원자적 복구 및 유효 권한 검증**:
    ```
-   psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
-   pg_restore --no-owner --no-privileges -d "$DB_URL" restore/public.dump
-   psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/privileges.sql
-   psql "$DB_URL" -v ON_ERROR_STOP=1 -f tests/database-privileges.sql
+   DB_URL="$DB_URL" PUBLIC_DUMP=restore/public.dump sh backup/restore-public.sh
    ```
-   `--no-privileges`로 복구하면 PostgreSQL 기본 권한 때문에 수집기 전용 함수가 `PUBLIC`에 열릴 수 있으므로 `supabase/privileges.sql`에서 먼저 모든 권한을 회수한 뒤 역할별 권한만 다시 부여하고, `tests/database-privileges.sql`로 익명·학생·관리자·수집기 권한을 검증합니다.
-5. **백업 이후 삭제·관리자 해제 재반영**: 백업 시점(`restore/manifest.json`의 `createdAt`) 이후 처리한 계정 삭제와 관리자 권한 해제는 복구된 덤프에 되살아나 있으므로, 서비스 재개 전에 DB 외부에 별도 보관한 운영 변경 이력(`post-backup-changes.json`, UUID와 UTC 시각만 기록)과 대조해 다시 적용합니다.
+   `--no-privileges`로 복구한 직후와 `supabase/privileges.sql` 적용 사이에는 PostgreSQL 기본 권한 때문에 수집기 전용 함수가 `PUBLIC`에 열릴 수 있습니다. `backup/restore-public.sh`는 `DROP SCHEMA public CASCADE`, `pg_restore --no-owner --no-privileges`, `supabase/privileges.sql`을 하나의 트랜잭션(`--single-transaction`)으로 묶어 노출 구간을 없애고, 이어서 `tests/database-privileges.sql`로 스키마 권한(`CREATE`/`USAGE`), 전 테이블 RLS 활성화, `posting_view`의 `security_invoker=true`, 익명·학생·관리자·수집기 함수의 유효 권한을 검증합니다.
+6. **백업 이후 삭제·관리자 해제 재반영**: 백업 시점(`restore/manifest.json`의 `createdAt`) 이후 처리한 계정 삭제와 관리자 권한 해제는 복구된 덤프에 되살아나 있으므로, 서비스 재개 전에 DB 외부에 별도 보관한 운영 변경 이력(`post-backup-changes.json`, UUID와 UTC 시각만 기록)과 대조해 다시 적용합니다.
    ```
    MANIFEST=restore/manifest.json LEDGER=./post-backup-changes.json \
      sh backup/reconcile-restore.sh --dry-run
@@ -43,7 +47,7 @@
      sh backup/reconcile-restore.sh
    ```
    분류 편집 이력이 있던 계정을 삭제해도 `classification_overrides`와 `classification_audit`의 `editor_id`만 `NULL`로 바뀌고 보정 결과와 감사 이력은 유지됩니다. 평상시 계정 삭제나 관리자 권한 해제를 처리할 때마다 DB 외부의 비공개 저장소(예: 별도 운영 버킷 또는 로컬 암호화 보관소)에 `{ "at": "<UTC ISO-8601>", "action": "delete_user" | "revoke_admin", "userId": "<UUID>" }` 항목을 추가해 둡니다.
-6. **확인**: 학생 계정으로 로그인해 관심 공고와 지원 기록이 보이는지 확인하고, 수집기를 한 번 실행합니다.
+7. **서비스 재개 및 확인**: 5번 유효 권한 검증과 6번 변경 이력 재반영이 모두 통과한 뒤에만 Vercel 환경 변수·Secret Manager `hy-easy-db-url`을 전환하거나 외부 트래픽을 엽니다. 학생 계정으로 로그인해 관심 공고와 지원 기록이 보이는지 확인하고, 수집기를 1회 수동 실행(`scripts/deploy-collector.sh run`)한 뒤 스케줄(`scripts/deploy-collector.sh schedule`)을 다시 켭니다.
 
 `pg_dump`·`pg_restore`는 17 이상이어야 합니다(Supabase가 Postgres 17). 로컬에 없으면 백업 이미지 안에서 실행합니다.
 

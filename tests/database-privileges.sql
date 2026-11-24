@@ -9,6 +9,41 @@ begin
   end if;
 end $$;
 
+-- 0. Schema, RLS, and view security posture audit.
+select pg_temp.assert(
+  not has_schema_privilege('public', 'public', 'CREATE')
+  and not has_schema_privilege('anon', 'public', 'CREATE')
+  and not has_schema_privilege('authenticated', 'public', 'CREATE')
+  and has_schema_privilege('authenticated', 'public', 'USAGE')
+  and has_schema_privilege('service_role', 'public', 'USAGE'),
+  'public schema must block CREATE for public/anon/authenticated and grant USAGE to authenticated/service_role'
+);
+
+select pg_temp.assert(
+  not exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relkind = 'r'
+      and not c.relrowsecurity
+  ),
+  'every base table in public must have row level security enabled'
+);
+
+select pg_temp.assert(
+  exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'posting_view'
+      and c.relkind = 'v'
+      and 'security_invoker=true' = any(coalesce(c.reloptions, array[]::text[]))
+  ),
+  'public.posting_view must keep security_invoker=true after restore'
+);
+
 -- 1. Catalog audit: PUBLIC and anon must have zero privileges on any public table/view/sequence/function.
 select pg_temp.assert(
   not exists (
