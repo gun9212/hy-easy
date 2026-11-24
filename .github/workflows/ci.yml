@@ -26,8 +26,10 @@ jobs:
       - name: Verify database migrations, policies, and restore privileges
         run: |
           sudo systemctl start postgresql.service
-          sudo -u postgres psql -v ON_ERROR_STOP=1 -c 'create database hy_easy_test'
-          sudo -u postgres bash scripts/verify-db.sh "dbname=hy_easy_test"
+          # The postgres OS user cannot read the runner's checkout, so the runner gets its own superuser role.
+          sudo -u postgres createuser --superuser "$USER"
+          sudo -u postgres createdb --owner "$USER" hy_easy_test
+          bash scripts/verify-db.sh "dbname=hy_easy_test"
 
   # Production deploy to Vercel, only from main and only after every check above passed.
   deploy:
