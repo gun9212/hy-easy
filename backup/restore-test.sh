@@ -25,7 +25,9 @@ fi
 
 if [ -z "${PG_BIN:-}" ]; then
   if ! command -v initdb >/dev/null 2>&1 || ! command -v postgres >/dev/null 2>&1 || [ "$(postgres --version | awk '{print int($NF)}')" -lt 15 ]; then
-    for candidate in /opt/homebrew/opt/postgresql@17/bin /opt/homebrew/opt/postgresql@16/bin /opt/homebrew/opt/postgresql@15/bin /usr/lib/postgresql/17/bin /usr/lib/postgresql/16/bin /usr/lib/postgresql/15/bin; do
+    # Newest major first. Debian/Ubuntu install each major under /usr/lib/postgresql/<major>/bin, and CI runner images
+    # move to new majors, so do not pin a list of versions.
+    for candidate in $(ls -d /opt/homebrew/opt/postgresql@*/bin /usr/lib/postgresql/*/bin 2>/dev/null | sort -rV); do
       if [ -x "$candidate/postgres" ] && [ -x "$candidate/initdb" ]; then
         PG_BIN="$candidate"
         break
