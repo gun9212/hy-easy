@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -11,8 +11,10 @@ import { Text } from "@astryxdesign/core/Text";
 import { ToastViewport, useToast } from "@astryxdesign/core/Toast";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-import { formatDate, isBlocking, normalizeFilters, type Application, type Filters, type Posting } from "@/lib/domain";
+import { formatDate, isBlocking, type Application, type Filters, type Posting } from "@/lib/domain";
 import { isClosingSoon, isOpenPosting, isUnknownRecruitment } from "@/lib/posting-format";
+import { filtersFromSearchParams } from "@/lib/posting-query";
+import { searchOfFilters, shouldPushHistory, viewOfFilters } from "@/lib/workspace-history";
 import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
 import { FeedbackDialog } from "./feedback-dialog";
@@ -60,19 +62,6 @@ const HEADINGS: Record<View, { title: string; text: string }> = {
     text: "지금의 지원 상태와 다음 기회의 마감시간을 함께 확인하세요.",
   },
 };
-
-function viewOf(filters: Filters): View {
-  if (filters.saved === "planner") return "planner";
-  return filters.saved === "true" ? "saved" : "postings";
-}
-
-function searchOf(filters: Filters): string {
-  const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.set(key, value);
-  });
-  return params.size ? `?${params}` : "";
-}
 
 function useClock(mode: Mode, initialNow: string): Date {
   const [now, setNow] = useState(() => new Date(initialNow));
@@ -139,18 +128,36 @@ function WorkspaceInner({
       notify(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.", "error");
     }
   }
-  const view = viewOf(filters);
+  const view = viewOfFilters(filters);
+  const prevFiltersRef = useRef<Filters>(initialFilters);
+  const poppingRef = useRef(false);
 
   useEffect(() => {
-    const onPop = () => setFilters(normalizeFilters(Object.fromEntries(new URLSearchParams(window.location.search))));
+    const onPop = () => {
+      poppingRef.current = true;
+      const next = filtersFromSearchParams(new URLSearchParams(window.location.search));
+      prevFiltersRef.current = next;
+      setFilters(next);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
-    const next = searchOf(filters);
-    if (next !== window.location.search) {
-      window.history.replaceState(null, "", `${window.location.pathname}${next}`);
+    if (poppingRef.current) {
+      poppingRef.current = false;
+      return;
+    }
+    const nextSearch = searchOfFilters(filters);
+    const prev = prevFiltersRef.current;
+    prevFiltersRef.current = filters;
+    if (nextSearch !== window.location.search) {
+      const nextUrl = `${window.location.pathname}${nextSearch}`;
+      if (shouldPushHistory(prev, filters)) {
+        window.history.pushState(null, "", nextUrl);
+      } else {
+        window.history.replaceState(null, "", nextUrl);
+      }
     }
   }, [filters]);
 
