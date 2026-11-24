@@ -89,6 +89,21 @@ export type AttachmentReader = (posting: Posting) => Promise<PostingAttachment |
  * (if any) so one bad download does not wipe it; the failure is logged and collection continues. The detail page
  * is re-read when its list row changes or after 24h, which retries naturally.
  */
+function attachmentErrorCode(error: unknown): string {
+  if (!(error instanceof Error)) return "ATTACHMENT_READ_FAILED";
+  const m = error.message;
+  if (
+    m === "ATTACHMENT_LINK_CHANGED" ||
+    m === "ATTACHMENT_TOO_LARGE" ||
+    m === "ATTACHMENT_UNREADABLE" ||
+    /^ATTACHMENT_HTTP_\d{3}$/.test(m)
+  ) {
+    return m;
+  }
+  if (m.startsWith("ATTACHMENT_NOT_PDF")) return "ATTACHMENT_NOT_PDF";
+  return "ATTACHMENT_READ_FAILED";
+}
+
 export async function withAttachment(
   posting: Posting,
   read: AttachmentReader,
@@ -106,7 +121,7 @@ export async function withAttachment(
         severity: "WARNING",
         event: "attachment_failed",
         sourceId: posting.sourceId,
-        message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+        errorCode: attachmentErrorCode(e),
       }),
     );
     const kept = await previous().catch(() => null);

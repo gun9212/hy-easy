@@ -42,6 +42,7 @@ import { listRowHash } from "./hywep-fields";
 import { planListSync } from "./list-sync";
 import { requeueStalePrompts } from "./requeue";
 import { withAttachment } from "./attachments";
+import { safeCollectorErrorCode } from "./error-codes";
 
 const LOGIN_GUARD_STATE = "hywep_login";
 
@@ -174,7 +175,8 @@ try {
             severity: "ERROR",
             event: "detail_read_failed",
             sourceId: link.id,
-            message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+            errorCode: "DETAIL_READ_FAILED",
+            reason: safeCollectorErrorCode(e, "DETAIL_READ_FAILED"),
           }),
         );
         status = "partial";
@@ -235,8 +237,8 @@ try {
       .parse(process.env.MODEL_PROVIDER || "claude") as Provider;
     // Once new and changed postings are done, postings classified under an older prompt take the free slots.
     // A failure here only delays re-classification; it must not fail the run.
-    await requeueStalePrompts(db, PROMPT_VERSION, CLASSIFY_PER_RUN).catch((e: unknown) =>
-      console.error("REQUEUE_FAILED", e instanceof Error ? e.message : e),
+    await requeueStalePrompts(db, PROMPT_VERSION, CLASSIFY_PER_RUN).catch(() =>
+      console.error(JSON.stringify({ severity: "WARNING", event: "requeue_failed", errorCode: "REQUEUE_FAILED" })),
     );
     const queue =
       check(
@@ -345,18 +347,13 @@ try {
     }
   }
 } catch (e) {
-  console.error(
-    JSON.stringify({
-      severity: "ERROR",
-      event: "collection_failed",
-      message: e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300),
-    }),
-  );
+  let reason: string;
   if (e instanceof LoginBlocked) {
     status = "session_expired";
     errorCode = "LOGIN_BLOCKED";
+    reason = "LOGIN_BLOCKED";
   } else if (e instanceof LoginFailed) {
-    // Only a submitted password counts: an unreachable portal must not lock out correct credentials.
+    // Only a submitted password counts: an unreachable portal or form-fill failure must not lock out correct credentials.
     if (credentials && e.credentialsSubmitted) {
       const nextGuard = recordLoginFailure(loginGuard, credentials);
       // Supabase reports write errors in the result instead of rejecting, so check both.
@@ -370,10 +367,24 @@ try {
     }
     status = "session_expired";
     errorCode = "LOGIN_FAILED";
+    reason = e.reason;
+  } else if (e instanceof SessionExpired) {
+    status = "session_expired";
+    errorCode = "SESSION_EXPIRED";
+    reason = "SESSION_EXPIRED";
   } else {
-    status = e instanceof SessionExpired ? "session_expired" : "failed";
-    errorCode = e instanceof SessionExpired ? "SESSION_EXPIRED" : "COLLECTION_FAILED";
+    status = "failed";
+    errorCode = "COLLECTION_FAILED";
+    reason = safeCollectorErrorCode(e, "COLLECTION_FAILED");
   }
+  console.error(
+    JSON.stringify({
+      severity: "ERROR",
+      event: "collection_failed",
+      errorCode,
+      reason,
+    }),
+  );
 } finally {
   clearInterval(heartbeat);
   await browser?.close();
