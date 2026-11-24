@@ -24,6 +24,7 @@ import { Planner } from "./planner";
 import { PostingDetail } from "./posting-detail";
 import { PostingsView, listTitle } from "./postings-view";
 import { useMajor } from "./use-major";
+import { useBodySearch } from "./use-body-search";
 import { usePostings } from "./use-postings";
 import { usePersonal, type Mode } from "./use-personal";
 import type { Major } from "@/lib/majors";
@@ -101,6 +102,7 @@ function WorkspaceInner({
     applications: initialApplications,
   });
   const [filters, setFilters] = useState<Filters>(initialFilters);
+  const textMatchIds = useBodySearch(mode, filters.q);
   const [compared, setCompared] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -301,6 +303,7 @@ function WorkspaceInner({
         ) : (
           <PostingsView
             postings={postings}
+            textMatchIds={textMatchIds}
             filters={filters}
             major={major}
             onMajor={changeMajor}

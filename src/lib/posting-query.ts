@@ -18,9 +18,17 @@ export function filtersFromSearchParams(params: URLSearchParams): Filters {
 export function queryPostings(
   postings: Posting[],
   rawFilters: Filters,
-  options: { favoriteIds?: string[]; major?: Major | null; now?: Date } = {},
+  options: {
+    favoriteIds?: string[];
+    major?: Major | null;
+    now?: Date;
+    /** Ids the server matched on source texts the list copy does not carry (see useBodySearch). */
+    textMatchIds?: ReadonlySet<string> | null;
+  } = {},
 ): Posting[] {
-  const { favoriteIds = [], major = null, now = new Date() } = options;
+  const { favoriteIds = [], major = null, now = new Date(), textMatchIds = null } = options;
   const filters: Filters = { ...rawFilters, sort: rawFilters.sort || DEFAULT_POSTING_SORT };
-  return filterPostings(postings, filters, favoriteIds, major).filter(p => matchesWhen(p, filters.when, now));
+  return filterPostings(postings, filters, favoriteIds, major, textMatchIds).filter(p =>
+    matchesWhen(p, filters.when, now),
+  );
 }

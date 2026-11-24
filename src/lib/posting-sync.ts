@@ -1,7 +1,8 @@
 // Incremental posting sync. The browser keeps a copy of the posting list; the server sends only postings changed
-// since that copy, plus the live fields that change without a content change (applicant counts) and the id list
+// since that copy (list copies without the long texts, see posting-body.ts), plus the live fields that change without a content change (applicant counts) and the id list
 // that tells the browser which postings are gone.
 import type { Posting } from "./domain";
+import { toListPosting } from "./posting-body";
 
 /** Changes are re-sent from a little before the browser's copy, so a write racing the last sync is not missed. */
 export const SYNC_OVERLAP_MS = 5 * 60_000;
@@ -28,7 +29,9 @@ function latest(values: string[]): string | null {
 export function buildSync(all: Posting[], since: string | null): SyncResponse {
   const sinceMs = since ? Date.parse(since) : NaN;
   const full = Number.isNaN(sinceMs);
-  const postings = full ? all : all.filter(p => Date.parse(changedAtOf(p)) > sinceMs - SYNC_OVERLAP_MS);
+  const changed = full ? all : all.filter(p => Date.parse(changedAtOf(p)) > sinceMs - SYNC_OVERLAP_MS);
+  // List copies only: the long texts are fetched per posting when a detail or comparison opens.
+  const postings = changed.map(toListPosting);
   return {
     full,
     complete: true,

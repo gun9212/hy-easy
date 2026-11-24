@@ -1,16 +1,15 @@
 import type { Posting, PostingAttachment } from "./domain";
+import { toListPosting } from "./posting-body";
 
 /** Bump when the cached Posting shape or field allowlist changes so older copies are replaced. */
-export const POSTING_CACHE_VERSION = 2;
+export const POSTING_CACHE_VERSION = 3;
 
 /**
  * Explicit allowlist of Posting fields stored in the browser's IndexedDB cache.
  *
- * Kept to what list, search, detail, and side-by-side comparison render offline between incremental
- * syncs (`tasks`, `qualifications`, `practiceInfo`, `benefits`, `events`, and `attachment.text` are
- * included because incremental sync only sends changed postings and client search/detail read them
- * locally). Because company-authored source texts and attachments may include recruiter contact
- * details, the privacy policy documents this scope and logout clears the cache.
+ * The sync sends list copies (posting-body.ts): the source texts, attachment text and classification evidence are
+ * empty and `bodyOmitted` is set, so those fields are stored empty. The detail and comparison screens fetch the full
+ * posting and keep it in memory only. Version 3 replaced the earlier copies that held the full texts.
  */
 export const CACHED_POSTING_FIELDS = [
   "id",
@@ -42,6 +41,7 @@ export const CACHED_POSTING_FIELDS = [
   "classification",
   "classificationSource",
   "classificationStale",
+  "bodyOmitted",
 ] as const satisfies readonly (keyof Posting)[];
 
 export const CACHED_ATTACHMENT_FIELDS = [
@@ -64,8 +64,12 @@ function pickCachedAttachment(attachment: PostingAttachment): PostingAttachment 
   };
 }
 
-/** Projects a Posting down to the exact fields allowed in browser IndexedDB storage. */
-export function pickCachedPosting(posting: Posting): Posting {
+/**
+ * Projects a Posting down to the exact fields allowed in browser IndexedDB storage. Always a list copy: even if a full
+ * posting reaches here, its source texts, attachment text and evidence quotes are not stored.
+ */
+export function pickCachedPosting(full: Posting): Posting {
+  const posting = toListPosting(full);
   const cached: Posting = {
     id: posting.id,
     sourceId: posting.sourceId,
@@ -105,6 +109,7 @@ export function pickCachedPosting(posting: Posting): Posting {
     classificationStale: posting.classificationStale,
   };
   if (posting.changedAt !== undefined) cached.changedAt = posting.changedAt;
+  cached.bodyOmitted = true;
   if (posting.attachment) cached.attachment = pickCachedAttachment(posting.attachment);
   return cached;
 }

@@ -17,6 +17,8 @@ import { SummaryCards, type Stats } from "./summary-cards";
 
 type Props = {
   postings: Posting[];
+  /** Server matches on source texts for the search box (null: none, or not needed). */
+  textMatchIds: ReadonlySet<string> | null;
   filters: Filters;
   major: Major | null;
   onMajor: (major: Major | null) => void;
@@ -43,19 +45,22 @@ export function listTitle(filters: Filters): string {
 }
 
 export function PostingsView(props: Props): React.ReactElement {
-  const { postings, favoriteIds, now } = props;
+  const { postings, favoriteIds, now, textMatchIds } = props;
   // Deadline order is the default, as in the demo: the list opens on the deadline groups.
   const filters: Filters = { ...props.filters, sort: props.filters.sort || DEFAULT_POSTING_SORT };
-  const filtered = queryPostings(postings, filters, { favoriteIds, major: props.major, now });
+  const filtered = queryPostings(postings, filters, { favoriteIds, major: props.major, now, textMatchIds });
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major
     ? {
-        all: queryPostings(postings, { ...filters, mine: "", others: "true" }, { favoriteIds, major: props.major, now })
-          .length,
+        all: queryPostings(
+          postings,
+          { ...filters, mine: "", others: "true" },
+          { favoriteIds, major: props.major, now, textMatchIds },
+        ).length,
         related: queryPostings(
           postings,
           { ...filters, mine: "true", others: "" },
-          { favoriteIds, major: props.major, now },
+          { favoriteIds, major: props.major, now, textMatchIds },
         ).length,
       }
     : null;
