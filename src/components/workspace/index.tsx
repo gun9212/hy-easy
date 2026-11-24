@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@astryxdesign/core/AppShell";
@@ -15,19 +16,43 @@ import { formatDate, isBlocking, type Application, type Filters, type Posting } 
 import { isClosingSoon, isOpenPosting, isUnknownRecruitment } from "@/lib/posting-format";
 import { filtersFromSearchParams } from "@/lib/posting-query";
 import { searchOfFilters, shouldPushHistory, viewOfFilters } from "@/lib/workspace-history";
-import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
-import { FeedbackDialog } from "./feedback-dialog";
 import { CompareDock, type View } from "./chrome";
 import { LayoutProvider } from "./layout-context";
-import { Planner } from "./planner";
-import { PostingDetail } from "./posting-detail";
 import { PostingsView, listTitle } from "./postings-view";
 import { useMajor } from "./use-major";
 import { usePostings } from "./use-postings";
 import { usePersonal, type Mode } from "./use-personal";
 import type { Major } from "@/lib/majors";
 import type { ThemeMode } from "@/lib/theme-mode";
+
+// Panels that are not on screen at first load are split out of the list page's initial bundle. The detail and
+// comparison chunks are fetched once the browser is idle so the first open does not wait on the network.
+const loadDetail = () => import("./posting-detail");
+const loadComparison = () => import("./comparison");
+const PostingDetail = dynamic(() => import("./posting-detail").then(mod => mod.PostingDetail));
+const Comparison = dynamic(() => import("./comparison").then(mod => mod.Comparison));
+const Planner = dynamic(() => import("./planner").then(mod => mod.Planner), {
+  loading: () => (
+    <Text type="supporting" role="status">
+      플래너를 불러오는 중…
+    </Text>
+  ),
+});
+const FeedbackDialog = dynamic(() => import("./feedback-dialog").then(mod => mod.FeedbackDialog));
+
+function usePreloadPanels(ready: boolean) {
+  useEffect(() => {
+    if (!ready) return;
+    const preload = () => void Promise.all([loadDetail(), loadComparison()]).catch(() => {});
+    if (typeof window.requestIdleCallback === "function") {
+      const id = window.requestIdleCallback(preload, { timeout: 3_000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(preload, 1_500);
+    return () => window.clearTimeout(id);
+  }, [ready]);
+}
 
 type Props = {
   mode: Mode;
@@ -96,6 +121,7 @@ function WorkspaceInner({
   onTheme,
 }: InnerProps) {
   const { postings, ready, lastCheckedAt, error: loadError } = usePostings(mode, initialPostings);
+  usePreloadPanels(ready);
   const { personal, toggleFavorite, recordApplication, deleteApplication } = usePersonal(mode, {
     favoriteIds: initialFavorites,
     applications: initialApplications,

@@ -1,5 +1,6 @@
 import { requireAdmin, sameOrigin, errorResponse, HttpError } from "@/lib/auth";
-import { assertEvidence, classificationSchema, type Posting } from "@/lib/domain";
+import { classificationSchema } from "@/lib/classification-schema";
+import { assertEvidence, type Posting } from "@/lib/domain";
 import { classificationInput } from "@/lib/normalize";
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
