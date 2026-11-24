@@ -2,9 +2,8 @@
 // The browser's copy of the posting list, kept in IndexedDB. Every call fails soft: when storage is blocked
 // (private mode) or broken, the page simply loads the full list as if this were the first visit.
 import type { Posting } from "@/lib/domain";
+import { pickCachedPosting, POSTING_CACHE_VERSION } from "@/lib/posting-cache-fields";
 
-/** Bump when the Posting shape changes so copies saved by an older build are dropped. */
-const CACHE_VERSION = 1;
 const DB_NAME = "hy-easy";
 const STORE = "cache";
 const KEY = "postings";
@@ -89,7 +88,9 @@ async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) 
 
 function isRecord(value: unknown): value is Record {
   const v = value as Partial<Record> | null;
-  return Boolean(v && v.version === CACHE_VERSION && typeof v.syncedAt === "string" && Array.isArray(v.postings));
+  return Boolean(
+    v && v.version === POSTING_CACHE_VERSION && typeof v.syncedAt === "string" && Array.isArray(v.postings),
+  );
 }
 
 export async function readStoredPostings(): Promise<StoredPostings | null> {
@@ -103,7 +104,12 @@ export async function readStoredPostings(): Promise<StoredPostings | null> {
 
 export async function writeStoredPostings(value: StoredPostings): Promise<void> {
   try {
-    const record: Record = { ...value, version: CACHE_VERSION };
+    const record: Record = {
+      syncedAt: value.syncedAt,
+      lastCheckedAt: value.lastCheckedAt,
+      postings: value.postings.map(pickCachedPosting),
+      version: POSTING_CACHE_VERSION,
+    };
     await run("readwrite", store => store.put(record, KEY));
   } catch {
     // Not saved: the next visit loads the full list again.
