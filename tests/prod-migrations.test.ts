@@ -39,25 +39,45 @@ describe("database migration and production RPC checks", () => {
     }
   });
 
-  it("detects missing production migration versions and missing RPCs before deploy", () => {
+  it("detects missing production migrations by name and missing RPCs before deploy", () => {
     const missing = findMissingProdSchema({
-      expectedVersions: ["202611100001", "202611230004"],
-      appliedVersions: ["202611100001"],
+      expectedNames: ["initial", "feedback", "delete_application"],
+      appliedNames: ["initial", "feedback"],
       expectedRpcs: ["is_school_user", "delete_application"],
       existingRpcs: ["is_school_user"],
     });
     assert.deepEqual(missing, {
-      missingVersions: ["202611230004"],
+      missingMigrations: ["delete_application"],
       missingRpcs: ["delete_application"],
     });
 
-    const synced = findMissingProdSchema({
-      expectedVersions: ["202611100001", "202611230004"],
-      appliedVersions: ["202611100001", "202611230004"],
-      expectedRpcs: ["is_school_user", "delete_application"],
-      existingRpcs: ["is_school_user", "delete_application"],
-    });
-    assert.deepEqual(synced, { missingVersions: [], missingRpcs: [] });
+    // History recorded under unrelated names: nothing matches, so every file is reported rather than passing silently.
+    assert.deepEqual(
+      findMissingProdSchema({ expectedNames: ["initial"], appliedNames: ["other"], expectedRpcs: [], existingRpcs: [] })
+        .missingMigrations,
+      ["initial"],
+    );
+  });
+
+  it("accepts production history as recorded: applied-at versions and a baseline applied before history began", () => {
+    const expectedNames = listMigrations(MIGRATIONS_DIR).map(m => m.name);
+    // Production on 2026-11-24: the first four files were applied before migration history was kept, and the rest are
+    // recorded with the time they were applied (20261120003321 rls_initplan … 20261123143000 delete_application).
+    const appliedNames = ["rls_initplan", "feedback", "admin_user_stats", "usage_daily", "delete_application"];
+    assert.deepEqual(
+      findMissingProdSchema({ expectedNames, appliedNames, expectedRpcs: [], existingRpcs: [] }).missingMigrations,
+      [],
+    );
+    // A new file after the recorded ones that production has not applied yet is caught.
+    assert.deepEqual(
+      findMissingProdSchema({
+        expectedNames: [...expectedNames, "next_change"],
+        appliedNames,
+        expectedRpcs: [],
+        existingRpcs: [],
+      }).missingMigrations,
+      ["next_change"],
+    );
   });
 
   it("CI runs scripts/verify-db.sh instead of a hardcoded migration list and checks prod RPCs before deploy", () => {

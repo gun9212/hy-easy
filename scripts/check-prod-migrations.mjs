@@ -10,7 +10,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const MIGRATION_PATTERN = /^(\d{12})_[a-z0-9_]+\.sql$/;
+const MIGRATION_PATTERN = /^(\d{12})_([a-z0-9_]+)\.sql$/;
 const RPC_CALL_PATTERN = /\.rpc\(\s*["']([a-zA-Z0-9_]+)["']/g;
 const CREATE_FN_PATTERN = /create\s+(?:or\s+replace\s+)?function\s+public\.([a-zA-Z0-9_]+)\s*\(/gi;
 
@@ -30,7 +30,7 @@ export function listMigrations(migrationsDir) {
       throw new Error(`Duplicate migration version prefix: ${version} (${file})`);
     }
     seen.add(version);
-    return { file, version };
+    return { file, version, name: match[2] };
   });
 }
 
@@ -70,11 +70,19 @@ export function extractMigrationFunctions(migrationsDir) {
   return [...fns].sort();
 }
 
-export function findMissingProdSchema({ expectedVersions, appliedVersions, expectedRpcs, existingRpcs }) {
-  const appliedSet = new Set(appliedVersions);
+/**
+ * Production history is keyed by the time a migration was applied (e.g. 20261123143000), not by the file prefix, and
+ * the first migrations were applied before history was kept. So files are matched by name, and files older than the
+ * oldest one production recorded are the baseline that predates history. With no history at all, nothing is checked.
+ */
+export function findMissingProdSchema({ expectedNames, appliedNames, expectedRpcs, existingRpcs }) {
+  const appliedSet = new Set(appliedNames);
   const existingSet = new Set(existingRpcs);
+  const firstRecorded = expectedNames.findIndex(name => appliedSet.has(name));
+  const tracked =
+    appliedSet.size === 0 ? [] : firstRecorded === -1 ? expectedNames : expectedNames.slice(firstRecorded);
   return {
-    missingVersions: expectedVersions.filter(v => !appliedSet.has(v)),
+    missingMigrations: tracked.filter(name => !appliedSet.has(name)),
     missingRpcs: expectedRpcs.filter(fn => !existingSet.has(fn)),
   };
 }
@@ -97,6 +105,7 @@ function main() {
 
   const migrations = listMigrations(migrationsDir);
   const expectedVersions = migrations.map(m => m.version);
+  const expectedNames = migrations.map(m => m.name);
   const expectedRpcs = extractRpcCalls(srcDir);
 
   if (process.argv.includes("--list")) {
@@ -113,24 +122,27 @@ function main() {
 
   const hasHistoryTable =
     queryLines(dbUrl, "select to_regclass('supabase_migrations.schema_migrations') is not null")[0] === "t";
-  const appliedVersions = hasHistoryTable
-    ? queryLines(dbUrl, "select version from supabase_migrations.schema_migrations order by version")
+  const appliedNames = hasHistoryTable
+    ? queryLines(
+        dbUrl,
+        "select name from supabase_migrations.schema_migrations where name is not null order by version",
+      )
     : [];
   const existingRpcs = queryLines(
     dbUrl,
     "select distinct p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' order by 1",
   );
 
-  const { missingVersions, missingRpcs } = findMissingProdSchema({
-    expectedVersions: hasHistoryTable ? expectedVersions : [],
-    appliedVersions,
+  const { missingMigrations, missingRpcs } = findMissingProdSchema({
+    expectedNames,
+    appliedNames,
     expectedRpcs,
     existingRpcs,
   });
 
-  if (missingVersions.length > 0 || missingRpcs.length > 0) {
-    if (missingVersions.length > 0) {
-      console.error(`Missing production migration versions: ${missingVersions.join(", ")}`);
+  if (missingMigrations.length > 0 || missingRpcs.length > 0) {
+    if (missingMigrations.length > 0) {
+      console.error(`Missing production migrations: ${missingMigrations.join(", ")}`);
     }
     if (missingRpcs.length > 0) {
       console.error(`Missing production public RPC functions: ${missingRpcs.join(", ")}`);
@@ -142,9 +154,9 @@ function main() {
   }
 
   console.log(
-    hasHistoryTable
-      ? `Production DB verified: all ${expectedVersions.length} migration versions and ${expectedRpcs.length} web RPCs are present.`
-      : `Production DB verified: all ${expectedRpcs.length} web RPCs are present (supabase_migrations.schema_migrations table not present).`,
+    appliedNames.length
+      ? `Production DB verified: every migration since history began (${appliedNames.length} recorded) and ${expectedRpcs.length} web RPCs are present.`
+      : `Production DB verified: all ${expectedRpcs.length} web RPCs are present (no migration history recorded).`,
   );
 }
 
