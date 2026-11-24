@@ -3,7 +3,8 @@
 // Usage: npm run classify:queue -- [--limit N] [--concurrency N]
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { classify, type Provider } from "../src/lib/classifier";
+import { classify, modelFor, PROMPT_VERSION, TAXONOMY_VERSION, type Provider } from "../src/lib/classifier";
+import { recordClassificationCall } from "../src/lib/classification-ledger";
 import { classificationInput } from "../src/lib/normalize";
 import type { Posting } from "../src/lib/domain";
 
@@ -62,6 +63,7 @@ async function processJob(
   if (!row || row.classification_hash !== job.input_hash) return { outcome: "skipped", usd: 0 };
   try {
     const result = await classify(classificationInput(row.document as Posting), provider);
+    const calledAt = new Date().toISOString();
     const saved = await db.from("classifications").upsert({
       posting_id: job.posting_id,
       result: result.classification,
@@ -73,9 +75,23 @@ async function processJob(
       input_tokens: result.inputTokens,
       output_tokens: result.outputTokens,
       cost_usd: result.costUsd,
-      created_at: new Date().toISOString(),
+      created_at: calledAt,
     });
     if (saved.error) throw saved.error;
+    await recordClassificationCall(db, {
+      postingId: job.posting_id,
+      inputHash: job.input_hash,
+      provider,
+      model: result.model,
+      promptVersion: result.promptVersion,
+      taxonomyVersion: result.taxonomyVersion,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      costUsd: result.costUsd,
+      status: "succeeded",
+      source: "queue_script",
+      calledAt,
+    });
     await db.from("classification_queue").delete().eq("posting_id", job.posting_id).eq("input_hash", job.input_hash);
     return { outcome: result.classification.needsReview ? "review" : "classified", usd: result.costUsd };
   } catch (e) {
@@ -84,6 +100,19 @@ async function processJob(
         ? e.message
         : "CLASSIFICATION_FAILED";
     console.error(`  ✗ ${job.posting_id}: ${e instanceof Error ? e.message.slice(0, 120) : String(e)}`);
+    await recordClassificationCall(db, {
+      postingId: job.posting_id,
+      inputHash: job.input_hash,
+      provider,
+      model: modelFor(provider),
+      promptVersion: PROMPT_VERSION,
+      taxonomyVersion: TAXONOMY_VERSION,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+      status: "failed",
+      source: "queue_script",
+    });
     await recordFailure(db, job, code);
     return { outcome: "failed", usd: 0 };
   }

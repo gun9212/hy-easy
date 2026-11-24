@@ -85,6 +85,7 @@ COUNT_SQL="SELECT 'auth.users', count(*) FROM auth.users
   UNION ALL SELECT 'public.companies', count(*) FROM public.companies
   UNION ALL SELECT 'public.postings', count(*) FROM public.postings
   UNION ALL SELECT 'public.classifications', count(*) FROM public.classifications
+  UNION ALL SELECT 'public.classification_calls', count(*) FROM public.classification_calls
   UNION ALL SELECT 'public.favorites', count(*) FROM public.favorites
   UNION ALL SELECT 'public.applications', count(*) FROM public.applications
   UNION ALL SELECT 'public.application_events', count(*) FROM public.application_events

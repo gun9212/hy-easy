@@ -18,6 +18,7 @@ import {
   type Version,
 } from "@/components/admin/admin-tables";
 import { requireAdmin, HttpError } from "@/lib/auth";
+import { normalizeMonthlyAiCost } from "@/lib/classification-ledger";
 import { formatDate, type Posting } from "@/lib/domain";
 import { ADMIN_FEEDBACK_PAGE_SIZE, parseFeedbackQuery } from "@/lib/feedback";
 
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 const ADMIN_LIST_LIMIT = 30;
 const RECENT_LIMIT = 20;
 const USAGE_DAYS = 30;
+const AI_COST_MONTHS = 6;
 type UserStats = { total: number; active7d: number; new7d: number };
 
 export default async function Admin({
@@ -50,7 +52,7 @@ export default async function Admin({
   if (feedbackFilter === "unread") feedbackQuery = feedbackQuery.is("read_at", null);
 
   // Reads only what the page shows: the postings that need review and a count, not the whole posting list.
-  const [review, total, runs, queue, versions, audit, feedback, allFeedback, unreadFeedback, userStats, usage] =
+  const [review, total, runs, queue, versions, audit, feedback, allFeedback, unreadFeedback, userStats, usage, aiCost] =
     await Promise.all([
       db
         .from("posting_view")
@@ -80,6 +82,8 @@ export default async function Admin({
       db.rpc("admin_user_stats"),
       // Per KST day for the last 30 days (supabase/migrations/202611230003_usage_daily.sql).
       db.rpc("admin_usage_daily", { p_days: USAGE_DAYS }),
+      // Append-only monthly AI call & cost ledger (supabase/migrations/202611240001_classification_calls.sql).
+      db.rpc("admin_ai_cost_monthly", { p_months: AI_COST_MONTHS }),
     ]);
   // A page past the end of the list shows the empty state instead of failing the whole admin page.
   for (const r of [
@@ -94,9 +98,12 @@ export default async function Admin({
     unreadFeedback,
     userStats,
     usage,
+    aiCost,
   ])
     if (r.error && !(r === feedback && r.error.code === "PGRST103")) throw r.error;
   const users = (userStats.data ?? { total: 0, active7d: 0, new7d: 0 }) as UserStats;
+  const monthlyAiCosts = normalizeMonthlyAiCost(aiCost.data);
+  const currentMonthAi = monthlyAiCosts[0];
   const feedbackRows = (feedback.data ?? []) as FeedbackItem[];
   const allFeedbackCount = allFeedback.count ?? 0;
   const unreadCount = unreadFeedback.count ?? 0;
@@ -171,7 +178,49 @@ export default async function Admin({
             <dt>최근 7일 신규</dt>
             <dd>{users.new7d}명</dd>
           </div>
+          <div>
+            <dt>이번 달 AI 비용</dt>
+            <dd>
+              ${(currentMonthAi?.costUsd ?? 0).toFixed(4)} ({currentMonthAi?.calls ?? 0}회)
+            </dd>
+          </div>
         </dl>
+
+        <section className="admin-section">
+          <h2>
+            월간 AI 호출·비용 <span>최근 {AI_COST_MONTHS}개월</span>
+          </h2>
+          <p className="admin-note">
+            재분류로 기존 분류를 덮어쓴 호출까지 모두 누적 기록합니다. 수동 평가 실행이나 실패 재시도 비용은 Anthropic
+            콘솔 청구서와 함께 확인하세요.
+          </p>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>월 (KST)</th>
+                  <th>호출</th>
+                  <th>실패</th>
+                  <th>입력 토큰</th>
+                  <th>출력 토큰</th>
+                  <th>추정 비용 (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthlyAiCosts.map(row => (
+                  <tr key={row.month}>
+                    <td>{row.month}</td>
+                    <td>{row.calls.toLocaleString("ko-KR")}회</td>
+                    <td>{row.failedCalls.toLocaleString("ko-KR")}회</td>
+                    <td>{row.inputTokens.toLocaleString("ko-KR")}</td>
+                    <td>{row.outputTokens.toLocaleString("ko-KR")}</td>
+                    <td>${row.costUsd.toFixed(4)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         <section className="admin-section">
           <h2>

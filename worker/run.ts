@@ -4,7 +4,15 @@ import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { classificationInput, sourceHash, stableHash } from "../src/lib/normalize";
-import { classify, isServiceError, PROMPT_VERSION, type Provider } from "../src/lib/classifier";
+import {
+  classify,
+  isServiceError,
+  modelFor,
+  PROMPT_VERSION,
+  TAXONOMY_VERSION,
+  type Provider,
+} from "../src/lib/classifier";
+import { recordClassificationCall } from "../src/lib/classification-ledger";
 import type { Posting, PostingAttachment } from "../src/lib/domain";
 import {
   dismissDialogs,
@@ -241,6 +249,7 @@ try {
         ).data;
         if (!row || row.classification_hash !== job.input_hash) continue;
         const result = await classify(classificationInput(row.document as Posting), provider);
+        const calledAt = new Date().toISOString();
         check(
           await db.from("classifications").upsert({
             posting_id: job.posting_id,
@@ -253,9 +262,23 @@ try {
             input_tokens: result.inputTokens,
             output_tokens: result.outputTokens,
             cost_usd: result.costUsd,
-            created_at: new Date().toISOString(),
+            created_at: calledAt,
           }),
         );
+        await recordClassificationCall(db, {
+          postingId: job.posting_id,
+          inputHash: job.input_hash,
+          provider,
+          model: result.model,
+          promptVersion: result.promptVersion,
+          taxonomyVersion: result.taxonomyVersion,
+          inputTokens: result.inputTokens,
+          outputTokens: result.outputTokens,
+          costUsd: result.costUsd,
+          status: "succeeded",
+          source: "collector",
+          calledAt,
+        });
         check(
           await db
             .from("classification_queue")
@@ -288,6 +311,19 @@ try {
           );
           break;
         }
+        await recordClassificationCall(db, {
+          postingId: job.posting_id,
+          inputHash: job.input_hash,
+          provider,
+          model: modelFor(provider),
+          promptVersion: PROMPT_VERSION,
+          taxonomyVersion: TAXONOMY_VERSION,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+          status: "failed",
+          source: "collector",
+        });
         check(
           await db
             .from("classification_queue")

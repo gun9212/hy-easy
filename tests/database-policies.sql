@@ -149,5 +149,26 @@ reset role;
 set local role anon;
 do $$ begin begin perform public.touch_activity(); raise exception 'anonymous touch unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
+
+-- Monthly AI call ledger: re-classifications append rows instead of overwriting spend; admin-only summary.
+set local role service_role;
+insert into public.classification_calls(posting_id, input_hash, provider, model, prompt_version, taxonomy_version, input_tokens, output_tokens, cost_usd, status, source)
+select id, 'h1', 'anthropic', 'claude-haiku-5-5', '2026-11-20.7', '2', 1000, 200, 0.0012, 'succeeded', 'collector' from public.postings where source_id='one';
+insert into public.classification_calls(posting_id, input_hash, provider, model, prompt_version, taxonomy_version, input_tokens, output_tokens, cost_usd, status, source)
+select id, 'h2', 'anthropic', 'claude-haiku-5-5', '2026-11-24.1', '2', 1200, 250, 0.0015, 'succeeded', 'collector' from public.postings where source_id='one';
+insert into public.classification_calls(posting_id, input_hash, provider, model, prompt_version, taxonomy_version, input_tokens, output_tokens, cost_usd, status, source)
+select id, 'h3', 'anthropic', 'claude-haiku-5-5', '2026-11-24.1', '2', 0, 0, 0, 'failed', 'collector' from public.postings where source_id='two';
+reset role;
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+do $$ begin begin perform * from public.classification_calls; raise exception 'student read of classification_calls unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+do $$ begin begin perform public.admin_ai_cost_monthly(6); raise exception 'non-admin ai cost monthly unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+select set_config('test.uid','00000000-0000-4000-8000-000000000001',true);
+select pg_temp.assert((select count(*)=6 from public.admin_ai_cost_monthly(6)),'returns one row per requested month');
+select pg_temp.assert((select calls=3 and failed_calls=1 and input_tokens=2200 and output_tokens=450 and cost_usd=0.0027 from public.admin_ai_cost_monthly(6) order by month desc limit 1),'sums overwritten re-classifications and failed calls for current month');
+reset role;
+set local role anon;
+do $$ begin begin perform public.admin_ai_cost_monthly(6); raise exception 'anonymous ai cost monthly unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;

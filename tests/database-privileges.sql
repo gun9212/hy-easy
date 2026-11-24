@@ -70,6 +70,7 @@ select pg_temp.assert(
       )
       and has_function_privilege('authenticated', p.oid, 'EXECUTE')
   ) = array[
+    'admin_ai_cost_monthly(integer)',
     'admin_usage_daily(integer)',
     'admin_user_stats()',
     'delete_application(uuid)',
@@ -80,7 +81,7 @@ select pg_temp.assert(
     'retry_classification(uuid)',
     'touch_activity()'
   ],
-  'authenticated EXECUTE set must match the exact 9 app/admin functions'
+  'authenticated EXECUTE set must match the exact 10 app/admin functions'
 );
 
 select pg_temp.assert(
@@ -138,10 +139,10 @@ select pg_temp.assert(
     from pg_class c
     join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public'
-      and c.relname in ('collector_locks', 'collector_state', 'activity_days')
+      and c.relname in ('collector_locks', 'collector_state', 'activity_days', 'classification_calls')
       and has_table_privilege('authenticated', c.oid, 'SELECT,INSERT,UPDATE,DELETE')
   ),
-  'authenticated must have zero access to collector_locks, collector_state, and activity_days'
+  'authenticated must have zero access to collector_locks, collector_state, activity_days, and classification_calls'
 );
 
 select pg_temp.assert(
@@ -207,6 +208,7 @@ do $$ begin
   begin perform public.touch_postings('[]'::jsonb); raise exception 'anon touch_postings succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.mark_detail_checked('x', 'y'); raise exception 'anon mark_detail_checked succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.admin_user_stats(); raise exception 'anon admin_user_stats succeeded'; exception when insufficient_privilege then null; end;
+  begin perform public.admin_ai_cost_monthly(6); raise exception 'anon admin_ai_cost_monthly succeeded'; exception when insufficient_privilege then null; end;
 end $$;
 reset role;
 
@@ -218,9 +220,11 @@ do $$ begin
   begin perform public.touch_postings('[]'::jsonb); raise exception 'authenticated touch_postings succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.mark_detail_checked('x', 'y'); raise exception 'authenticated mark_detail_checked succeeded'; exception when insufficient_privilege then null; end;
   begin perform * from public.activity_days limit 1; raise exception 'authenticated activity_days read succeeded'; exception when insufficient_privilege then null; end;
+  begin perform * from public.classification_calls limit 1; raise exception 'authenticated classification_calls read succeeded'; exception when insufficient_privilege then null; end;
   begin perform * from public.collector_locks limit 1; raise exception 'authenticated collector_locks read succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.admin_user_stats(); raise exception 'non-admin admin_user_stats succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.admin_usage_daily(7); raise exception 'non-admin admin_usage_daily succeeded'; exception when insufficient_privilege then null; end;
+  begin perform public.admin_ai_cost_monthly(6); raise exception 'non-admin admin_ai_cost_monthly succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.retry_classification(); raise exception 'non-admin retry_classification succeeded'; exception when insufficient_privilege then null; end;
 end $$;
 reset role;

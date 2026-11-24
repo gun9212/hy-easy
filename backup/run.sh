@@ -85,6 +85,7 @@ UNION ALL SELECT 'auth.identities', count(*) FROM auth.identities
 UNION ALL SELECT 'public.companies', count(*) FROM public.companies
 UNION ALL SELECT 'public.postings', count(*) FROM public.postings
 UNION ALL SELECT 'public.classifications', count(*) FROM public.classifications
+UNION ALL SELECT 'public.classification_calls', count(*) FROM public.classification_calls
 UNION ALL SELECT 'public.favorites', count(*) FROM public.favorites
 UNION ALL SELECT 'public.applications', count(*) FROM public.applications
 UNION ALL SELECT 'public.application_events', count(*) FROM public.application_events
@@ -119,7 +120,7 @@ close_snapshot
 for f in public auth; do
   pg_restore --list "$WORK/$f.dump" >/dev/null || fail "$f.dump is unreadable"
 done
-jq -e '.version == 1 and (.counts | type == "object") and (.counts | length >= 11)' "$WORK/manifest.json" >/dev/null ||
+jq -e '.version == 1 and (.counts | type == "object") and (.counts | length >= 12)' "$WORK/manifest.json" >/dev/null ||
   fail "manifest.json is invalid"
 
 if [ -n "${BACKUP_OUT_DIR:-}" ]; then

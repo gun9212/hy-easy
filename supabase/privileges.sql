@@ -56,7 +56,8 @@ grant execute on function
   public.retry_classification(uuid),
   public.admin_user_stats(),
   public.touch_activity(),
-  public.admin_usage_daily(integer)
+  public.admin_usage_daily(integer),
+  public.admin_ai_cost_monthly(integer)
 to authenticated;
 
 -- Collector and server-side service role.
