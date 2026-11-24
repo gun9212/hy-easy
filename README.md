@@ -68,3 +68,7 @@ Supabase 없이 화면만 보려면 `npm run dev` 후 `/demo`를 엽니다.
 ## 개인정보
 
 수집·보관하는 정보와 보관 기간은 서비스의 [개인정보처리방침](src/app/privacy/page.tsx)에 적혀 있습니다.
+
+## 라이선스
+
+[MIT](LICENSE). 단, `public/fonts/pretendard/`의 Pretendard 글꼴은 [SIL Open Font License 1.1](public/fonts/pretendard/LICENSE.txt)을 따릅니다.
