@@ -17,6 +17,7 @@ const REQUIREMENT_SHORT = { listed: "", any: "전공 무관", unknown: "원문 �
 
 /** One line for the facts card: the listed majors, "전공 무관", or HY-WEP's own text when nothing was classified. */
 function majorsLine(p: Posting): string {
+  if (p.classificationStale) return "원문 확인 필요";
   const m = p.classification?.majors;
   if (!m) return p.majors || "미기재";
   return m.requirement === "listed" ? m.required.join(", ") || p.majors || "미기재" : REQUIREMENT_SHORT[m.requirement];
@@ -115,8 +116,15 @@ export function Majors({ posting: p, major }: { posting: Posting; major: Major |
     <VStack gap={1.5}>
       <HStack gap={2} align="center">
         <Text weight="semibold">전공 상세</Text>
-        {fit !== "none" && <Badge variant={fit === "other" ? "neutral" : "green"} label={MAJOR_FIT_LABELS[fit]} />}
+        {p.classificationStale ? (
+          <Badge variant="warning" label={MAJOR_FIT_LABELS.stale} />
+        ) : (
+          fit !== "none" && <Badge variant={fit === "other" ? "neutral" : "green"} label={MAJOR_FIT_LABELS[fit]} />
+        )}
       </HStack>
+      {p.classificationStale && (
+        <Text type="supporting">원문이 바뀌어 재분류 중입니다. 지원 가능 전공을 아래 원문에서 확인해 주세요.</Text>
+      )}
       {fit === "adjacent" && (
         <Text type="supporting">
           내 전공과 같은 분야의 전공을 대상으로 하는 공고입니다. 관련 전공으로 지원할 수 있는지 자격사항이나 담당자에게

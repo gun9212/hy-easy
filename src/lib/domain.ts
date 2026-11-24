@@ -84,18 +84,21 @@ export const classificationOutputSchema = z
   .strict();
 export type ClassificationOutput = z.infer<typeof classificationOutputSchema>;
 
-export type MajorFit = "required" | "preferred" | "adjacent" | "related" | "other" | "none";
+export type MajorFit = "required" | "preferred" | "adjacent" | "related" | "stale" | "other" | "none";
 export const MAJOR_FIT_LABELS: Record<Exclude<MajorFit, "none">, string> = {
   required: "내 전공 지원 대상",
   preferred: "내 전공 우대",
   adjacent: "비슷한 전공 대상",
   related: "내 전공 관련 업무",
+  stale: "원문 확인 필요",
   other: "다른 전공 대상",
 };
 /** How a student's major fits a posting. "none" means nothing to say (no major chosen or no data). */
 export function majorFit(posting: Posting, major: Major | null): MajorFit {
   const m = posting.classification?.majors;
   if (!major || !m) return "none";
+  // Source text changed since classification: keep the posting visible until re-classified instead of hiding by stale majors.
+  if (posting.classificationStale) return "stale";
   if (m.requirement === "listed" && m.required.includes(major)) return "required";
   if (m.preferred.includes(major)) return "preferred";
   // Restricted to majors in the student's field (e.g. 컴퓨터소프트웨어학부 for 정보공학전공): often open as 관련 전공.

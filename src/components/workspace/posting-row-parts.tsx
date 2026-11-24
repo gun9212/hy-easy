@@ -52,7 +52,14 @@ export function DeadlineBadge({
 export function MajorFitBadge({ posting, major }: { posting: Posting; major: Major | null }) {
   const fit = majorFit(posting, major);
   if (fit === "none") return null;
-  const variant = fit === "other" ? "neutral" : fit === "required" || fit === "preferred" ? "green" : "teal";
+  const variant =
+    fit === "stale"
+      ? "warning"
+      : fit === "other"
+        ? "neutral"
+        : fit === "required" || fit === "preferred"
+          ? "green"
+          : "teal";
   return <Badge variant={variant} label={MAJOR_FIT_LABELS[fit]} />;
 }
 

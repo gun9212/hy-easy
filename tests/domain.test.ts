@@ -307,6 +307,30 @@ describe("majorFit", () => {
     assert.deepEqual(ids({ others: "true" }).sort(), ["any", "listed"]);
     assert.deepEqual(ids({}, null).sort(), ["any", "listed"]);
   });
+  it("원문 변경으로 분류가 오래된 공고는 재분류 전까지 숨기지 않고 원문 확인 필요로 표시", () => {
+    const open = { ...base, recruitment: "open" as const, deadline: { ...base.deadline, at: null, date: null } };
+    const stale = {
+      ...open,
+      id: "stale-listed",
+      classificationStale: true,
+      classification: {
+        ...base.classification!,
+        majors: { requirement: "listed" as const, required: ["경영학부" as const], preferred: [], related: [] },
+      },
+    };
+    assert.equal(majorFit(stale, "철학과"), "stale");
+    assert.equal(majorFit(stale, "경영학부"), "stale");
+    // Student whose major was newly added to the source still sees the posting in the default list until re-classified.
+    assert.deepEqual(
+      filterPostings([stale], {}, [], "철학과").map(p => p.id),
+      ["stale-listed"],
+    );
+    // Once re-classified (no longer stale), normal major hiding resumes.
+    assert.deepEqual(
+      filterPostings([{ ...stale, classificationStale: false }], {}, [], "철학과").map(p => p.id),
+      [],
+    );
+  });
   it("전공을 고르지 않았거나 전공 정보가 없으면 표시하지 않음", () => {
     assert.equal(majorFit(base, null), "none");
     assert.equal(
