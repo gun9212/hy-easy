@@ -1,6 +1,7 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import { sameOrigin, HttpError } from "../src/lib/auth";
+import { performLogout, supabaseAuthCookieNames } from "../src/lib/auth-cookies";
 import { GET } from "../src/app/api/postings/route";
 import { DELETE as deleteApplication } from "../src/app/api/applications/[id]/route";
 import { POST as logout } from "../src/app/auth/logout/route";
@@ -59,4 +60,62 @@ it("교차 출처 로그아웃과 지원 삭제는 거절", async () => {
     { params: Promise.resolve({ id: "00000000-0000-4000-8000-000000000001" }) },
   );
   assert.equal(deleteResponse.status, 403);
+});
+it("인증 서버 토큰 철회가 실패해도 세션 쿠키와 청크를 모두 만료시키고 실패를 별도로 기록", async () => {
+  const loggedCodes: string[] = [];
+  let localFallbackCalled = false;
+  const response = await performLogout(
+    new Request("https://hy-easy.vercel.app/auth/logout", {
+      method: "POST",
+      headers: {
+        origin: "https://hy-easy.vercel.app",
+        cookie:
+          "hy_theme=dark; sb-projref-auth-token.0=chunk0-secret; sb-projref-auth-token.1=chunk1-secret; sb-projref-auth-token-code-verifier=pkce",
+      },
+    }),
+    {
+      isConfigured: () => true,
+      supabaseUrl: () => "https://projref.supabase.co",
+      createClient: async () => ({
+        auth: {
+          signOut: async options => {
+            if (options?.scope === "local") {
+              localFallbackCalled = true;
+              throw new Error("local signOut failed");
+            }
+            return { error: { status: 503, message: "auth server down chunk0-secret" } };
+          },
+        },
+      }),
+      readJarCookieNames: async () => ["sb-projref-auth-token.2"],
+      logRevocationFailure: code => loggedCodes.push(code),
+    },
+  );
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "https://hy-easy.vercel.app/login");
+  assert.equal(response.headers.get("cache-control"), "private, no-store");
+  assert.equal(localFallbackCalled, true);
+  assert.deepEqual(loggedCodes, ["HTTP_503"]);
+
+  const setCookies = response.headers.getSetCookie();
+  const expiredNames = setCookies.map(line => line.split("=")[0]);
+  for (const name of [
+    "sb-projref-auth-token",
+    "sb-projref-auth-token-code-verifier",
+    "sb-projref-auth-token.0",
+    "sb-projref-auth-token.1",
+    "sb-projref-auth-token.2",
+  ]) {
+    assert.ok(expiredNames.includes(name), `expected ${name} to be expired`);
+    const header = setCookies.find(line => line.startsWith(`${name}=`))!;
+    assert.match(header, /Max-Age=0/);
+    assert.match(header, /Path=\//);
+    assert.match(header, /Secure/);
+    assert.equal(header.includes("chunk0-secret"), false);
+  }
+  assert.equal(expiredNames.includes("hy_theme"), false);
+  assert.deepEqual(
+    supabaseAuthCookieNames(["hy_theme", "sb-abc-auth-token.0", "sb-abc-auth-token.1"], "https://abc.supabase.co"),
+    ["sb-abc-auth-token", "sb-abc-auth-token-code-verifier", "sb-abc-auth-token.0", "sb-abc-auth-token.1"],
+  );
 });
