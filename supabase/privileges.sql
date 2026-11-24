@@ -3,6 +3,8 @@
 -- across all migrations. Safe to re-run; keep in sync with supabase/migrations/*.sql (checked by CI).
 begin;
 
+-- Reset schema privileges so PUBLIC, anon, and authenticated cannot CREATE objects in public.
+revoke all on schema public from public, anon, authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
 
 -- Clear default PUBLIC/role privileges first so no table, sequence, or SECURITY DEFINER function

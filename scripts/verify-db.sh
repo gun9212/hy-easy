@@ -80,6 +80,13 @@ psql -v ON_ERROR_STOP=1 "$DB_URL" -f "$ROOT_DIR/supabase/privileges.sql" >/dev/n
 psql -v ON_ERROR_STOP=1 "$DB_URL" -f "$ROOT_DIR/tests/database-privileges.sql"
 psql -v ON_ERROR_STOP=1 "$DB_URL" -f "$ROOT_DIR/tests/database-policies.sql"
 
+echo "Testing atomic public restore (backup/restore-public.sh)..."
+DB_URL="$DB_URL" PUBLIC_DUMP="$WORK/public.dump" \
+  PRIVILEGES_SQL="$ROOT_DIR/supabase/privileges.sql" \
+  PRIVILEGES_TEST_SQL="$ROOT_DIR/tests/database-privileges.sql" \
+  sh "$ROOT_DIR/backup/restore-public.sh"
+psql -v ON_ERROR_STOP=1 "$DB_URL" -f "$ROOT_DIR/tests/database-policies.sql" >/dev/null
+
 echo "Testing single-snapshot backup (backup/run.sh) and strict restore drill (backup/restore-test.sh)..."
 psql -v ON_ERROR_STOP=1 "$DB_URL" >/dev/null <<'SQL'
 insert into auth.users(id, email, email_confirmed_at) values
