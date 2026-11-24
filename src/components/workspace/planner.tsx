@@ -295,11 +295,13 @@ function History({ postings, applications, remove }: Pick<Props, "postings" | "a
 
 export function Planner({ postings, applications, record, remove, now, initialPostingId }: Props) {
   // Saved applications can arrive after the first render (demo storage, live data). Keying the form on the active
-  // application or requested posting resets its fields whenever it loads or changes.
+  // application or requested posting resets its fields whenever it loads or changes. The two panels are siblings, so
+  // each key carries its panel's name: without an active application both were "none:", and React then kept the old
+  // panel next to the new one after the first record.
   const active = applications.find(a => isBlocking(a.status));
   const validInitialId = initialPostingId && postings.some(p => p.id === initialPostingId) ? initialPostingId : null;
-  const statusKey = active ? `${active.postingId}:${active.status}` : `none:${validInitialId ?? ""}`;
-  const scenarioKey = `${active?.postingId ?? "none"}:${validInitialId ?? ""}`;
+  const statusKey = `status:${active ? `${active.postingId}:${active.status}` : `none:${validInitialId ?? ""}`}`;
+  const scenarioKey = `scenario:${active?.postingId ?? "none"}:${validInitialId ?? ""}`;
   return (
     <div className="planner">
       <div className="planner-rule">
