@@ -1,7 +1,6 @@
 "use client";
 
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
-import { Grid } from "@astryxdesign/core/Grid";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import type { Posting } from "@/lib/domain";
@@ -29,27 +28,33 @@ type StatProps = {
 function Stat(props: StatProps): React.ReactElement {
   return (
     <ClickableCard
-      // ClickableCard passes extra props to its outer box, not the button, so the selected state goes in the name.
-      label={`${props.label} ${props.value}건 보기${props.isSelected ? ", 선택됨" : ""}`}
+      // ClickableCard passes extra props to its outer box, not the button, so the selected state and note go in the name.
+      label={`${props.label} ${props.value}건 보기, ${props.note}${props.isSelected ? ", 선택됨" : ""}`}
       onClick={props.onSelect}
-      padding={4}
-      className="lift-card"
+      padding={0}
+      className="lift-card summary-stat-card"
       data-selected={props.isSelected ? "" : undefined}
     >
-      <VStack gap={1.5}>
-        <Text type="supporting">{props.label}</Text>
-        <HStack gap={1} align="end">
-          <span className="stat-value" data-urgent={props.isUrgent && props.value > 0 ? "" : undefined}>
-            <Text type="display-3" weight="bold" hasTabularNumbers>
-              {props.value}
+      <div className="summary-stat-body">
+        <VStack gap={1.5}>
+          <Text type="supporting" maxLines={1}>
+            {props.label}
+          </Text>
+          <HStack gap={1} align="end">
+            <span className="stat-value" data-urgent={props.isUrgent && props.value > 0 ? "" : undefined}>
+              <Text type="display-3" weight="bold" hasTabularNumbers>
+                {props.value}
+              </Text>
+            </span>
+            <Text type="supporting">건</Text>
+          </HStack>
+          <span className="summary-stat-note">
+            <Text type="supporting" maxLines={1}>
+              {props.note}
             </Text>
           </span>
-          <Text type="supporting">건</Text>
-        </HStack>
-        <Text type="supporting" maxLines={1}>
-          {props.note}
-        </Text>
-      </VStack>
+        </VStack>
+      </div>
     </ClickableCard>
   );
 }
@@ -65,7 +70,7 @@ type Props = {
 /** The three counts above the list, as in the demo: open, closing soon (with the first to close) and new today. */
 export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): React.ReactElement {
   return (
-    <Grid columns={{ minWidth: 150, repeat: "fit" }} gap={3}>
+    <div className="summary-cards-grid">
       <Stat
         label="모집 중"
         value={stats.open}
@@ -88,6 +93,6 @@ export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): 
         isSelected={when === "new"}
         onSelect={() => onSelect("new")}
       />
-    </Grid>
+    </div>
   );
 }

@@ -29,6 +29,32 @@
   font-size: var(--stat-value-size);
   font-weight: var(--stat-value-weight);
 }
+.summary-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-sm);
+}
+.summary-stat-card {
+  min-width: 0;
+}
+.summary-stat-body {
+  padding: 16px;
+}
+@media (max-width: 640px) {
+  .summary-cards-grid {
+    gap: 8px;
+  }
+  .summary-stat-body {
+    padding: 10px 8px;
+  }
+  .summary-stat-card .stat-value > * {
+    font-size: 1.25rem;
+    line-height: 1.15;
+  }
+  .summary-stat-note {
+    display: none;
+  }
+}
 
 /* Quiet marks · counts, "신규" and deadlines are text with one tone, not filled pills. */
 .side-count,
