@@ -17,10 +17,14 @@ infra/*.tfstate*
 infra/.terraform/
 infra/*.tfvars
 !infra/example.tfvars
-.claude/settings.local.json
 .vercel
-.hallmark/before*
-.hallmark/before/
+
+# Local tool state and internal working notes (kept on disk, not published).
+.claude/
+.hallmark/
+docs/PLAN.md
+docs/TODO.md
+docs/classification-check.md
 
 # Classification eval sets contain HY-WEP posting snapshots (login-only); keep them local.
 evals/classification-*.json

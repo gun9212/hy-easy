@@ -4,7 +4,7 @@ import { z } from "zod";
 import { MAJOR_REQUIREMENTS, ROLES, type Classification, type Posting } from "../src/lib/domain";
 import { classificationInput, stableHash } from "../src/lib/normalize";
 
-/** Release bar from docs/classification-check.md. */
+/** Release bar: minimum primary-role accuracy before a prompt change ships. */
 export const PRIMARY_ACCURACY_BAR = 0.85;
 /** Below this, secondary roles are inflating the role filter again. */
 export const SECONDARY_PRECISION_BAR = 0.75;
