@@ -11,16 +11,8 @@ import { Text } from "@astryxdesign/core/Text";
 import { ToastViewport, useToast } from "@astryxdesign/core/Toast";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-import {
-  eligibility,
-  formatDate,
-  isBlocking,
-  normalizeFilters,
-  type Application,
-  type Filters,
-  type Posting,
-} from "@/lib/domain";
-import { isClosingSoon } from "@/lib/posting-format";
+import { formatDate, isBlocking, normalizeFilters, type Application, type Filters, type Posting } from "@/lib/domain";
+import { isClosingSoon, isOpenPosting, isUnknownRecruitment } from "@/lib/posting-format";
 import { Comparison } from "./comparison";
 import { AppSideNav, AppTopNav } from "./app-chrome";
 import { FeedbackDialog } from "./feedback-dialog";
@@ -211,7 +203,8 @@ function WorkspaceInner({
 
   const active = personal.applications.find(a => isBlocking(a.status));
   const stats = {
-    open: postings.filter(p => eligibility(p, [], now).status !== "closed").length,
+    open: postings.filter(p => isOpenPosting(p, now)).length,
+    unknown: postings.filter(p => isUnknownRecruitment(p, now)).length,
     closingSoon: postings.filter(p => isClosingSoon(p, now)).length,
     activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
     hasActive: Boolean(active),

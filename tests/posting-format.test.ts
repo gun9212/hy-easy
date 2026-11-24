@@ -5,8 +5,11 @@ import {
   competitionRatio,
   deadlineShort,
   isClosingSoon,
+  isOpenPosting,
+  isUnknownRecruitment,
   matchesWhen,
   nextDeadline,
+  openCardNote,
   postedShort,
   safeHywepUrl,
   stipendParts,
@@ -35,6 +38,31 @@ describe("isClosingSoon / matchesWhen", () => {
     assert.equal(matchesWhen(fresh, "new", NOW), true);
     assert.equal(matchesWhen(old, "new", NOW), false);
     assert.equal(matchesWhen(old, undefined, NOW), true);
+  });
+
+  it("open filter excludes closed and recruitment-status-unknown postings, and openCardNote reflects state", () => {
+    const confirmedOpen = at("2026-11-16", "2026-11-16T09:00:00.000Z", "open");
+    const unknownStatus: Posting = { ...confirmedOpen, id: "unknown", recruitment: "unknown" };
+    const closedStatus: Posting = { ...confirmedOpen, id: "closed", recruitment: "closed" };
+    const expired = at("2026-11-13", "2026-11-13T01:00:00.000Z", "expired");
+
+    assert.equal(isOpenPosting(confirmedOpen, NOW), true);
+    assert.equal(isOpenPosting(unknownStatus, NOW), false);
+    assert.equal(isOpenPosting(closedStatus, NOW), false);
+    assert.equal(isOpenPosting(expired, NOW), false);
+
+    assert.equal(matchesWhen(confirmedOpen, "open", NOW), true);
+    assert.equal(matchesWhen(unknownStatus, "open", NOW), false);
+    assert.equal(isUnknownRecruitment(unknownStatus, NOW), true);
+    assert.equal(isUnknownRecruitment(closedStatus, NOW), false);
+
+    assert.equal(
+      openCardNote({ unknown: 0, activeCompany: null, hasActive: false }),
+      "원문에서 모집 중으로 확인된 공고",
+    );
+    assert.match(openCardNote({ unknown: 3, activeCompany: null, hasActive: false }), /상태 미확인 3건 제외/);
+    assert.match(openCardNote({ unknown: 2, activeCompany: "A사", hasActive: true }), /A사 지원 진행 중/);
+    assert.match(openCardNote({ unknown: 0, activeCompany: null, hasActive: true }), /새 지원 제한/);
   });
 });
 

@@ -3,6 +3,28 @@ import { eligibility, isNewPosting, postedAt, remainingDays, type Posting } from
 /** Days counted as "closing soon" (the summary card, the side-nav shortcut and the orange D-day badge). */
 export const SOON_DAYS = 3;
 
+/** Confirmed open posting whose deadline has not passed (excludes closed and recruitment-status-unknown rows). */
+export function isOpenPosting(posting: Posting, now: Date): boolean {
+  return posting.recruitment === "open" && eligibility(posting, [], now).status !== "closed";
+}
+
+/** Non-closed posting whose recruitment status could not be confirmed from the source text. */
+export function isUnknownRecruitment(posting: Posting, now: Date): boolean {
+  return posting.recruitment === "unknown" && eligibility(posting, [], now).status !== "closed";
+}
+
+/** Subtitle for the "모집 중" summary card, reflecting active-application blocking and unknown-status exclusions. */
+export function openCardNote(stats: { unknown: number; activeCompany: string | null; hasActive: boolean }): string {
+  if (stats.hasActive) {
+    return stats.activeCompany
+      ? `${stats.activeCompany} 지원 진행 중 · 탈락 처리 후 지원 가능`
+      : "진행 중 지원으로 새 지원 제한 · 후보 탐색용";
+  }
+  return stats.unknown > 0
+    ? `모집 확인 공고 · 상태 미확인 ${stats.unknown}건 제외`
+    : "원문에서 모집 중으로 확인된 공고";
+}
+
 export function isClosingSoon(posting: Posting, now: Date): boolean {
   if (eligibility(posting, [], now).status === "closed") return false;
   const days = remainingDays(posting, now);
@@ -15,14 +37,14 @@ export function nextDeadline(postings: readonly Posting[], now: Date): Posting |
   // filter() returns a new array, so sorting it leaves the caller's list alone.
   return (
     postings
-      .filter(p => eligibility(p, [], now).status !== "closed" && key(p) !== null)
+      .filter(p => isOpenPosting(p, now) && key(p) !== null)
       .sort((a, b) => Date.parse(key(a) ?? "") - Date.parse(key(b) ?? ""))[0] ?? null
   );
 }
 
 /** The side-nav shortcuts applied on top of the list filters. */
 export function matchesWhen(posting: Posting, when: string | undefined, now: Date): boolean {
-  if (when === "open") return eligibility(posting, [], now).status !== "closed";
+  if (when === "open") return isOpenPosting(posting, now);
   if (when === "soon") return isClosingSoon(posting, now);
   if (when === "new") return isNewPosting(posting, now);
   return true;

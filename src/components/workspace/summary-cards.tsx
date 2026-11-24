@@ -5,8 +5,15 @@ import { Grid } from "@astryxdesign/core/Grid";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import type { Posting } from "@/lib/domain";
+import { openCardNote } from "@/lib/posting-format";
 
-export type Stats = { open: number; closingSoon: number; activeCompany: string | null; hasActive: boolean };
+export type Stats = {
+  open: number;
+  unknown: number;
+  closingSoon: number;
+  activeCompany: string | null;
+  hasActive: boolean;
+};
 
 type When = "open" | "soon" | "new";
 type StatProps = {
@@ -62,7 +69,7 @@ export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): 
       <Stat
         label="모집 중"
         value={stats.open}
-        note="지금 지원할 수 있는 공고"
+        note={openCardNote(stats)}
         isSelected={when === "open"}
         onSelect={() => onSelect("open")}
       />
