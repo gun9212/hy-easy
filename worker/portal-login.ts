@@ -21,8 +21,14 @@ export type Credentials = { id: string; password: string };
 export type SessionResult = "reused" | "logged_in";
 
 export class LoginFailed extends Error {
-  constructor(reason: string) {
+  /**
+   * False when the failure happened before the password was submitted (the portal could not be reached), so it
+   * says nothing about the password and must not count toward the lockout guard.
+   */
+  readonly credentialsSubmitted: boolean;
+  constructor(reason: string, credentialsSubmitted = true) {
     super(`LOGIN_FAILED: ${reason}`);
+    this.credentialsSubmitted = credentialsSubmitted;
   }
 }
 
@@ -96,7 +102,7 @@ export async function loginWithPassword(page: Page, credentials: Credentials): P
     page.waitForURL(PORTAL_LOGIN, { timeout: LOGIN_TIMEOUT_MS }),
     page.evaluate(STUDENT_LOGIN_SCRIPT),
   ]).catch(() => {
-    throw new LoginFailed("PORTAL_NOT_REACHED");
+    throw new LoginFailed("PORTAL_NOT_REACHED", false);
   });
 
   await page.locator(PORTAL_FORM.id).fill(credentials.id);

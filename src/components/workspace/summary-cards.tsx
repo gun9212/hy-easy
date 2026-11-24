@@ -22,7 +22,8 @@ type StatProps = {
 function Stat(props: StatProps): React.ReactElement {
   return (
     <ClickableCard
-      label={`${props.label} ${props.value}건 보기`}
+      // ClickableCard passes extra props to its outer box, not the button, so the selected state goes in the name.
+      label={`${props.label} ${props.value}건 보기${props.isSelected ? ", 선택됨" : ""}`}
       onClick={props.onSelect}
       padding={4}
       className="lift-card"

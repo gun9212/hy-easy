@@ -303,11 +303,17 @@ try {
     status = "session_expired";
     errorCode = "LOGIN_BLOCKED";
   } else if (e instanceof LoginFailed) {
-    if (credentials) {
+    // Only a submitted password counts: an unreachable portal must not lock out correct credentials.
+    if (credentials && e.credentialsSubmitted) {
       const nextGuard = recordLoginFailure(loginGuard, credentials);
-      await Promise.resolve(db.from("collector_state").upsert({ name: LOGIN_GUARD_STATE, value: nextGuard })).catch(
-        () => undefined,
-      );
+      // Supabase reports write errors in the result instead of rejecting, so check both.
+      const saved = await Promise.resolve(
+        db.from("collector_state").upsert({ name: LOGIN_GUARD_STATE, value: nextGuard }),
+      ).catch((error: unknown) => ({ error }));
+      if (saved.error)
+        console.error(
+          JSON.stringify({ severity: "ERROR", event: "login_guard_save_failed", failures: nextGuard.failures }),
+        );
     }
     status = "session_expired";
     errorCode = "LOGIN_FAILED";

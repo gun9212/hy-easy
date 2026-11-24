@@ -231,6 +231,11 @@ describe("운영자 자동 로그인 자격 증명", () => {
     assert.equal(new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT").message, "LOGIN_FAILED: PORTAL_REJECTED_OR_TIMEOUT");
     assert.equal(new LoginBlocked().message, "LOGIN_BLOCKED");
   });
+  it("포털에 닿지 못한 실패는 비밀번호 제출 전이라 차단 횟수에 세지 않음", () => {
+    assert.equal(new LoginFailed("PORTAL_NOT_REACHED", false).credentialsSubmitted, false);
+    assert.equal(new LoginFailed("PORTAL_REJECTED_OR_TIMEOUT").credentialsSubmitted, true);
+    assert.equal(new LoginFailed("NOT_AUTHENTICATED_AFTER_LOGIN").credentialsSubmitted, true);
+  });
   it("같은 자격 증명이 3회 연속 실패하면 계속 차단하고, 비밀번호가 바뀌면 자동으로 해제", () => {
     const oldCreds = { id: "student", password: "old-password" };
     const newCreds = { id: "student", password: "new-password" };
