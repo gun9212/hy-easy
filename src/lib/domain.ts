@@ -462,8 +462,13 @@ export function filterPostings(
   });
   return rows.sort((a, b) => {
     if (filters.sort === "deadline")
-      return deadlineSortKey(a) - deadlineSortKey(b) || b.firstSeenAt.localeCompare(a.firstSeenAt);
-    if (filters.sort === "stipend") return monthly(b) - monthly(a) || b.firstSeenAt.localeCompare(a.firstSeenAt);
+      return (
+        deadlineSortKey(a) - deadlineSortKey(b) ||
+        b.firstSeenAt.localeCompare(a.firstSeenAt) ||
+        a.id.localeCompare(b.id)
+      );
+    if (filters.sort === "stipend")
+      return monthly(b) - monthly(a) || b.firstSeenAt.localeCompare(a.firstSeenAt) || a.id.localeCompare(b.id);
     return b.firstSeenAt.localeCompare(a.firstSeenAt) || a.id.localeCompare(b.id);
   });
 }
