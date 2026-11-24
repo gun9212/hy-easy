@@ -1,4 +1,4 @@
-import { eligibility, isNewPosting, postedAt, remainingDays, type Posting } from "./domain";
+import { eligibility, isNewPosting, postedAt, remainingDays, type ApplicationStatus, type Posting } from "./domain";
 
 /** Days counted as "closing soon" (the summary card, the side-nav shortcut and the orange D-day badge). */
 export const SOON_DAYS = 3;
@@ -14,11 +14,20 @@ export function isUnknownRecruitment(posting: Posting, now: Date): boolean {
 }
 
 /** Subtitle for the "모집 중" summary card, reflecting active-application blocking and unknown-status exclusions. */
-export function openCardNote(stats: { unknown: number; activeCompany: string | null; hasActive: boolean }): string {
+export function openCardNote(stats: {
+  unknown: number;
+  activeCompany: string | null;
+  hasActive: boolean;
+  activeStatus?: ApplicationStatus | null;
+}): string {
   if (stats.hasActive) {
-    return stats.activeCompany
-      ? `${stats.activeCompany} 지원 진행 중 · 탈락 처리 후 지원 가능`
-      : "진행 중 지원으로 새 지원 제한 · 후보 탐색용";
+    const company = stats.activeCompany;
+    // Only a pending application frees up after HY-WEP's rejection; an accepted or unconfirmed one needs a check first.
+    if (stats.activeStatus === "accepted")
+      return company ? `${company} 합격 · 다음 지원은 지원팀 확인 필요` : "합격 상태 · 다음 지원은 지원팀 확인 필요";
+    if (stats.activeStatus === "unknown")
+      return company ? `${company} 지원 상태 확인 필요` : "진행 중 지원 상태 확인 필요";
+    return company ? `${company} 지원 진행 중 · 탈락 처리 후 지원 가능` : "진행 중 지원으로 새 지원 제한 · 후보 탐색용";
   }
   return stats.unknown > 0
     ? `모집 확인 공고 · 상태 미확인 ${stats.unknown}건 제외`

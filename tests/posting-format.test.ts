@@ -63,6 +63,17 @@ describe("isClosingSoon / matchesWhen", () => {
     assert.match(openCardNote({ unknown: 3, activeCompany: null, hasActive: false }), /상태 미확인 3건 제외/);
     assert.match(openCardNote({ unknown: 2, activeCompany: "A사", hasActive: true }), /A사 지원 진행 중/);
     assert.match(openCardNote({ unknown: 0, activeCompany: null, hasActive: true }), /새 지원 제한/);
+    // Accepted or unconfirmed applications are not released by a rejection, so the note must not promise that.
+    const accepted = openCardNote({ unknown: 0, activeCompany: "A사", hasActive: true, activeStatus: "accepted" });
+    assert.match(accepted, /A사 합격/);
+    assert.doesNotMatch(accepted, /탈락 처리 후/);
+    const unconfirmed = openCardNote({ unknown: 0, activeCompany: "A사", hasActive: true, activeStatus: "unknown" });
+    assert.match(unconfirmed, /상태 확인 필요/);
+    assert.doesNotMatch(unconfirmed, /탈락 처리 후/);
+    assert.match(
+      openCardNote({ unknown: 0, activeCompany: "A사", hasActive: true, activeStatus: "rejection_pending" }),
+      /탈락 처리 후 지원 가능/,
+    );
   });
 });
 

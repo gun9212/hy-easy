@@ -215,6 +215,7 @@ function WorkspaceInner({
     unknown: postings.filter(p => isUnknownRecruitment(p, now)).length,
     closingSoon: postings.filter(p => isClosingSoon(p, now)).length,
     activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
+    activeStatus: active?.status ?? null,
     hasActive: Boolean(active),
   };
   const lastChecked =

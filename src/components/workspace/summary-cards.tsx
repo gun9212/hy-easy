@@ -3,7 +3,7 @@
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import type { Posting } from "@/lib/domain";
+import type { ApplicationStatus, Posting } from "@/lib/domain";
 import { openCardNote } from "@/lib/posting-format";
 
 export type Stats = {
@@ -11,6 +11,7 @@ export type Stats = {
   unknown: number;
   closingSoon: number;
   activeCompany: string | null;
+  activeStatus: ApplicationStatus | null;
   hasActive: boolean;
 };
 
