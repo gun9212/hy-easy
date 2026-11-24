@@ -29,6 +29,24 @@
   font-size: var(--stat-value-size);
   font-weight: var(--stat-value-weight);
 }
+/* Postings as cards until the list itself is wide enough for the table's columns (their minimum widths in
+   postings-table.tsx add up to about 1,020px with the bookmark column). Below that the table hid columns off
+   to the right, the bookmark first. Both are rendered; display: none keeps the hidden one out of tab order and
+   the accessibility tree. */
+.posting-results {
+  container-type: inline-size;
+}
+.posting-results-table {
+  display: none;
+}
+@container (width >= 1024px) {
+  .posting-results-cards {
+    display: none;
+  }
+  .posting-results-table {
+    display: block;
+  }
+}
 .summary-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

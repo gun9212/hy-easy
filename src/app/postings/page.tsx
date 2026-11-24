@@ -5,6 +5,7 @@ import { loadPersonal } from "@/lib/data";
 import { normalizeFilters } from "@/lib/domain";
 import { isMajor } from "@/lib/majors";
 import { readThemeMode } from "@/lib/theme-cookie";
+import { isPhoneRequest } from "@/lib/device";
 export const dynamic = "force-dynamic";
 export default async function Postings({
   searchParams,
@@ -40,6 +41,7 @@ export default async function Postings({
       userLabel={ctx.user.email?.split("@")[0] ?? "한양인"}
       isAdmin={Boolean(admin.data)}
       initialTheme={await readThemeMode()}
+      initialNarrow={await isPhoneRequest()}
     />
   );
 }
