@@ -4,8 +4,18 @@
 # Env: SUPABASE_DB_URL (live, read-only use), DUMP_DIR (folder with public.dump and auth.dump).
 set -eu
 : "${SUPABASE_DB_URL:?}" "${DUMP_DIR:?}"
+SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+PRIVILEGES_SQL="${PRIVILEGES_SQL:-$SCRIPT_DIR/../supabase/privileges.sql}"
+PRIVILEGES_TEST_SQL="${PRIVILEGES_TEST_SQL:-$SCRIPT_DIR/../tests/database-privileges.sql}"
+[ -f "$PRIVILEGES_SQL" ] || { echo "Missing PRIVILEGES_SQL: $PRIVILEGES_SQL" >&2; exit 1; }
+[ -f "$PRIVILEGES_TEST_SQL" ] || { echo "Missing PRIVILEGES_TEST_SQL: $PRIVILEGES_TEST_SQL" >&2; exit 1; }
 
 PGDATA=$(mktemp -d)
+cleanup() {
+  pg_ctl -D "$PGDATA" stop >/dev/null 2>&1 || true
+  rm -rf "$PGDATA"
+}
+trap cleanup EXIT
 initdb -D "$PGDATA" -U postgres >/dev/null
 pg_ctl -D "$PGDATA" -o "-k /tmp -c listen_addresses=''" -l "$PGDATA/log" start >/dev/null
 LOCAL="host=/tmp user=postgres dbname=postgres"
@@ -18,14 +28,19 @@ SQL
 # auth table definitions come from the live database (schema only), standing in for what Supabase creates.
 pg_dump "$SUPABASE_DB_URL" --schema-only --no-owner --no-privileges --table=auth.users --table=auth.identities |
   sed -e '/^CREATE SCHEMA auth;/d' >"$PGDATA/auth-schema.sql"
-psql -q "$LOCAL" -c 'create schema auth' -c "create function auth.uid() returns uuid language sql stable as \$\$ select null::uuid \$\$"
+psql -q "$LOCAL" -v ON_ERROR_STOP=1 -c 'create schema auth' \
+  -c "create function auth.uid() returns uuid language sql stable as \$\$ select nullif(current_setting('test.uid',true),'')::uuid \$\$"
 psql -q "$LOCAL" -f "$PGDATA/auth-schema.sql" >/dev/null 2>"$PGDATA/auth-schema.err" || true
 grep -c ERROR "$PGDATA/auth-schema.err" | sed 's/^/auth schema errors (types, indexes the drill does not need): /' || true
 
 pg_restore --no-owner --data-only -d "$LOCAL" "$DUMP_DIR/auth.dump"
 # The dump recreates the public schema itself.
-psql -q "$LOCAL" -c "drop schema public cascade"
+psql -q "$LOCAL" -v ON_ERROR_STOP=1 -c "drop schema public cascade"
 pg_restore --no-owner --no-privileges -d "$LOCAL" "$DUMP_DIR/public.dump"
+
+# Re-apply both REVOKE and GRANT rules, then verify anon, authenticated, admin, and service_role permissions.
+psql -v ON_ERROR_STOP=1 "$LOCAL" -f "$PRIVILEGES_SQL"
+psql -v ON_ERROR_STOP=1 "$LOCAL" -f "$PRIVILEGES_TEST_SQL"
 
 COUNT_SQL="select 'auth.users', count(*) from auth.users union all select 'auth.identities', count(*) from auth.identities
   union all select 'postings', count(*) from public.postings union all select 'classifications', count(*) from public.classifications
@@ -38,4 +53,3 @@ cut -d"|" -f2 "$PGDATA/live" | paste -d"|" "$PGDATA/restored" -
 echo "orphan favorites/applications (must be 0):"
 psql -At "$LOCAL" -c "select count(*) from public.favorites f left join auth.users u on u.id = f.user_id where u.id is null" \
   -c "select count(*) from public.applications a left join auth.users u on u.id = a.user_id where u.id is null"
-pg_ctl -D "$PGDATA" stop >/dev/null

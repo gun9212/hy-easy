@@ -26,24 +26,30 @@
    ```
    pg_restore --no-owner --data-only -d "$DB_URL" restore/auth.dump
    ```
-4. **public 스키마 넣기**: 덤프가 스키마를 직접 만들므로 기존 `public`을 비운 뒤 넣습니다(기존 프로젝트라면 되돌릴 수 없으니 주의).
+4. **public 스키마와 권한 넣기**: 덤프가 스키마를 직접 만들므로 기존 `public`을 비운 뒤 넣고, `supabase/privileges.sql`로 역할별 `REVOKE`와 `GRANT`를 모두 되살립니다(기존 프로젝트라면 되돌릴 수 없으니 주의).
    ```
-   psql "$DB_URL" -c 'drop schema public cascade'
+   psql "$DB_URL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
    pg_restore --no-owner --no-privileges -d "$DB_URL" restore/public.dump
+   psql "$DB_URL" -v ON_ERROR_STOP=1 -f supabase/privileges.sql
+   psql "$DB_URL" -v ON_ERROR_STOP=1 -f tests/database-privileges.sql
    ```
-   `--no-privileges`로 넣었으므로 권한(grant)은 마이그레이션 파일의 grant 문을 다시 실행해 맞춥니다.
+   `--no-privileges`로 복구하면 PostgreSQL 기본 권한 때문에 수집기 전용 함수가 `PUBLIC`에 열릴 수 있으므로 `supabase/privileges.sql`에서 먼저 모든 권한을 회수한 뒤 역할별 권한만 다시 부여하고, `tests/database-privileges.sql`로 익명·학생·관리자·수집기 권한을 검증합니다.
 5. **확인**: 학생 계정으로 로그인해 관심 공고와 지원 기록이 보이는지 확인하고, 수집기를 한 번 실행합니다.
 
 `pg_dump`·`pg_restore`는 17 이상이어야 합니다(Supabase가 Postgres 17). 로컬에 없으면 백업 이미지 안에서 실행합니다.
 
 ## 복구 연습
 
-`backup/restore-test.sh`는 백업을 빈 Postgres 17에 넣고, 실제 DB와 행 수를 비교하고, 계정과 끊긴 학생 기록이 없는지 셉니다. 실제 DB는 읽기만 합니다.
+`backup/restore-test.sh`는 백업을 빈 Postgres 17에 넣고, `supabase/privileges.sql` 적용과 `tests/database-privileges.sql` 권한 검증을 거친 뒤 실제 DB와 행 수를 비교하고 계정과 끊긴 학생 기록이 없는지 셉니다. 실제 DB는 읽기만 합니다.
 
 ```
 docker build -t hy-easy-backup backup
 docker run --rm --user postgres -e SUPABASE_DB_URL="$DB_URL" -e DUMP_DIR=/dump \
-  -v "$PWD/restore:/dump:ro" -v "$PWD/backup/restore-test.sh:/restore-test.sh:ro" \
+  -e PRIVILEGES_SQL=/privileges.sql -e PRIVILEGES_TEST_SQL=/database-privileges.sql \
+  -v "$PWD/restore:/dump:ro" \
+  -v "$PWD/backup/restore-test.sh:/restore-test.sh:ro" \
+  -v "$PWD/supabase/privileges.sql:/privileges.sql:ro" \
+  -v "$PWD/tests/database-privileges.sql:/database-privileges.sql:ro" \
   --entrypoint sh hy-easy-backup /restore-test.sh
 ```
 
