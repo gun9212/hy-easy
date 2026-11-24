@@ -7,5 +7,16 @@ gha-creds-*.json
 **/gha-creds-*.json
 demos
 output
+evals
+evals/classification-*.json
+restore
+restore/**
+*.dump
+**/*.dump
 .vercel
 infra
+.claude
+.hallmark
+.playwright-cli
+.DS_Store
+docs
