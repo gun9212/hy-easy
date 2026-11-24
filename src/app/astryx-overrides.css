@@ -39,6 +39,18 @@
 .posting-results-table {
   display: none;
 }
+/* Between a phone and the table width (laptops around 1,280px), one card stretched across the whole list left
+   most of each row empty; two columns fill it. */
+@container (width >= 640px) {
+  .posting-results-cards > * {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .posting-results-cards > * > * {
+    height: 100%;
+  }
+}
 @container (width >= 1024px) {
   .posting-results-cards {
     display: none;
