@@ -80,6 +80,7 @@ type State = z.infer<typeof stateSchema>;
 let checked = 0,
   changed = 0,
   detailsRead = 0,
+  detailFailed = 0,
   status = "success",
   errorCode: string | null = null,
   leaseLost = false;
@@ -157,6 +158,16 @@ try {
         if (result.data) changed++;
       } catch (e) {
         if (e instanceof SessionExpired || leaseLost) throw e;
+        detailFailed++;
+        // Structured log line: Cloud Monitoring distinguishes repeated detail failures from normal CHECKPOINT_SAVED runs.
+        console.error(
+          JSON.stringify({
+            severity: "ERROR",
+            event: "detail_read_failed",
+            sourceId: link.id,
+            message: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200),
+          }),
+        );
         status = "partial";
         errorCode = "DETAIL_READ_FAILED";
       }
@@ -335,6 +346,7 @@ try {
       checked,
       changed,
       detailsRead,
+      detailFailed,
       elapsedSec: Math.round((Date.now() - startedAt) / 1000),
       errorCode,
       recorded: !final.error,

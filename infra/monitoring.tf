@@ -30,6 +30,27 @@ resource "google_logging_metric" "collector_runs" {
   depends_on       = [google_project_service.api]
 }
 
+resource "google_logging_metric" "detail_read_failed" {
+  name   = "hy_easy_detail_read_failed"
+  filter = "${local.job_filter} AND jsonPayload.event = \"detail_read_failed\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  depends_on = [google_project_service.api]
+}
+
+# Distinguishes degraded partial runs (DETAIL_READ_FAILED) from normal time-sliced runs (CHECKPOINT_SAVED).
+resource "google_logging_metric" "collector_detail_degraded" {
+  name   = "hy_easy_collector_detail_degraded"
+  filter = "${local.job_filter} AND jsonPayload.status = \"partial\" AND jsonPayload.errorCode = \"DETAIL_READ_FAILED\""
+  metric_descriptor {
+    metric_kind = "DELTA"
+    value_type  = "INT64"
+  }
+  depends_on = [google_project_service.api]
+}
+
 resource "google_monitoring_notification_channel" "operator" {
   display_name = "HY-Easy operator"
   type         = "email"
@@ -55,6 +76,34 @@ resource "google_monitoring_alert_policy" "collector_failing" {
       }
     }
   }
+  conditions {
+    display_name = "30분 안에 상세 조회 실패가 3회 이상 실행에서 반복"
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_job\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.collector_detail_degraded.name}\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 2
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "1800s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
+  conditions {
+    display_name = "1시간 안에 공고 상세 조회 실패 10건 이상"
+    condition_threshold {
+      filter          = "resource.type = \"cloud_run_job\" AND metric.type = \"logging.googleapis.com/user/${google_logging_metric.detail_read_failed.name}\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 9
+      duration        = "0s"
+      aggregations {
+        alignment_period     = "3600s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_SUM"
+      }
+    }
+  }
   alert_strategy {
     auto_close           = "3600s"
     notification_prompts = ["OPENED", "CLOSED"]
@@ -62,9 +111,10 @@ resource "google_monitoring_alert_policy" "collector_failing" {
   documentation {
     mime_type = "text/markdown"
     content   = <<-EOT
-      HY-Easy 수집기가 연속으로 실패하고 있습니다. https://hy-easy.vercel.app/admin 의 "최근 수집 실행"에서 오류 코드를 확인하세요.
+      HY-Easy 수집기가 연속으로 실패하거나 공고 상세 조회 오류가 반복되고 있습니다. https://hy-easy.vercel.app/admin 의 "최근 수집 실행"에서 오류 코드를 확인하세요.
       - LOGIN_FAILED / LOGIN_BLOCKED / SESSION_EXPIRED: 포털 비밀번호가 바뀌었는지 확인하고 Secret Manager 값을 갱신합니다(scripts/push-secrets.sh).
       - COLLECTION_FAILED: HY-WEP 화면 구조가 바뀌었을 수 있습니다. Cloud Run 작업 로그의 collection_failed 메시지를 개발자에게 전달하세요.
+      - DETAIL_READ_FAILED: 정상적인 시간 분할(CHECKPOINT_SAVED)이 아니라 공고 상세 화면 읽기가 반복 실패하고 있습니다. Cloud Run 작업 로그의 detail_read_failed 메시지를 확인하세요.
     EOT
   }
   depends_on = [google_project_service.api]

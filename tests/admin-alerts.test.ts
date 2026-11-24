@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { failedStreak } from "../src/components/admin/admin-alerts";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { detailFailureStreak, failedStreak } from "../src/components/admin/admin-alerts";
 import type { Run } from "../src/components/admin/admin-tables";
 
 const run = (status: string, error_code: string | null = null): Run => ({
@@ -39,4 +41,30 @@ test("keeps counting streak when automatic login is blocked", () => {
     run("session_expired", "LOGIN_FAILED"),
   ];
   assert.deepEqual(failedStreak(runs), { count: 4, errorCode: "LOGIN_BLOCKED" });
+});
+
+test("counts consecutive DETAIL_READ_FAILED partial runs while ignoring normal CHECKPOINT_SAVED runs", () => {
+  const degraded = [
+    run("running"),
+    run("partial", "DETAIL_READ_FAILED"),
+    run("skipped"),
+    run("partial", "DETAIL_READ_FAILED"),
+    run("partial", "DETAIL_READ_FAILED"),
+    run("partial", "CHECKPOINT_SAVED"),
+    run("partial", "DETAIL_READ_FAILED"),
+  ];
+  assert.equal(detailFailureStreak(degraded), 3);
+
+  const normalCheckpoint = [
+    run("partial", "CHECKPOINT_SAVED"),
+    run("partial", "DETAIL_READ_FAILED"),
+    run("partial", "DETAIL_READ_FAILED"),
+    run("partial", "DETAIL_READ_FAILED"),
+  ];
+  assert.equal(detailFailureStreak(normalCheckpoint), 0);
+
+  const tf = readFileSync(path.join(process.cwd(), "infra", "monitoring.tf"), "utf8");
+  assert.match(tf, /hy_easy_detail_read_failed/);
+  assert.match(tf, /hy_easy_collector_detail_degraded/);
+  assert.match(tf, /DETAIL_READ_FAILED/);
 });
