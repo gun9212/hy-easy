@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowLeft, ArrowRight, GitCompareArrows, Plus, X } from "lucide-react";
@@ -13,10 +14,21 @@ import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import type { Posting } from "@/lib/domain";
 import { DEMO_NOW, samplePostings } from "@/lib/sample";
-import { ComparisonTable } from "./workspace/comparison";
 import { LayoutProvider } from "./workspace/layout-context";
-import { PostingDetail } from "./workspace/posting-detail";
 import { PostingResults } from "./workspace/posting-results";
+
+// Loaded on first open so /login does not ship detail/comparison code before the user interacts with them.
+const ComparisonTable = dynamic(() => import("./workspace/comparison").then(mod => mod.ComparisonTable), {
+  ssr: false,
+  loading: () => (
+    <Text type="supporting" role="status">
+      비교 표를 불러오는 중…
+    </Text>
+  ),
+});
+const PostingDetail = dynamic(() => import("./workspace/posting-detail").then(mod => mod.PostingDetail), {
+  ssr: false,
+});
 
 const PREVIEW_NOW = new Date(DEMO_NOW);
 // Four fictional postings (A사–D사) sorted by deadline, matching the workspace's default view.
