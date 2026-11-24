@@ -15,7 +15,12 @@ export type QueueItem = { posting_id: string; attempts: number; last_error: stri
 export type Version = { posting_id: string; captured_at: string };
 /** What the tables need to name a posting. */
 export type PostingName = Pick<Posting, "id" | "company" | "title">;
-export type Audit = { posting_id: string; edited_at: string; result: { primaryRole?: unknown } };
+export type Audit = {
+  posting_id: string;
+  edited_at: string;
+  editor_id?: string | null;
+  result: { primaryRole?: unknown };
+};
 
 export const RUN_STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "plain" }> = {
   running: { label: "실행 중", tone: "plain" },

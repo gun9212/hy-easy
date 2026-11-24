@@ -170,5 +170,19 @@ reset role;
 set local role anon;
 do $$ begin begin perform public.admin_ai_cost_monthly(6); raise exception 'anonymous ai cost monthly unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
+
+-- Account deletion with classification edit history: succeeds, clears personal rows, preserves overrides and audit trail.
+delete from auth.users where id = '00000000-0000-4000-8000-000000000001';
+select pg_temp.assert((select count(*)=0 from public.admins where user_id='00000000-0000-4000-8000-000000000001'),'deleted editor removed from admins');
+select pg_temp.assert((select count(*)=0 from public.favorites where user_id='00000000-0000-4000-8000-000000000001'),'deleted editor favorites removed');
+select pg_temp.assert((select count(*)=0 from public.applications where user_id='00000000-0000-4000-8000-000000000001'),'deleted editor applications removed');
+select pg_temp.assert((select count(*)=0 from public.application_events where user_id='00000000-0000-4000-8000-000000000001'),'deleted editor application events removed');
+select pg_temp.assert((select count(*)=0 from public.activity_days where user_id='00000000-0000-4000-8000-000000000001'),'deleted editor activity days removed');
+select pg_temp.assert((select count(*)=1 and bool_and(editor_id is null) from public.classification_overrides),'classification override preserved with null editor_id');
+select pg_temp.assert((select count(*)=1 and bool_and(editor_id is null) from public.classification_audit),'classification audit preserved with null editor_id');
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+select pg_temp.assert((select document->>'classificationSource'='admin' and document->'classification'->>'summary'='manual' from public.posting_view where document->>'sourceId'='one'),'students still see preserved manual override after editor account deletion');
+reset role;
 rollback;
 select 'Database security and collection assertions passed' as result;
