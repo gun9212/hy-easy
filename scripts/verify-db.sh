@@ -83,15 +83,28 @@ psql -v ON_ERROR_STOP=1 "$DB_URL" -f "$ROOT_DIR/tests/database-policies.sql"
 echo "Testing single-snapshot backup (backup/run.sh) and strict restore drill (backup/restore-test.sh)..."
 psql -v ON_ERROR_STOP=1 "$DB_URL" >/dev/null <<'SQL'
 insert into auth.users(id, email, email_confirmed_at) values
-  ('00000000-0000-4000-8000-000000000001', 'student@hanyang.ac.kr', now());
+  ('00000000-0000-4000-8000-000000000001', 'student@hanyang.ac.kr', now()),
+  ('00000000-0000-4000-8000-000000000002', 'kept-admin@hanyang.ac.kr', now()),
+  ('00000000-0000-4000-8000-000000000003', 'revoked-admin@hanyang.ac.kr', now());
 insert into auth.identities(user_id, provider, identity_data) values
-  ('00000000-0000-4000-8000-000000000001', 'google', '{"email":"student@hanyang.ac.kr","email_verified":true}'::jsonb);
-insert into public.admins(user_id) values ('00000000-0000-4000-8000-000000000001');
+  ('00000000-0000-4000-8000-000000000001', 'google', '{"email":"student@hanyang.ac.kr","email_verified":true}'::jsonb),
+  ('00000000-0000-4000-8000-000000000002', 'google', '{"email":"kept-admin@hanyang.ac.kr","email_verified":true}'::jsonb),
+  ('00000000-0000-4000-8000-000000000003', 'google', '{"email":"revoked-admin@hanyang.ac.kr","email_verified":true}'::jsonb);
+insert into public.admins(user_id) values
+  ('00000000-0000-4000-8000-000000000001'),
+  ('00000000-0000-4000-8000-000000000002'),
+  ('00000000-0000-4000-8000-000000000003');
 select public.sync_posting(
   '{"sourceId":"drill-1","company":"Drill Co","title":"Backend Intern","tasks":"SQL","recruitment":"open"}'::jsonb,
   'drill-hash-1',
   'drill-class-1'
 );
+insert into public.classification_overrides(posting_id, result, input_hash, editor_id)
+  select id, '{"primaryRole":"개발"}'::jsonb, 'drill-class-1', '00000000-0000-4000-8000-000000000001'
+  from public.postings where source_id = 'drill-1';
+insert into public.classification_audit(posting_id, result, editor_id)
+  select id, '{"primaryRole":"개발"}'::jsonb, '00000000-0000-4000-8000-000000000001'
+  from public.postings where source_id = 'drill-1';
 insert into public.favorites(user_id, posting_id)
   select '00000000-0000-4000-8000-000000000001', id from public.postings where source_id = 'drill-1';
 insert into public.feedback(message, page) values ('복구 연습 피드백', '/postings');
@@ -117,3 +130,32 @@ if DUMP_DIR="$DRILL_DIR" AUTH_SCHEMA_SQL="$ROOT_DIR/tests/database-bootstrap.sql
 fi
 mv "$WORK/manifest.orig.json" "$DRILL_DIR/manifest.json"
 echo "Confirmed: restore-test.sh exits non-zero on snapshot count mismatch."
+
+echo "Testing post-backup account deletion and admin revocation replay (backup/reconcile-restore.sh)..."
+cat >"$WORK/post-backup-changes.json" <<'JSON'
+[
+  { "at": "2020-01-01T00:00:00Z", "action": "revoke_admin", "userId": "00000000-0000-4000-8000-000000000002" },
+  { "at": "2099-01-01T00:00:00Z", "action": "revoke_admin", "userId": "00000000-0000-4000-8000-000000000003" },
+  { "at": "2099-01-01T01:00:00Z", "action": "delete_user", "userId": "00000000-0000-4000-8000-000000000001" }
+]
+JSON
+MANIFEST="$DRILL_DIR/manifest.json" LEDGER="$WORK/post-backup-changes.json" \
+  sh "$ROOT_DIR/backup/reconcile-restore.sh" --dry-run
+DB_URL="$DB_URL" MANIFEST="$DRILL_DIR/manifest.json" LEDGER="$WORK/post-backup-changes.json" \
+  sh "$ROOT_DIR/backup/reconcile-restore.sh"
+psql -v ON_ERROR_STOP=1 "$DB_URL" >/dev/null <<'SQL'
+do $$ begin
+  if (select count(*) from public.admins) <> 1
+    or not exists (select 1 from public.admins where user_id = '00000000-0000-4000-8000-000000000002') then
+    raise exception 'Expected only pre-backup admin 00000000-0000-4000-8000-000000000002 to remain';
+  end if;
+  if exists (select 1 from auth.users where id = '00000000-0000-4000-8000-000000000001') then
+    raise exception 'Expected post-backup deleted user to be removed';
+  end if;
+  if (select count(*) from public.classification_overrides where editor_id is null) <> 1
+    or (select count(*) from public.classification_audit where editor_id is null) <> 1 then
+    raise exception 'Expected classification override and audit to be preserved with null editor_id';
+  end if;
+end $$;
+SQL
+echo "Confirmed: reconcile-restore.sh replays post-backup deletions and admin revocations while preserving overrides/audit."

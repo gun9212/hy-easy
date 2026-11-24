@@ -35,7 +35,15 @@
    psql "$DB_URL" -v ON_ERROR_STOP=1 -f tests/database-privileges.sql
    ```
    `--no-privileges`로 복구하면 PostgreSQL 기본 권한 때문에 수집기 전용 함수가 `PUBLIC`에 열릴 수 있으므로 `supabase/privileges.sql`에서 먼저 모든 권한을 회수한 뒤 역할별 권한만 다시 부여하고, `tests/database-privileges.sql`로 익명·학생·관리자·수집기 권한을 검증합니다.
-5. **확인**: 학생 계정으로 로그인해 관심 공고와 지원 기록이 보이는지 확인하고, 수집기를 한 번 실행합니다.
+5. **백업 이후 삭제·관리자 해제 재반영**: 백업 시점(`restore/manifest.json`의 `createdAt`) 이후 처리한 계정 삭제와 관리자 권한 해제는 복구된 덤프에 되살아나 있으므로, 서비스 재개 전에 DB 외부에 별도 보관한 운영 변경 이력(`post-backup-changes.json`, UUID와 UTC 시각만 기록)과 대조해 다시 적용합니다.
+   ```
+   MANIFEST=restore/manifest.json LEDGER=./post-backup-changes.json \
+     sh backup/reconcile-restore.sh --dry-run
+   DB_URL="$DB_URL" MANIFEST=restore/manifest.json LEDGER=./post-backup-changes.json \
+     sh backup/reconcile-restore.sh
+   ```
+   분류 편집 이력이 있던 계정을 삭제해도 `classification_overrides`와 `classification_audit`의 `editor_id`만 `NULL`로 바뀌고 보정 결과와 감사 이력은 유지됩니다. 평상시 계정 삭제나 관리자 권한 해제를 처리할 때마다 DB 외부의 비공개 저장소(예: 별도 운영 버킷 또는 로컬 암호화 보관소)에 `{ "at": "<UTC ISO-8601>", "action": "delete_user" | "revoke_admin", "userId": "<UUID>" }` 항목을 추가해 둡니다.
+6. **확인**: 학생 계정으로 로그인해 관심 공고와 지원 기록이 보이는지 확인하고, 수집기를 한 번 실행합니다.
 
 `pg_dump`·`pg_restore`는 17 이상이어야 합니다(Supabase가 Postgres 17). 로컬에 없으면 백업 이미지 안에서 실행합니다.
 
