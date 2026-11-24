@@ -42,6 +42,8 @@ type Props = {
   isAdmin: boolean;
   /** The theme the student picked, from the cookie (the layout already put it on <html>). */
   initialTheme: ThemeMode;
+  /** The server's guess from the request (a phone), so the first HTML already has the folded phone layout. */
+  initialNarrow: boolean;
 };
 
 const MAX_COMPARE = 4;
@@ -92,6 +94,7 @@ function WorkspaceInner({
   initialMajor,
   userLabel,
   isAdmin,
+  initialNarrow,
   theme,
   onTheme,
 }: InnerProps) {
@@ -260,7 +263,7 @@ function WorkspaceInner({
           }}
         />
       }
-      mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu }}
+      mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu, defaultIsMobile: initialNarrow }}
       contentPadding={5}
     >
       <VStack gap={4} className={selected.length ? "has-compare-dock" : undefined}>
@@ -375,7 +378,7 @@ export function Workspace(props: Props) {
   return (
     <Theme theme={neutralTheme} mode={theme}>
       <ToastViewport position="topEnd" maxVisible={3}>
-        <LayoutProvider initialNarrow={false}>
+        <LayoutProvider initialNarrow={props.initialNarrow}>
           <WorkspaceInner {...props} theme={theme} onTheme={setTheme} />
         </LayoutProvider>
       </ToastViewport>

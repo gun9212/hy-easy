@@ -4,6 +4,7 @@ import { samplePostings, DEMO_NOW } from "@/lib/sample";
 import { demoEnabled } from "@/lib/supabase/server";
 import { normalizeFilters } from "@/lib/domain";
 import { readThemeMode } from "@/lib/theme-cookie";
+import { isPhoneRequest } from "@/lib/device";
 export const dynamic = "force-dynamic";
 export default async function Demo({
   searchParams,
@@ -23,6 +24,7 @@ export default async function Demo({
       userLabel="둘러보는 한양인"
       isAdmin={false}
       initialTheme={await readThemeMode()}
+      initialNarrow={await isPhoneRequest()}
     />
   );
 }

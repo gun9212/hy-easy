@@ -14,7 +14,7 @@ function subscribe(onChange: () => void): () => void {
 }
 
 /**
- * The server guesses phone or not from the request (see page.tsx) so it renders only one layout; the client then
+ * The server guesses phone or not from the request (isPhoneRequest in src/lib/device.ts); the client then
  * follows the real viewport. Hydration reads the server's guess, so the first client render matches the HTML.
  */
 export function LayoutProvider({ initialNarrow, children }: { initialNarrow: boolean; children: React.ReactNode }) {
