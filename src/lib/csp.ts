@@ -34,3 +34,39 @@ export function buildCsp(nonce: string, dev = process.env.NODE_ENV === "developm
   // Browsers ignore upgrade-insecure-requests in a report-only policy (and log an error), so add it when enforcing.
   return [...policy, ...(enforced && !dev ? ["upgrade-insecure-requests"] : [])].join("; ");
 }
+
+const CSP_REPORT_URI_FIELDS = new Set(["document-uri", "blocked-uri", "source-file"]);
+const CSP_REPORT_FIELDS: readonly [string, string][] = [
+  ["document-uri", "documentURL"],
+  ["violated-directive", "violatedDirective"],
+  ["effective-directive", "effectiveDirective"],
+  ["blocked-uri", "blockedURL"],
+  ["source-file", "sourceFile"],
+  ["line-number", "lineNumber"],
+];
+
+/** Strips query strings, fragments, credentials, and opaque data/blob payloads from CSP report URLs. */
+export function sanitizeCspUri(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return `${parsed.origin}${parsed.pathname}`.slice(0, 200);
+    }
+    return parsed.protocol.replace(/:$/, "").slice(0, 200);
+  } catch {
+    return trimmed.split(/[?#]/, 1)[0].slice(0, 200);
+  }
+}
+
+export function pickCspReport(report: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [kebab, camel] of CSP_REPORT_FIELDS) {
+    const value = report[kebab] ?? report[camel];
+    if (value === undefined || value === null) continue;
+    const raw = String(value);
+    out[kebab] = CSP_REPORT_URI_FIELDS.has(kebab) ? sanitizeCspUri(raw) : raw.slice(0, 200);
+  }
+  return out;
+}
