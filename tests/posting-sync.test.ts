@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { samplePostings } from "../src/lib/sample";
-import { buildSync, mergeSync, SYNC_OVERLAP_MS } from "../src/lib/posting-sync";
+import {
+  applyPostingSyncOutcome,
+  buildSync,
+  mergeSync,
+  SYNC_OVERLAP_MS,
+  syncBrowserPostings,
+  SyncHttpError,
+  type StoredPostingSnapshot,
+} from "../src/lib/posting-sync";
 import type { Posting } from "../src/lib/domain";
 
 const at = (ms: number) => new Date(ms).toISOString();
@@ -231,4 +239,105 @@ test("loadPostings rejects truncated reads and mergeSync preserves cached rows w
     postings.map(p => p.id),
   );
   assert.equal(partial[0].applicants, 99);
+});
+
+test("browser sync verifies access before returning stored postings and clears IndexedDB and UI on 401/403", async () => {
+  const initialStored: StoredPostingSnapshot = {
+    syncedAt: postings[2].changedAt!,
+    lastCheckedAt: postings[2].lastCheckedAt,
+    postings,
+  };
+
+  for (const status of [401, 403] as const) {
+    let stored: StoredPostingSnapshot | null = initialStored;
+    let cleared = 0;
+    let written = 0;
+    const outcome = await syncBrowserPostings({
+      readStored: async () => stored,
+      writeStored: async next => {
+        written += 1;
+        stored = next;
+      },
+      clearStored: async () => {
+        cleared += 1;
+        stored = null;
+      },
+      fetchSync: async () => {
+        throw new SyncHttpError(status, status === 401 ? "로그인이 필요합니다." : "학교 계정이 필요합니다.");
+      },
+    });
+    assert.equal(outcome.ok, false);
+    if (!outcome.ok) assert.equal(outcome.authDenied, true);
+    assert.equal(cleared, 1);
+    assert.equal(written, 0);
+    assert.equal(stored, null);
+
+    // Initial screen state stays empty (never displays stored copy) and an already-loaded screen is wiped.
+    const fromEmpty = applyPostingSyncOutcome({ postings: [], ready: false, lastCheckedAt: null, error: "" }, outcome);
+    assert.deepEqual(fromEmpty.postings, []);
+    assert.equal(fromEmpty.ready, true);
+    assert.equal(fromEmpty.lastCheckedAt, null);
+
+    const fromLoaded = applyPostingSyncOutcome(
+      { postings, ready: true, lastCheckedAt: postings[2].lastCheckedAt, error: "" },
+      outcome,
+    );
+    assert.deepEqual(fromLoaded.postings, []);
+    assert.equal(fromLoaded.lastCheckedAt, null);
+    assert.ok(fromLoaded.error.length > 0);
+  }
+});
+
+test("browser sync keeps IndexedDB and loaded postings on transient 500 errors and updates on 200", async () => {
+  let stored: StoredPostingSnapshot | null = {
+    syncedAt: postings[2].changedAt!,
+    lastCheckedAt: postings[2].lastCheckedAt,
+    postings,
+  };
+  let cleared = 0;
+  const transient = await syncBrowserPostings({
+    readStored: async () => stored,
+    writeStored: async next => {
+      stored = next;
+    },
+    clearStored: async () => {
+      cleared += 1;
+      stored = null;
+    },
+    fetchSync: async () => {
+      throw new SyncHttpError(500, "일시적 오류");
+    },
+  });
+  assert.equal(transient.ok, false);
+  if (!transient.ok) assert.equal(transient.authDenied, false);
+  assert.equal(cleared, 0);
+  assert.ok(stored);
+
+  // Already-verified screen retains postings on transient failure; initial unverified screen stays empty.
+  const kept = applyPostingSyncOutcome(
+    { postings, ready: true, lastCheckedAt: postings[2].lastCheckedAt, error: "" },
+    transient,
+  );
+  assert.equal(kept.postings.length, postings.length);
+  const unverified = applyPostingSyncOutcome({ postings: [], ready: false, lastCheckedAt: null, error: "" }, transient);
+  assert.deepEqual(unverified.postings, []);
+
+  // Successful incremental sync merges stored copy and persists refreshed snapshot.
+  const reply = buildSync(postings, stored.syncedAt);
+  const ok = await syncBrowserPostings({
+    readStored: async () => stored,
+    writeStored: async next => {
+      stored = next;
+    },
+    clearStored: async () => {
+      cleared += 1;
+    },
+    fetchSync: async since => {
+      assert.equal(since, postings[2].changedAt);
+      return reply;
+    },
+  });
+  assert.equal(ok.ok, true);
+  if (ok.ok) assert.equal(ok.postings.length, postings.length);
+  assert.equal(cleared, 0);
 });

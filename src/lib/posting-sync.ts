@@ -67,3 +67,71 @@ export function mergeSync(cached: Posting[], reply: SyncResponse): Posting[] | n
   }
   return merged;
 }
+
+export class SyncHttpError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+export function isAuthDeniedError(error: unknown): boolean {
+  return error instanceof SyncHttpError && (error.status === 401 || error.status === 403);
+}
+
+export type StoredPostingSnapshot = { syncedAt: string; lastCheckedAt: string | null; postings: Posting[] };
+
+export type BrowserSyncDeps = {
+  readStored: () => Promise<StoredPostingSnapshot | null>;
+  writeStored: (value: StoredPostingSnapshot) => Promise<void>;
+  clearStored: () => Promise<void>;
+  fetchSync: (since: string | null) => Promise<SyncResponse>;
+};
+
+export type BrowserSyncOutcome =
+  | { ok: true; postings: Posting[]; lastCheckedAt: string | null }
+  | { ok: false; authDenied: boolean; error: string };
+
+export type PostingsViewState = {
+  postings: Posting[];
+  ready: boolean;
+  lastCheckedAt: string | null;
+  error: string;
+};
+
+/** Applies a sync outcome to the screen state, wiping displayed postings when school access is denied (401/403). */
+export function applyPostingSyncOutcome(prev: PostingsViewState, outcome: BrowserSyncOutcome): PostingsViewState {
+  if (outcome.ok) {
+    return { postings: outcome.postings, ready: true, lastCheckedAt: outcome.lastCheckedAt, error: "" };
+  }
+  if (outcome.authDenied) {
+    return { postings: [], ready: true, lastCheckedAt: null, error: outcome.error };
+  }
+  return { ...prev, ready: true, error: outcome.error };
+}
+
+/**
+ * Verifies school eligibility via the sync endpoint before returning any cached postings.
+ * When the server denies access (401 or 403), clears IndexedDB so stale postings never remain in the browser.
+ */
+export async function syncBrowserPostings(deps: BrowserSyncDeps): Promise<BrowserSyncOutcome> {
+  const stored = await deps.readStored();
+  try {
+    let reply = await deps.fetchSync(stored?.syncedAt ?? null);
+    let postings = reply.full ? reply.postings : mergeSync(stored?.postings ?? [], reply);
+    if (!postings) {
+      reply = await deps.fetchSync(null);
+      postings = reply.postings;
+    }
+    if (reply.syncedAt) {
+      await deps.writeStored({ syncedAt: reply.syncedAt, lastCheckedAt: reply.lastCheckedAt, postings });
+    }
+    return { ok: true, postings, lastCheckedAt: reply.lastCheckedAt };
+  } catch (error: unknown) {
+    const authDenied = isAuthDeniedError(error);
+    if (authDenied) await deps.clearStored();
+    const message = error instanceof Error ? error.message : "공고를 불러오지 못했습니다.";
+    return { ok: false, authDenied, error: message };
+  }
+}

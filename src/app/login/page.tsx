@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { headers } from "next/headers";
+import { ClearPostingCache } from "@/components/clear-posting-cache";
 import { GoogleSignIn } from "@/components/google-sign-in";
 import { InAppNotice } from "@/components/in-app-notice";
 import { LandingShell } from "@/components/landing-shell";
@@ -39,6 +40,7 @@ async function inAppNotice() {
 function SignIn({ error, notice }: { error?: string; notice: React.ReactNode }) {
   return (
     <div className="landing-signin">
+      {error === "school" && <ClearPostingCache />}
       {notice}
       {error && (
         <div className="form-error" role="alert">

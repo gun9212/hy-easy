@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSchoolClaims } from "./auth-policy";
 import { isConfigured, serverClient } from "./supabase/server";
 
@@ -24,6 +25,13 @@ export async function requireUser() {
   if (!isSchoolClaims(claims)) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
   const user: SessionUser = { id: claims.sub, email: claims.email ?? "", user_metadata: claims.user_metadata ?? {} };
   return { db, user };
+}
+
+/** Verifies school eligibility in the database (same rule as RLS on posting_view). */
+export async function assertDbSchoolUser(db: Pick<SupabaseClient, "rpc">): Promise<void> {
+  const { data, error } = await db.rpc("is_school_user");
+  if (error) throw new Error(error.message);
+  if (data !== true) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
 }
 export async function requireAdmin() {
   const ctx = await requireUser();
