@@ -3,6 +3,9 @@ node_modules
 .git
 .env*
 .secrets
+gha-creds-*.json
+**/gha-creds-*.json
+demos
 output
 .vercel
 infra

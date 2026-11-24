@@ -6,6 +6,9 @@ node_modules
 .env*
 .secrets
 .vercel
+gha-creds-*.json
+**/gha-creds-*.json
+demos
 output
 infra/*.tfstate*
 infra/.terraform
