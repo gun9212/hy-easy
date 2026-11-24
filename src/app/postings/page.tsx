@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Workspace } from "@/components/workspace";
-import { requireUser, HttpError } from "@/lib/auth";
+import { assertDbSchoolUser, requireUser, HttpError } from "@/lib/auth";
 import { loadPersonal } from "@/lib/data";
 import { normalizeFilters } from "@/lib/domain";
 import { isMajor } from "@/lib/majors";
@@ -11,10 +11,16 @@ export default async function Postings({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const ctx = await requireUser().catch((e: unknown) => {
-    if (e instanceof HttpError) redirect(`/login${e.status === 403 ? "?error=school" : ""}`);
-    throw e;
-  });
+  const ctx = await requireUser()
+    .then(async session => {
+      // Confirm DB-level school eligibility before mounting Workspace (which reads browser IndexedDB cache).
+      await assertDbSchoolUser(session.db);
+      return session;
+    })
+    .catch((e: unknown) => {
+      if (e instanceof HttpError) redirect(`/login${e.status === 403 ? "?error=school" : ""}`);
+      throw e;
+    });
   // Postings are loaded by the browser (stored copy + changes only); the page carries just the student's own data.
   // touch_activity marks today as a visit day for the admin page's daily count; a failure there never blocks the page.
   const [data, admin] = await Promise.all([

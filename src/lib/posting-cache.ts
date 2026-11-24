@@ -3,7 +3,7 @@
 // Callers must pass requireUser first, and every call re-checks public.is_school_user() in the database so cache hits
 // and concurrent misses enforce the exact same eligibility policy as RLS on posting_view.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { HttpError } from "./auth";
+import { assertDbSchoolUser } from "./auth";
 import { loadPostings } from "./data";
 import type { Posting } from "./domain";
 
@@ -12,12 +12,6 @@ export const POSTING_CACHE_TTL_MS = 60_000;
 type Entry = { loadedAt: number; postings: Posting[] };
 let entry: Entry | null = null;
 let inflight: Promise<Posting[]> | null = null;
-
-async function assertDbSchoolUser(db: SupabaseClient): Promise<void> {
-  const { data, error } = await db.rpc("is_school_user");
-  if (error) throw new Error(error.message);
-  if (data !== true) throw new HttpError(403, "인증된 한양대 Google 계정으로 로그인해 주세요.");
-}
 
 export async function cachedPostings(db: SupabaseClient, now: number = Date.now()): Promise<Posting[]> {
   await assertDbSchoolUser(db);
