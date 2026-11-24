@@ -51,5 +51,10 @@
     "tsx": "4.21.0",
     "typescript": "5.9.3"
   },
-  "type": "module"
+  "type": "module",
+  "prettier": {
+    "printWidth": 120,
+    "trailingComma": "all",
+    "arrowParens": "avoid"
+  }
 }
