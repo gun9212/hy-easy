@@ -10,6 +10,8 @@ export const SYNC_OVERLAP_MS = 5 * 60_000;
 export type LiveRow = [string, number | null, string?];
 export type SyncResponse = {
   full: boolean;
+  /** False when a reply does not cover the final page yet; cached postings must not be pruned until complete. */
+  complete?: boolean;
   postings: Posting[];
   live: LiveRow[];
   syncedAt: string | null;
@@ -29,6 +31,7 @@ export function buildSync(all: Posting[], since: string | null): SyncResponse {
   const postings = full ? all : all.filter(p => Date.parse(changedAtOf(p)) > sinceMs - SYNC_OVERLAP_MS);
   return {
     full,
+    complete: true,
     postings,
     live: all.map(p => [p.id, p.applicants, p.lastCheckedAt]),
     syncedAt: latest(all.map(changedAtOf)),
@@ -39,20 +42,28 @@ export function buildSync(all: Posting[], since: string | null): SyncResponse {
 /**
  * Applies a sync reply to the browser's copy. Returns null when the copy cannot be repaired from the reply
  * (a posting the browser never had and the reply did not include), so the caller asks for everything instead.
+ * When `reply.complete === false`, removals are deferred so cached postings are never deleted before the last page.
  */
 export function mergeSync(cached: Posting[], reply: SyncResponse): Posting[] | null {
   const byId = new Map(cached.map(p => [p.id, p]));
   reply.postings.forEach(p => byId.set(p.id, p));
   const merged: Posting[] = [];
+  const seen = new Set<string>();
   for (const [id, applicants, lastCheckedAt] of reply.live) {
     const posting = byId.get(id);
     if (!posting) return null;
     const nextCheckedAt = lastCheckedAt ?? posting.lastCheckedAt;
-    merged.push(
+    const updated =
       posting.applicants === applicants && posting.lastCheckedAt === nextCheckedAt
         ? posting
-        : { ...posting, applicants, lastCheckedAt: nextCheckedAt },
-    );
+        : { ...posting, applicants, lastCheckedAt: nextCheckedAt };
+    merged.push(updated);
+    seen.add(id);
+  }
+  if (reply.complete === false) {
+    for (const posting of byId.values()) {
+      if (!seen.has(posting.id)) merged.push(posting);
+    }
   }
   return merged;
 }

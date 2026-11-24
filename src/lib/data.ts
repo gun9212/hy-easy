@@ -20,11 +20,52 @@ export async function loadPersonal(db: SupabaseClient, userId: string) {
   };
 }
 
-/** Every posting, newest first, read fresh (the admin page needs current data). */
-export async function loadPostings(db: SupabaseClient): Promise<Posting[]> {
-  const { data, error } = await db.from("posting_view").select("document").order("first_seen_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(row => row.document as Posting);
+/** Batch size per PostgREST range query (below Supabase's default 1,000-row API cap). */
+export const POSTING_PAGE_SIZE = 500;
+const MAX_POSTING_PAGES = 100;
+
+/**
+ * Every posting in a deterministic order (newest first, tie-broken by id), paginated until the final page.
+ * Advances by the actual number of rows returned so a lower PostgREST max_rows cap never truncates the list.
+ */
+export async function loadPostings(db: SupabaseClient, pageSize = POSTING_PAGE_SIZE): Promise<Posting[]> {
+  const seen = new Set<string>();
+  const postings: Posting[] = [];
+  let offset = 0;
+  let expectedCount: number | null = null;
+
+  for (let page = 0; page < MAX_POSTING_PAGES; page += 1) {
+    const { data, error, count } = await db
+      .from("posting_view")
+      .select("document", page === 0 ? { count: "exact" } : undefined)
+      .order("first_seen_at", { ascending: false })
+      .order("id", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(error.message);
+    if (page === 0 && typeof count === "number") expectedCount = count;
+
+    const rows = data ?? [];
+    if (rows.length === 0) {
+      if (expectedCount !== null && offset < expectedCount) {
+        throw new Error(`Incomplete posting read: received ${offset} of ${expectedCount} rows`);
+      }
+      return postings;
+    }
+
+    for (const row of rows) {
+      const posting = row.document as Posting;
+      if (!seen.has(posting.id)) {
+        seen.add(posting.id);
+        postings.push(posting);
+      }
+    }
+    offset += rows.length;
+
+    if (expectedCount !== null ? offset >= expectedCount : rows.length < pageSize) {
+      return postings;
+    }
+  }
+  throw new Error(`Posting read exceeded ${MAX_POSTING_PAGES} pages before reaching the end`);
 }
 
 export async function loadWorkspace(db: SupabaseClient, userId: string) {
