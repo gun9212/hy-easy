@@ -1,5 +1,6 @@
 # Database backup: twice a day (03:00 and 15:00 KST) a Cloud Run job dumps the database into a private bucket in
-# Seoul, kept 30 days. Everything runs in Seoul, next to Supabase, so student data does not leave Korea.
+# Seoul, kept 23 days live + 7 days Cloud Storage soft delete (30 days total until permanent purge).
+# Everything runs in Seoul, next to Supabase, so student data does not leave Korea.
 # The job's account can only create objects: it cannot read, overwrite or delete existing backups.
 # Restore steps: docs/BACKUP.md.
 
@@ -9,8 +10,15 @@ variable "backup_region" {
 }
 
 variable "backup_retention_days" {
-  type    = number
-  default = 30
+  type        = number
+  default     = 23
+  description = "Days a backup stays live before lifecycle Delete runs (23 + 7-day soft delete = 30 days total)."
+}
+
+variable "backup_soft_delete_days" {
+  type        = number
+  default     = 7
+  description = "Cloud Storage soft-delete recovery window after deletion (minimum 7 days when enabled)."
 }
 
 variable "backup_image" {
@@ -37,6 +45,9 @@ resource "google_storage_bucket" "backup" {
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
   force_destroy               = false
+  soft_delete_policy {
+    retention_duration_seconds = var.backup_soft_delete_days * 86400
+  }
   lifecycle_rule {
     condition {
       age = var.backup_retention_days

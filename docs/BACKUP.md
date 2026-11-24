@@ -3,7 +3,7 @@
 ## 구성
 
 - **언제**: 매일 03:00, 15:00 (KST). Cloud Scheduler `hy-easy-backup-night`, `hy-easy-backup-day`가 Cloud Run 작업 `hy-easy-backup`(서울, `asia-northeast3`)을 실행합니다.
-- **어디에**: 비공개 버킷 `hy-easy-hy-easy-db-backup`(서울). 공개 접근 차단, 30일이 지나면 자동 삭제.
+- **어디에**: 비공개 버킷 `hy-easy-hy-easy-db-backup`(서울). 공개 접근 차단, 생성 후 23일이 지나면 자동 삭제되며 Cloud Storage 소프트 삭제로 7일간 추가 복구할 수 있습니다(총 30일 후 영구 삭제).
 - **무엇을**: 실행마다 `YYYY-MM-DD_HHMM/` 폴더에 두 파일을 만듭니다.
   - `public.dump`: `public` 스키마 전체(구조 + 데이터). 공고, 분류, 관심 공고, 지원 기록, 관리자 등.
   - `auth.dump`: `auth.users`, `auth.identities` 데이터. 학생 기록이 가리키는 계정 ID, 이메일, 전공(`user_metadata.major`).
