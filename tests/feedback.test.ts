@@ -14,9 +14,11 @@ describe("feedbackSchema", () => {
     const parsed = feedbackSchema.parse({ message: "  비교 화면이 좋아요  ", page: "/postings" });
     assert.deepEqual(parsed, { message: "비교 화면이 좋아요", page: "/postings" });
   });
-  it("rejects blank and overlong messages", () => {
+  it("rejects blank and overlong messages (including whitespace-padded raw text)", () => {
     assert.equal(feedbackSchema.safeParse({ message: "   " }).success, false);
     assert.equal(feedbackSchema.safeParse({ message: "가".repeat(FEEDBACK_MAX_CHARS + 1) }).success, false);
+    assert.equal(feedbackSchema.safeParse({ message: ` ${"가".repeat(FEEDBACK_MAX_CHARS)}` }).success, false);
+    assert.equal(feedbackSchema.safeParse({ message: `${" ".repeat(FEEDBACK_MAX_CHARS)}a` }).success, false);
   });
   it("keeps the page to a plain path, so no query string with filters or ids is stored", () => {
     assert.equal(feedbackSchema.safeParse({ message: "x", page: "/postings?q=삼성" }).success, false);
