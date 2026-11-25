@@ -3,7 +3,7 @@
 import { z } from "zod";
 import type { Locator, Page } from "playwright";
 import type { Posting, PostingAttachment } from "../src/lib/domain";
-import { MAX_ATTACHMENT_BYTES, parseFileDown, toAttachment } from "./attachments";
+import { MAX_ATTACHMENT_BYTES, parseFileDown, readBoundedResponseBody, toAttachment } from "./attachments";
 import {
   columnIndex,
   extractSourceId,
@@ -191,13 +191,25 @@ export async function readAttachment(page: Page, s: Selectors): Promise<PostingA
   if (!(await anchor.count())) return null;
   const link = parseFileDown(await anchor.getAttribute("onclick"));
   if (!link) throw new Error("ATTACHMENT_LINK_CHANGED");
-  const response = await page.context().request.post(sourceUrl(s.attachmentDownloadUrl), {
-    form: { jid_seq: link.jidSeq, org_name: link.orgName, fake_name: link.fakeName, ext: link.ext },
-    timeout: NAVIGATION_TIMEOUT_MS,
-    maxRedirects: 0,
+  if (link.ext !== "pdf") throw new Error(`ATTACHMENT_NOT_PDF:${link.ext}`);
+  const downloadUrl = sourceUrl(s.attachmentDownloadUrl);
+  const cookies = await page.context().cookies([downloadUrl]);
+  const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+  const response = await fetch(downloadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+    },
+    body: new URLSearchParams({
+      jid_seq: link.jidSeq,
+      org_name: link.orgName,
+      fake_name: link.fakeName,
+      ext: link.ext,
+    }),
+    redirect: "manual",
+    signal: AbortSignal.timeout(NAVIGATION_TIMEOUT_MS),
   });
-  if (!response.ok()) throw new Error(`ATTACHMENT_HTTP_${response.status()}`);
-  const declared = Number(response.headers()["content-length"] ?? 0);
-  if (declared > MAX_ATTACHMENT_BYTES) throw new Error("ATTACHMENT_TOO_LARGE");
-  return toAttachment(link, await response.body());
+  const bytes = await readBoundedResponseBody(response, MAX_ATTACHMENT_BYTES);
+  return toAttachment(link, bytes);
 }
