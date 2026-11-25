@@ -153,6 +153,22 @@ set local role anon;
 do $$ begin begin perform public.touch_activity(); raise exception 'anonymous touch unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
 reset role;
 
+-- Scheduled activity retention purge: decoupled from touch_activity(), service_role only, drops >180-day rows.
+set local role service_role;
+insert into public.activity_days(user_id, day) values
+  ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Seoul')::date - 181),
+  ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Seoul')::date - 180);
+reset role;
+set local role authenticated;
+select set_config('test.uid','00000000-0000-4000-8000-000000000002',true);
+do $$ begin begin perform public.purge_expired_activity_days(180); raise exception 'student purge unexpectedly succeeded'; exception when insufficient_privilege then null; end; end $$;
+reset role;
+set local role service_role;
+select pg_temp.assert(public.purge_expired_activity_days(180) = 1, 'purge deletes only rows strictly older than 180 days');
+select pg_temp.assert(not exists (select 1 from public.activity_days where day < (now() at time zone 'Asia/Seoul')::date - 180), '181-day-old row removed');
+select pg_temp.assert(exists (select 1 from public.activity_days where day = (now() at time zone 'Asia/Seoul')::date - 180), '180-day-old row preserved');
+reset role;
+
 -- Monthly AI call ledger: re-classifications append rows instead of overwriting spend; admin-only summary.
 set local role service_role;
 insert into public.classification_calls(posting_id, input_hash, provider, model, prompt_version, taxonomy_version, input_tokens, output_tokens, cost_usd, status, source)

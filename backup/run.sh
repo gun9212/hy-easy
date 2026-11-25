@@ -61,6 +61,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Purge expired (>180-day) activity_days rows twice daily on the backup schedule so retention never
+# depends on a new student visit, and expired rows are excluded before the snapshot is exported.
+PURGED=$(psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -X -q -At -c "SELECT public.purge_expired_activity_days(180);" 2>/dev/null) ||
+  fail "failed to purge expired activity_days"
+printf '{"severity":"INFO","event":"activity_retention_purge","deleted":%s}\n' "${PURGED:-0}"
+
 # Hold one REPEATABLE READ READ ONLY transaction open so manifest.json, public.dump, and auth.dump
 # all read the exact same PostgreSQL snapshot.
 mkfifo "$WORK/snap.in" "$WORK/snap.out"

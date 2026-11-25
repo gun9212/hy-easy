@@ -70,7 +70,8 @@ grant execute on function
   public.release_collector_lock(uuid),
   public.sync_posting(jsonb, text, text),
   public.touch_postings(jsonb),
-  public.mark_detail_checked(text, text)
+  public.mark_detail_checked(text, text),
+  public.purge_expired_activity_days(integer)
 to service_role;
 
 commit;

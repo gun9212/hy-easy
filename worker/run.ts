@@ -227,6 +227,8 @@ try {
   }
   const complete = state.schedulesLoaded && !state.pending.length && !state.queue.length;
   check(await db.from("collector_state").upsert({ name: "hywep", value: complete ? {} : state }));
+  // Keep 180-day activity_days retention enforced on collector schedule too (backup/run.sh also runs it twice daily).
+  await Promise.resolve(db.rpc("purge_expired_activity_days", { p_retention_days: 180 })).catch(() => null);
   if (!complete) {
     status = "partial";
     errorCode ??= "CHECKPOINT_SAVED";
