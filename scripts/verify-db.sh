@@ -115,11 +115,17 @@ insert into public.classification_audit(posting_id, result, editor_id)
 insert into public.favorites(user_id, posting_id)
   select '00000000-0000-4000-8000-000000000001', id from public.postings where source_id = 'drill-1';
 insert into public.feedback(message, page) values ('복구 연습 피드백', '/postings');
-insert into public.activity_days(user_id, day) values ('00000000-0000-4000-8000-000000000001', current_date);
+insert into public.activity_days(user_id, day) values
+  ('00000000-0000-4000-8000-000000000001', current_date),
+  ('00000000-0000-4000-8000-000000000002', (now() at time zone 'Asia/Seoul')::date - 181);
 SQL
 
 DRILL_DIR="$WORK/backup-drill"
 SUPABASE_DB_URL="$DB_URL" BACKUP_OUT_DIR="$DRILL_DIR" sh "$ROOT_DIR/backup/run.sh"
+if [ "$(jq -r '.counts["public.activity_days"]' "$DRILL_DIR/manifest.json")" != "1" ]; then
+  echo "Expected backup/run.sh to purge the >180-day activity_days row before taking snapshot" >&2
+  exit 1
+fi
 DUMP_DIR="$DRILL_DIR" AUTH_SCHEMA_SQL="$ROOT_DIR/tests/database-bootstrap.sql" \
   PRIVILEGES_SQL="$ROOT_DIR/supabase/privileges.sql" \
   PRIVILEGES_TEST_SQL="$ROOT_DIR/tests/database-privileges.sql" \

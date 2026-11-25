@@ -133,11 +133,12 @@ select pg_temp.assert(
   ) = array[
     'acquire_collector_lock(uuid)',
     'mark_detail_checked(text,text)',
+    'purge_expired_activity_days(integer)',
     'release_collector_lock(uuid)',
     'sync_posting(jsonb,text,text)',
     'touch_postings(jsonb)'
   ],
-  'service_role EXECUTE set must match the exact 5 collector functions'
+  'service_role EXECUTE set must match the exact 6 collector/maintenance functions'
 );
 
 -- 3. Exact table and column privilege matrix for authenticated and service_role.
@@ -242,6 +243,7 @@ do $$ begin
   begin perform public.sync_posting('{}'::jsonb, 'h', 'c'); raise exception 'anon sync_posting succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.touch_postings('[]'::jsonb); raise exception 'anon touch_postings succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.mark_detail_checked('x', 'y'); raise exception 'anon mark_detail_checked succeeded'; exception when insufficient_privilege then null; end;
+  begin perform public.purge_expired_activity_days(180); raise exception 'anon purge_expired_activity_days succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.admin_user_stats(); raise exception 'anon admin_user_stats succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.admin_ai_cost_monthly(6); raise exception 'anon admin_ai_cost_monthly succeeded'; exception when insufficient_privilege then null; end;
 end $$;
@@ -254,6 +256,7 @@ do $$ begin
   begin perform public.sync_posting('{}'::jsonb, 'h', 'c'); raise exception 'authenticated sync_posting succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.touch_postings('[]'::jsonb); raise exception 'authenticated touch_postings succeeded'; exception when insufficient_privilege then null; end;
   begin perform public.mark_detail_checked('x', 'y'); raise exception 'authenticated mark_detail_checked succeeded'; exception when insufficient_privilege then null; end;
+  begin perform public.purge_expired_activity_days(180); raise exception 'authenticated purge_expired_activity_days succeeded'; exception when insufficient_privilege then null; end;
   begin perform * from public.activity_days limit 1; raise exception 'authenticated activity_days read succeeded'; exception when insufficient_privilege then null; end;
   begin perform * from public.classification_calls limit 1; raise exception 'authenticated classification_calls read succeeded'; exception when insufficient_privilege then null; end;
   begin perform * from public.collector_locks limit 1; raise exception 'authenticated collector_locks read succeeded'; exception when insufficient_privilege then null; end;
