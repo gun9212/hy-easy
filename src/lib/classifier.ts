@@ -4,6 +4,7 @@ import { z } from "./zod";
 import { classificationOutputSchema } from "./classification-schema";
 import { MAX_SECONDARY_EVIDENCE, verifySecondaryRoles, type ClassificationInput, type Classification } from "./domain";
 import { majorsPromptText } from "./majors";
+import { sanitizeClassificationInput } from "./normalize";
 /** "claude": Claude on Vertex AI (GCP auth). "anthropic": Claude via the Anthropic API (ANTHROPIC_API_KEY). "gemini": Gemini on Vertex AI. */
 export type Provider = "claude" | "anthropic" | "gemini";
 const isClaude = (provider: Provider) => provider === "claude" || provider === "anthropic";
@@ -66,14 +67,16 @@ export function modelFor(provider: Provider) {
     ? process.env.CLAUDE_MODEL || "claude-haiku-5-5"
     : process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 }
-/** The user message: the posting as JSON, preceded by the attachment rules only when there is an attachment. */
+/** The user message: the posting as JSON (with contact info stripped), preceded by attachment rules when present. */
 export function userText(input: ClassificationInput): string {
-  const json = JSON.stringify(input);
-  return input.attachment ? `${ATTACHMENT_RULES}\n\n${json}` : json;
+  const clean = sanitizeClassificationInput(input);
+  const json = JSON.stringify(clean);
+  return clean.attachment ? `${ATTACHMENT_RULES}\n\n${json}` : json;
 }
 export function modelPayload(provider: Provider, input: ClassificationInput) {
-  const text = userText(input);
-  if (!Object.values(input).some(v => v?.trim()) || Buffer.byteLength(text) > 80_000)
+  const clean = sanitizeClassificationInput(input);
+  const text = userText(clean);
+  if (!Object.values(clean).some(v => v?.trim()) || Buffer.byteLength(text) > 80_000)
     throw new Error("INPUT_REQUIRES_REVIEW");
   if (provider === "anthropic") return claudeBody(text);
   return provider === "claude"
@@ -267,7 +270,7 @@ export function parseModelResponse(provider: Provider, input: ClassificationInpu
   try {
     if (stop) throw new Error(`MODEL_STOP_${stop}`);
     const output = classificationOutputSchema.parse(trimToLimits(JSON.parse(text)));
-    const classification = verifySecondaryRoles(input, output);
+    const classification = verifySecondaryRoles(sanitizeClassificationInput(input), output);
     return { classification, ...usage, cacheReadTokens: cache.readTokens };
   } catch (e) {
     throw new BilledClassificationError(usage, e);

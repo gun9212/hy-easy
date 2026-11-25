@@ -139,17 +139,56 @@ export function stableHash(value: unknown): string {
     .digest("hex");
 }
 
+const EMAIL_CONTACT = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
+const SEPARATED_PHONE_CONTACT =
+  /(?<!\d)(?:\+?82[-\s.]?0?(?:1[016789]|2|[3-6]\d|70|50\d|80)[-\s.]|\(0\d{1,2}\)\s*|0(?:1[016789]|2|[3-6]\d|70|50\d|80)[-\s.])\d{3,4}[-\s.]\d{4}(?!\d)/g;
+const COMPACT_MOBILE_CONTACT = /(?<!\d)01[016789]\d{7,8}(?!\d)/g;
+const REPRESENTATIVE_PHONE_CONTACT = /(?<!\d)1(?:5|6|8)\d{2}-\d{4}(?!\d)/g;
+export const CONTACT_REDACTED = "[연락처 제외]";
+
 /**
- * Classifier input. The attached-file text and the department (to pick the right part of a multi-department file)
- * are added only when there is an attachment, so every other posting keeps its exact input and classification hash.
+ * Removes display-only recruiter/staff contact details (emails and Korean phone numbers) before text is sent to the
+ * external AI classifier, while leaving dates, stipends, and ordinary posting text byte-for-byte unchanged.
+ */
+export function stripContactInfo(text: string): string {
+  return text
+    .replace(EMAIL_CONTACT, CONTACT_REDACTED)
+    .replace(SEPARATED_PHONE_CONTACT, CONTACT_REDACTED)
+    .replace(COMPACT_MOBILE_CONTACT, CONTACT_REDACTED)
+    .replace(REPRESENTATIVE_PHONE_CONTACT, CONTACT_REDACTED);
+}
+
+export function sanitizeClassificationInput(input: ClassificationInput): ClassificationInput {
+  const base: ClassificationInput = {
+    practiceInfo: stripContactInfo(input.practiceInfo),
+    qualifications: stripContactInfo(input.qualifications),
+    tasks: stripContactInfo(input.tasks),
+  };
+  if (input.attachment !== undefined) base.attachment = stripContactInfo(input.attachment);
+  if (input.department !== undefined) base.department = stripContactInfo(input.department);
+  return base;
+}
+
+/**
+ * Classifier input. Display-only contact details are stripped first so external model calls stay within the disclosed
+ * processing scope. The attached-file text and department are added only when there is an attachment, so postings
+ * without contact details keep their exact input and classification hash.
  */
 export function classificationInput(
   posting: Pick<Posting, "practiceInfo" | "qualifications" | "tasks"> &
     Partial<Pick<Posting, "department" | "attachment">>,
 ): ClassificationInput {
-  const base = { practiceInfo: posting.practiceInfo, qualifications: posting.qualifications, tasks: posting.tasks };
-  if (!posting.attachment?.text) return base;
-  return { ...base, attachment: posting.attachment.text, department: posting.department ?? "" };
+  const base = {
+    practiceInfo: posting.practiceInfo,
+    qualifications: posting.qualifications,
+    tasks: posting.tasks,
+  };
+  if (!posting.attachment?.text) return sanitizeClassificationInput(base);
+  return sanitizeClassificationInput({
+    ...base,
+    attachment: posting.attachment.text,
+    department: posting.department ?? "",
+  });
 }
 
 /** Content hash for change history. Volatile fields (timestamps, live applicant count) are excluded. */
