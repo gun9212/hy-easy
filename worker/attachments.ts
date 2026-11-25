@@ -3,12 +3,18 @@
 // be invented and the classifier's evidence check works on it unchanged. The file itself is never stored.
 // Page structure: docs/HYWEP-STRUCTURE.md §3.
 import { createHash } from "node:crypto";
-import { extractText, getDocumentProxy } from "unpdf";
+import { getDocumentProxy } from "unpdf";
 import type { Posting, PostingAttachment } from "../src/lib/domain";
 
 /** Tasks shorter than this are "empty"; longer ones carry enough to classify even when they mention a file. */
 export const MAX_TASKS_CHARS_FOR_ATTACHMENT = 150;
 export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+/** Rejects oversized multi-hundred-page PDFs before parsing any page content. */
+export const MAX_ATTACHMENT_PAGES = 30;
+/** Caps concurrent page text extractions so a multi-page PDF cannot spike CPU/memory. */
+export const PDF_EXTRACT_CONCURRENCY = 2;
+/** Overall wall-clock budget for opening a PDF and extracting its page text. */
+export const PDF_EXTRACT_TIMEOUT_MS = 10_000;
 /** Enough for a multi-department table (비상교육: 13.6K chars over 5 pages); keeps the classifier input bounded. */
 export const MAX_ATTACHMENT_CHARS = 20_000;
 /** Below this the PDF is probably a scan (image) or empty. */
@@ -106,11 +112,105 @@ export function clipText(text: string, max = MAX_ATTACHMENT_CHARS): { text: stri
   return tidy.length > max ? { text: tidy.slice(0, max), truncated: true } : { text: tidy, truncated: false };
 }
 
-export async function extractPdfText(file: Uint8Array): Promise<{ pages: number; text: string }> {
-  // unpdf hands the buffer to pdf.js, which may detach it; give it a copy.
-  const pdf = await getDocumentProxy(new Uint8Array(file));
-  const { totalPages, text } = await extractText(pdf, { mergePages: true });
-  return { pages: totalPages, text };
+export type PdfPageLike = {
+  getTextContent(): Promise<{ items: Array<{ str?: string; hasEOL?: boolean }> }>;
+  cleanup?: () => void;
+};
+
+export type PdfDocumentLike = {
+  numPages: number;
+  getPage(pageNumber: number): Promise<PdfPageLike>;
+  destroy?: () => Promise<void> | void;
+  cleanup?: () => Promise<void> | void;
+};
+
+export type PdfExtractOptions = {
+  maxPages?: number;
+  concurrency?: number;
+  timeoutMs?: number;
+  openDocument?: (data: Uint8Array) => Promise<PdfDocumentLike>;
+};
+
+function withDeadline<T>(promise: Promise<T>, deadlineMs: number): Promise<T> {
+  const remaining = deadlineMs - Date.now();
+  if (remaining <= 0) return Promise.reject(new Error("ATTACHMENT_TIMEOUT"));
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("ATTACHMENT_TIMEOUT")), remaining);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      error => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+export async function extractPdfText(
+  file: Uint8Array,
+  options: PdfExtractOptions = {},
+): Promise<{ pages: number; text: string }> {
+  const maxPages = options.maxPages ?? MAX_ATTACHMENT_PAGES;
+  const concurrency = Math.max(1, options.concurrency ?? PDF_EXTRACT_CONCURRENCY);
+  const timeoutMs = options.timeoutMs ?? PDF_EXTRACT_TIMEOUT_MS;
+  const deadlineMs = Date.now() + timeoutMs;
+  const open =
+    options.openDocument ?? ((data: Uint8Array) => getDocumentProxy(data) as unknown as Promise<PdfDocumentLike>);
+
+  let pdf: PdfDocumentLike | null = null;
+  try {
+    // unpdf hands the buffer to pdf.js, which may detach it; give it a copy.
+    pdf = await withDeadline(open(new Uint8Array(file)), deadlineMs);
+    const totalPages = pdf.numPages;
+    if (!Number.isInteger(totalPages) || totalPages < 1 || totalPages > maxPages) {
+      throw new Error("ATTACHMENT_TOO_MANY_PAGES");
+    }
+
+    const doc = pdf;
+    const pageTexts = new Array<string>(totalPages);
+    let nextIndex = 0;
+    let aborted = false;
+
+    const runWorker = async () => {
+      while (!aborted) {
+        const idx = nextIndex++;
+        if (idx >= totalPages) break;
+        try {
+          const page = await withDeadline(doc.getPage(idx + 1), deadlineMs);
+          try {
+            const content = await withDeadline(page.getTextContent(), deadlineMs);
+            pageTexts[idx] = content.items
+              .filter(item => item.str != null)
+              .map(item => `${item.str}${item.hasEOL ? "\n" : ""}`)
+              .join("");
+          } finally {
+            page.cleanup?.();
+          }
+        } catch (err) {
+          aborted = true;
+          throw err;
+        }
+      }
+    };
+
+    const workerCount = Math.min(concurrency, totalPages);
+    await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+
+    const text = pageTexts
+      .join("\n")
+      .replace(/[^\S\n]+/g, " ")
+      .replace(/ ?\n ?/g, "\n")
+      .replace(/\n{3,}/g, "\n\n");
+    return { pages: totalPages, text };
+  } finally {
+    if (pdf) {
+      await Promise.resolve(pdf.destroy?.()).catch(() => undefined);
+      await Promise.resolve(pdf.cleanup?.()).catch(() => undefined);
+    }
+  }
 }
 
 /** Validates a downloaded file and turns it into the stored attachment. Throws a short code when it can't. */
@@ -146,6 +246,8 @@ function attachmentErrorCode(error: unknown): string {
   if (
     m === "ATTACHMENT_LINK_CHANGED" ||
     m === "ATTACHMENT_TOO_LARGE" ||
+    m === "ATTACHMENT_TOO_MANY_PAGES" ||
+    m === "ATTACHMENT_TIMEOUT" ||
     m === "ATTACHMENT_UNREADABLE" ||
     /^ATTACHMENT_HTTP_\d{3}$/.test(m)
   ) {

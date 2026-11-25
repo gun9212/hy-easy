@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   clipText,
+  extractPdfText,
   isPdf,
   isReadable,
   needsAttachment,
@@ -95,6 +96,85 @@ describe("PDF 글자 추출", () => {
     await assert.rejects(toAttachment({ ...link, ext: "hwp" }, tinyPdf(words)), /ATTACHMENT_NOT_PDF/);
     await assert.rejects(toAttachment(link, new TextEncoder().encode("<html></html>")), /ATTACHMENT_NOT_PDF/);
     await assert.rejects(toAttachment(link, tinyPdf(["short"])), /ATTACHMENT_UNREADABLE/);
+  });
+  it("페이지 추출 전에 총 페이지 수를 확인하고 동시 작업 수와 처리 시간을 제한", async () => {
+    let getPageCalls = 0;
+    let destroyed = 0;
+    await assert.rejects(
+      () =>
+        extractPdfText(new Uint8Array([1]), {
+          maxPages: 5,
+          openDocument: async () => ({
+            numPages: 6,
+            getPage: async () => {
+              getPageCalls += 1;
+              return { getTextContent: async () => ({ items: [] }) };
+            },
+            destroy: async () => {
+              destroyed += 1;
+            },
+          }),
+        }),
+      /ATTACHMENT_TOO_MANY_PAGES/,
+    );
+    assert.equal(getPageCalls, 0);
+    assert.equal(destroyed, 1);
+
+    let active = 0;
+    let peakActive = 0;
+    let cleaned = 0;
+    const bounded = await extractPdfText(new Uint8Array([1]), {
+      maxPages: 10,
+      concurrency: 2,
+      timeoutMs: 2_000,
+      openDocument: async () => ({
+        numPages: 5,
+        getPage: async pageNo => {
+          active += 1;
+          peakActive = Math.max(peakActive, active);
+          await new Promise(resolve => setTimeout(resolve, 15));
+          return {
+            getTextContent: async () => {
+              await new Promise(resolve => setTimeout(resolve, 10));
+              return { items: [{ str: `P${pageNo}`, hasEOL: true }] };
+            },
+            cleanup: () => {
+              active -= 1;
+              cleaned += 1;
+            },
+          };
+        },
+        destroy: async () => {
+          destroyed += 1;
+        },
+      }),
+    });
+    assert.equal(peakActive, 2);
+    assert.equal(cleaned, 5);
+    assert.equal(destroyed, 2);
+    assert.equal(bounded.pages, 5);
+    assert.equal(bounded.text.trim(), "P1\n\nP2\n\nP3\n\nP4\n\nP5");
+
+    let timeoutDestroyed = false;
+    await assert.rejects(
+      () =>
+        extractPdfText(new Uint8Array([1]), {
+          maxPages: 10,
+          concurrency: 2,
+          timeoutMs: 25,
+          openDocument: async () => ({
+            numPages: 2,
+            getPage: async () => ({
+              getTextContent: () => new Promise(resolve => setTimeout(() => resolve({ items: [] }), 200)),
+            }),
+            destroy: async () => {
+              timeoutDestroyed = true;
+            },
+          }),
+        }),
+      /ATTACHMENT_TIMEOUT/,
+    );
+    assert.equal(timeoutDestroyed, true);
   });
 });
 
