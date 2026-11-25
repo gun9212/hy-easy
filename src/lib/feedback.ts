@@ -11,7 +11,7 @@ export type FeedbackPageState = { filter: FeedbackFilter; page: number };
  */
 export const feedbackSchema = z
   .object({
-    message: z.string().trim().min(1).max(FEEDBACK_MAX_CHARS),
+    message: z.string().max(FEEDBACK_MAX_CHARS).trim().min(1),
     page: z
       .string()
       .max(100)
