@@ -105,6 +105,27 @@ it("대량 입력과 빈 입력을 잘라 분류하지 않고 검토로 보냄",
   assert.throws(() => modelPayload("claude", { practiceInfo: "", tasks: "", qualifications: "" }));
   assert.throws(() => modelPayload("claude", { ...input, tasks: "가".repeat(30000) }));
 });
+it("직접 호출 입력에 담당자 연락처가 남아 있어도 모델 전송 전에 제외하고 인용 검증과 맞춘다", () => {
+  const dirty = {
+    ...input,
+    tasks: `${input.tasks} 문의 hr@company.co.kr / 010-3333-4444`,
+    qualifications: `${input.qualifications} (담당: 02-555-6666)`,
+  };
+  const payload = JSON.stringify(modelPayload("anthropic", dirty));
+  assert.equal(payload.includes("hr@company.co.kr"), false);
+  assert.equal(payload.includes("010-3333-4444"), false);
+  assert.equal(payload.includes("02-555-6666"), false);
+  const parsed = parseModelResponse(
+    "anthropic",
+    dirty,
+    response("end_turn", {
+      ...result,
+      secondaryEvidence: [],
+      evidence: [{ field: "tasks", quote: `${input.tasks} 문의 [연락처 제외]` }],
+    }),
+  );
+  assert.equal(parsed.classification.primaryRole, result.primaryRole);
+});
 it("캐시 쓰기·읽기 토큰을 따로 계산하고 전체 입력 토큰으로 기록", () => {
   const cached = {
     ...response(),

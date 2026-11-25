@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import {
   classificationInput,
   combineDeadline,
+  CONTACT_REDACTED,
   parseCount,
   stableHash,
+  stripContactInfo,
   parseSelectionInfo,
   parseStipend,
   sourceHash,
@@ -82,5 +84,45 @@ describe("첨부 파일과 분류 입력", () => {
     const base = sourceHash({ ...p, attachment });
     assert.equal(base, sourceHash({ ...p, attachment: { ...attachment, extractedAt: "2026-11-16T00:00:00Z" } }));
     assert.notEqual(base, sourceHash({ ...p, attachment: { ...attachment, fileHash: "h2" } }));
+  });
+  it("업무·자격·첨부 본문의 담당자 이메일·전화번호는 분류 입력에서 제외하고 날짜·지원금은 보존", () => {
+    const withContacts = {
+      ...p,
+      tasks: "백엔드 API 개발 (문의: recruit.team@example.co.kr / 02-2220-1234, 2026-11-25 마감, 월 1,620,000원)",
+      qualifications: "Python 가능자 · 담당자 010-9876-5432 또는 01012345678, 대표번호 1588-1234",
+      attachment: {
+        ...attachment,
+        text: "부서 안내 +82-10-1111-2222 / (031) 777-8888 / hr@corp.kr · 근무시간 09:00 ~ 18:00",
+      },
+      department: "개발팀 (dev@corp.kr)",
+    };
+    const input = classificationInput(withContacts);
+    const serialized = JSON.stringify(input);
+    for (const secret of [
+      "recruit.team@example.co.kr",
+      "02-2220-1234",
+      "010-9876-5432",
+      "01012345678",
+      "1588-1234",
+      "+82-10-1111-2222",
+      "777-8888",
+      "hr@corp.kr",
+      "dev@corp.kr",
+    ]) {
+      assert.equal(serialized.includes(secret), false, `expected ${secret} to be stripped`);
+    }
+    assert.match(input.tasks, /2026-11-25 마감/);
+    assert.match(input.tasks, /월 1,620,000원/);
+    assert.match(input.attachment!, /근무시간 09:00 ~ 18:00/);
+    assert.ok(input.tasks.includes(CONTACT_REDACTED));
+    // Display sourceHash still tracks raw source changes.
+    assert.notEqual(
+      sourceHash(withContacts),
+      sourceHash({
+        ...withContacts,
+        qualifications: withContacts.qualifications.replace("010-9876-5432", "010-0000-0000"),
+      }),
+    );
+    assert.equal(stripContactInfo("일반 업무 설명 2026.01.01 ~ 2026.02.28"), "일반 업무 설명 2026.01.01 ~ 2026.02.28");
   });
 });
