@@ -6,6 +6,7 @@ import {
   isReadable,
   needsAttachment,
   parseFileDown,
+  readBoundedResponseBody,
   toAttachment,
   withAttachment,
 } from "../worker/attachments";
@@ -134,5 +135,98 @@ describe("수집 단계 연결", () => {
       ).attachment,
       undefined,
     );
+  });
+});
+
+describe("첨부 스트리밍 다운로드 바이트 제한과 본문 해제", () => {
+  function mockStreamResponse(options: {
+    ok?: boolean;
+    status?: number;
+    contentLength?: string | null;
+    chunks: Uint8Array[];
+    onCancel: () => void;
+    onPull?: (index: number) => void;
+  }) {
+    let index = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (index >= options.chunks.length) {
+          controller.close();
+          return;
+        }
+        options.onPull?.(index);
+        controller.enqueue(options.chunks[index++]);
+      },
+      cancel() {
+        options.onCancel();
+      },
+    });
+    const headers = new Headers();
+    if (options.contentLength) headers.set("content-length", options.contentLength);
+    return {
+      ok: options.ok ?? true,
+      status: options.status ?? 200,
+      headers,
+      body,
+    };
+  }
+
+  it("Content-Length가 없거나 축소 신고되어도 수신 도중 한도를 넘기면 중단하고 본문을 해제", async () => {
+    for (const contentLength of [null, "4"]) {
+      let cancelled = false;
+      let pulled = 0;
+      const res = mockStreamResponse({
+        contentLength,
+        chunks: [new Uint8Array(6), new Uint8Array(6), new Uint8Array(1000)],
+        onCancel: () => {
+          cancelled = true;
+        },
+        onPull: () => {
+          pulled += 1;
+        },
+      });
+      await assert.rejects(() => readBoundedResponseBody(res, 10), /ATTACHMENT_TOO_LARGE/);
+      assert.equal(cancelled, true);
+      assert.equal(pulled, 2);
+      assert.equal(res.body.locked, false);
+    }
+  });
+
+  it("HTTP 오류 응답과 정상 완료 모두에서 응답 본문 스트림을 해제", async () => {
+    let errCancelled = false;
+    const errRes = mockStreamResponse({
+      ok: false,
+      status: 500,
+      chunks: [new Uint8Array([1, 2, 3])],
+      onCancel: () => {
+        errCancelled = true;
+      },
+    });
+    await assert.rejects(() => readBoundedResponseBody(errRes, 100), /ATTACHMENT_HTTP_500/);
+    assert.equal(errCancelled, true);
+
+    let headerOversizedCancelled = false;
+    const headerOversizedRes = mockStreamResponse({
+      contentLength: "999",
+      chunks: [new Uint8Array([1, 2, 3])],
+      onCancel: () => {
+        headerOversizedCancelled = true;
+      },
+    });
+    await assert.rejects(() => readBoundedResponseBody(headerOversizedRes, 10), /ATTACHMENT_TOO_LARGE/);
+    assert.equal(headerOversizedCancelled, true);
+
+    let okPulledAll = false;
+    const okRes = mockStreamResponse({
+      chunks: [new Uint8Array([1, 2]), new Uint8Array([3, 4, 5])],
+      onCancel: () => undefined,
+      onPull: idx => {
+        if (idx === 1) okPulledAll = true;
+      },
+    });
+    const out = await readBoundedResponseBody(okRes, 10);
+    assert.deepEqual([...out], [1, 2, 3, 4, 5]);
+    assert.equal(okPulledAll, true);
+    assert.equal(okRes.body.locked, false);
   });
 });

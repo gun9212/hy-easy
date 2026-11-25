@@ -22,6 +22,57 @@ const FILE_DOWN_CALL = /fileDown\(\s*'(\d+)'\s*,\s*'([^']*)'\s*,\s*'([^']*)'\s*,
 /** Arguments of HY-WEP's fileDown(jid_seq, org_name, fake_name, ext), posted as a form to its download URL. */
 export type AttachmentLink = { jidSeq: string; orgName: string; fakeName: string; ext: string };
 
+export type StreamableResponse = {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  body: ReadableStream<Uint8Array> | null;
+};
+
+/**
+ * Streams an HTTP response body while enforcing `maxBytes` on actual received bytes (even when Content-Length is
+ * missing or inaccurate), and cancels/releases the response body stream on both success and every error path.
+ */
+export async function readBoundedResponseBody(
+  response: StreamableResponse,
+  maxBytes = MAX_ATTACHMENT_BYTES,
+): Promise<Uint8Array> {
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  try {
+    if (!response.ok) throw new Error(`ATTACHMENT_HTTP_${response.status}`);
+    const contentLength = response.headers.get("content-length");
+    const declared = contentLength !== null && contentLength.trim() !== "" ? Number(contentLength) : NaN;
+    if (Number.isFinite(declared) && declared > maxBytes) throw new Error("ATTACHMENT_TOO_LARGE");
+    if (!response.body) return new Uint8Array(0);
+
+    reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value || value.byteLength === 0) continue;
+      total += value.byteLength;
+      if (total > maxBytes) throw new Error("ATTACHMENT_TOO_LARGE");
+      chunks.push(value);
+    }
+    const merged = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return merged;
+  } finally {
+    if (reader) {
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
+    } else if (response.body && !response.body.locked) {
+      await response.body.cancel().catch(() => undefined);
+    }
+  }
+}
+
 /** Only postings whose tasks are (almost) empty and point to an attached file. */
 export function needsAttachment(posting: Pick<Posting, "tasks">): boolean {
   const tasks = posting.tasks.trim();
