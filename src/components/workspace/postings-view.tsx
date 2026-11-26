@@ -111,6 +111,7 @@ export function PostingsView(props: Props): React.ReactElement {
       </Card>
       {filtered.length === 0 ? (
         <EmptyState
+          headingLevel={2}
           title={
             savedEmpty
               ? "저장한 관심 공고가 없어요"
