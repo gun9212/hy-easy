@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { requestOrigin } from "./auth";
 
 /**
  * Google sign-in through this site's own callback (/auth/google/callback), so Google's screens name
@@ -55,5 +56,5 @@ export function readCookie(request: Request, name: string): string | undefined {
 
 /** The site origin Google redirects back to; it must match an authorized redirect URI in the Google console. */
 export function siteOrigin(request: Request): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || new URL(request.url).origin;
+  return process.env.NEXT_PUBLIC_SITE_URL || requestOrigin(request);
 }

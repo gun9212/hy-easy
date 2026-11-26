@@ -1,9 +1,12 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
-import { sameOrigin, HttpError } from "../src/lib/auth";
+import { NextRequest } from "next/server";
+import { isSameOrigin, requestOrigin, sameOrigin, HttpError } from "../src/lib/auth";
 import { performLogout, supabaseAuthCookieNames } from "../src/lib/auth-cookies";
 import { GET } from "../src/app/api/postings/route";
 import { DELETE as deleteApplication } from "../src/app/api/applications/[id]/route";
+import { POST as submitFeedback } from "../src/app/api/feedback/route";
+import { POST as googleSignIn } from "../src/app/auth/google/route";
 import { POST as logout } from "../src/app/auth/logout/route";
 it("Supabase 미연결 시 실제 공고 API가 샘플을 반환하지 않음", async () => {
   const old = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -118,4 +121,119 @@ it("인증 서버 토큰 철회가 실패해도 세션 쿠키와 청크를 모�
     supabaseAuthCookieNames(["hy_theme", "sb-abc-auth-token.0", "sb-abc-auth-token.1"], "https://abc.supabase.co"),
     ["sb-abc-auth-token", "sb-abc-auth-token-code-verifier", "sb-abc-auth-token.0", "sb-abc-auth-token.1"],
   );
+});
+it("NextRequest가 127.0.0.1과 [::1]을 localhost로 바꾸더라도 동일 루프백 Origin을 허용하고 교차 호스트·포트·외부 Host는 거절", async () => {
+  const loopbackPost = new NextRequest("http://127.0.0.1:3000/api/feedback", {
+    method: "POST",
+    headers: {
+      host: "127.0.0.1:3000",
+      origin: "http://127.0.0.1:3000",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ message: "x" }),
+  });
+  // Guard that NextRequest still normalizes 127.0.0.1 -> localhost in request.url (the root cause of BUG-02).
+  assert.equal(loopbackPost.url, "http://localhost:3000/api/feedback");
+  assert.equal(requestOrigin(loopbackPost), "http://127.0.0.1:3000");
+  assert.doesNotThrow(() => sameOrigin(loopbackPost));
+
+  const ipv6Loopback = new NextRequest("http://[::1]:3000/api/feedback", {
+    method: "POST",
+    headers: { host: "[::1]:3000", origin: "http://[::1]:3000" },
+  });
+  assert.equal(ipv6Loopback.url, "http://localhost:3000/api/feedback");
+  assert.doesNotThrow(() => sameOrigin(ipv6Loopback));
+
+  // Different loopback hostname or port must still be rejected.
+  assert.throws(
+    () =>
+      sameOrigin(
+        new NextRequest("http://127.0.0.1:3000/api/feedback", {
+          method: "POST",
+          headers: { host: "127.0.0.1:3000", origin: "http://localhost:3000" },
+        }),
+      ),
+    HttpError,
+  );
+  assert.throws(
+    () =>
+      sameOrigin(
+        new NextRequest("http://127.0.0.1:3000/api/feedback", {
+          method: "POST",
+          headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:8080" },
+        }),
+      ),
+    HttpError,
+  );
+  // Spoofed non-loopback Host headers are ignored on both loopback and production URLs.
+  assert.equal(
+    isSameOrigin(
+      new NextRequest("http://127.0.0.1:3000/api/feedback", {
+        method: "POST",
+        headers: { host: "evil.example:3000", origin: "http://evil.example:3000" },
+      }),
+    ),
+    false,
+  );
+  assert.equal(
+    isSameOrigin(
+      new NextRequest("https://hy-easy.vercel.app/api/feedback", {
+        method: "POST",
+        headers: { host: "evil.example", origin: "https://evil.example" },
+      }),
+    ),
+    false,
+  );
+
+  const oldUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const oldKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  try {
+    // Unconfigured Supabase makes requireUser() throw 503 right after sameOrigin() succeeds (vs 403 on Origin mismatch).
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const feedbackRes = await submitFeedback(loopbackPost);
+    assert.equal(feedbackRes.status, 503);
+
+    const logoutRes = await logout(
+      new NextRequest("http://127.0.0.1:3000/auth/logout", {
+        method: "POST",
+        headers: { host: "127.0.0.1:3000", origin: "http://127.0.0.1:3000" },
+      }),
+    );
+    assert.equal(logoutRes.status, 303);
+    assert.equal(logoutRes.headers.get("location"), "http://127.0.0.1:3000/login");
+
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://projref.supabase.co";
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_test";
+    const googleRes = await googleSignIn(
+      new NextRequest("http://127.0.0.1:3000/auth/google", {
+        method: "POST",
+        headers: {
+          host: "127.0.0.1:3000",
+          origin: "http://127.0.0.1:3000",
+          "content-type": "application/json",
+        },
+        body: "{}",
+      }),
+    );
+    assert.equal(googleRes.status, 400);
+
+    const googleCrossLoopback = await googleSignIn(
+      new NextRequest("http://127.0.0.1:3000/auth/google", {
+        method: "POST",
+        headers: {
+          host: "127.0.0.1:3000",
+          origin: "http://localhost:3000",
+          "content-type": "application/json",
+        },
+        body: "{}",
+      }),
+    );
+    assert.equal(googleCrossLoopback.status, 403);
+  } finally {
+    if (oldUrl) process.env.NEXT_PUBLIC_SUPABASE_URL = oldUrl;
+    else delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (oldKey) process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = oldKey;
+    else delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  }
 });

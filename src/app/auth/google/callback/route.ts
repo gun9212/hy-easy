@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/auth";
 import { isSchoolUser } from "@/lib/auth-policy";
 import {
   CALLBACK_PATH,
@@ -15,8 +16,9 @@ import { isConfigured, serverClient } from "@/lib/supabase/server";
 /** Ends the sign-in /auth/login started: checks state, trades the code for an ID token, opens a Supabase session. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const baseOrigin = requestOrigin(request);
   const done = (path: string) => {
-    const response = NextResponse.redirect(new URL(path, request.url));
+    const response = NextResponse.redirect(new URL(path, baseOrigin));
     // The one-time state and nonce are spent either way.
     for (const name of [OAUTH_STATE_COOKIE, OAUTH_NONCE_COOKIE])
       response.cookies.set(name, "", { path: OAUTH_COOKIE_PATH, maxAge: 0 });

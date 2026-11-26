@@ -2,7 +2,7 @@
 // upstream Supabase Auth server fails to revoke the refresh token.
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { sameOrigin } from "./auth";
+import { requestOrigin, sameOrigin } from "./auth";
 import { isConfigured, serverClient } from "./supabase/server";
 
 const SUPABASE_AUTH_COOKIE = /^sb-[a-z0-9-]+-auth-token(?:-code-verifier)?(?:\.\d+)?$/i;
@@ -126,8 +126,9 @@ export async function performLogout(request: Request, deps: LogoutDeps = default
   for (const name of await deps.readJarCookieNames()) incomingNames.add(name);
 
   const toExpire = supabaseAuthCookieNames(incomingNames, deps.supabaseUrl());
-  const response = NextResponse.redirect(new URL("/login", request.url), 303);
+  const origin = requestOrigin(request);
+  const response = NextResponse.redirect(new URL("/login", origin), 303);
   response.headers.set("Cache-Control", "private, no-store");
-  expireAuthCookies(response, toExpire, new URL(request.url).protocol === "https:");
+  expireAuthCookies(response, toExpire, origin.startsWith("https://"));
   return response;
 }
