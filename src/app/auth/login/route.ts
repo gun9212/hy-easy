@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requestOrigin } from "@/lib/auth";
 import {
   authorizeUrl,
   OAUTH_COOKIE_MAX_AGE,
@@ -16,7 +17,8 @@ import { isConfigured, serverClient } from "@/lib/supabase/server";
  * which works the same but shows the Supabase project domain.
  */
 export async function GET(request: Request) {
-  if (!isConfigured()) return NextResponse.redirect(new URL("/login?error=setup", request.url));
+  const baseOrigin = requestOrigin(request);
+  if (!isConfigured()) return NextResponse.redirect(new URL("/login?error=setup", baseOrigin));
   const origin = siteOrigin(request);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   if (clientId && process.env.GOOGLE_CLIENT_SECRET) {
@@ -40,6 +42,6 @@ export async function GET(request: Request) {
     provider: "google",
     options: { redirectTo: `${origin}/auth/callback`, queryParams: { hd: "hanyang.ac.kr", prompt: "select_account" } },
   });
-  if (error || !data.url) return NextResponse.redirect(new URL("/login?error=oauth", request.url));
+  if (error || !data.url) return NextResponse.redirect(new URL("/login?error=oauth", baseOrigin));
   return NextResponse.redirect(data.url);
 }

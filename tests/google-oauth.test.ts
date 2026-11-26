@@ -1,11 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { NextRequest } from "next/server";
 import {
   authorizeUrl,
   hashNonce,
   OAUTH_NONCE_COOKIE,
   OAUTH_STATE_COOKIE,
   readCookie,
+  siteOrigin,
   stateMatches,
 } from "../src/lib/google-oauth";
 import { GET as callback } from "../src/app/auth/google/callback/route";
@@ -72,11 +74,21 @@ describe("/auth/google/callback", () => {
 
 it("/auth/login without Supabase settings goes back to the login page", async () => {
   const old = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const oldSite = process.env.NEXT_PUBLIC_SITE_URL;
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  delete process.env.NEXT_PUBLIC_SITE_URL;
   try {
     const response = await login(new Request("https://hy-easy.vercel.app/auth/login"));
     assert.match(response.headers.get("location") ?? "", /\/login\?error=setup$/);
+
+    const loopbackReq = new NextRequest("http://127.0.0.1:3000/auth/login", {
+      headers: { host: "127.0.0.1:3000" },
+    });
+    assert.equal(siteOrigin(loopbackReq), "http://127.0.0.1:3000");
+    const loopbackRes = await login(loopbackReq);
+    assert.equal(loopbackRes.headers.get("location"), "http://127.0.0.1:3000/login?error=setup");
   } finally {
     if (old) process.env.NEXT_PUBLIC_SUPABASE_URL = old;
+    if (oldSite) process.env.NEXT_PUBLIC_SITE_URL = oldSite;
   }
 });

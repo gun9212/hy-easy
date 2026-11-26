@@ -39,9 +39,56 @@ export async function requireAdmin() {
   if (!data) throw new HttpError(403, "관리자 권한이 필요합니다.");
   return ctx;
 }
-export function sameOrigin(request: Request) {
+const LOOPBACK_HOSTNAME = /^(?:127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}|\[::1\]|localhost)$/i;
+
+function isLoopbackHostname(hostname: string): boolean {
+  return LOOPBACK_HOSTNAME.test(hostname);
+}
+
+/**
+ * Returns the request's public origin. Next.js NextURL normalizes 127.0.0.0/8 and [::1] to "localhost" in
+ * request.url; when request.url is loopback, recover the actual loopback host from Host if it is also loopback on the
+ * same port. Non-loopback URLs never consult Host.
+ */
+export function requestOrigin(request: Request): string {
+  const url = new URL(request.url);
+  if (!isLoopbackHostname(url.hostname)) return url.origin;
+  const host = request.headers.get("host")?.trim();
+  if (!host) return url.origin;
+  try {
+    const hostUrl = new URL(`${url.protocol}//${host}`);
+    if (
+      hostUrl.username === "" &&
+      hostUrl.password === "" &&
+      hostUrl.pathname === "/" &&
+      hostUrl.search === "" &&
+      hostUrl.hash === "" &&
+      isLoopbackHostname(hostUrl.hostname) &&
+      hostUrl.port === url.port
+    ) {
+      return hostUrl.origin;
+    }
+  } catch {
+    // Fall back to request.url's origin when Host is malformed.
+  }
+  return url.origin;
+}
+
+export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
-  if (!origin || origin !== new URL(request.url).origin) throw new HttpError(403, "허용되지 않은 요청입니다.");
+  if (!origin) return false;
+  let clientUrl: URL;
+  try {
+    clientUrl = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (clientUrl.origin !== origin) return false;
+  return clientUrl.origin === requestOrigin(request);
+}
+
+export function sameOrigin(request: Request) {
+  if (!isSameOrigin(request)) throw new HttpError(403, "허용되지 않은 요청입니다.");
 }
 export function errorResponse(error: unknown) {
   if (error instanceof HttpError) return Response.json({ error: error.message }, { status: error.status });

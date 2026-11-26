@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { isSameOrigin } from "@/lib/auth";
 import { isSchoolUser } from "@/lib/auth-policy";
 import { isConfigured, serverClient } from "@/lib/supabase/server";
 
@@ -13,14 +14,9 @@ function reply(redirect: string, status = 200) {
   return NextResponse.json({ redirect }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
-function sameOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  return origin !== null && origin === new URL(request.url).origin;
-}
-
 export async function POST(request: Request) {
   if (!isConfigured()) return reply("/login?error=setup", 503);
-  if (!sameOrigin(request)) return reply("/login?error=oauth", 403);
+  if (!isSameOrigin(request)) return reply("/login?error=oauth", 403);
   const parsed = bodySchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return reply("/login?error=oauth", 400);
 
