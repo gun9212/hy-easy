@@ -18,6 +18,11 @@ export const ROLES = [
   "기타",
 ] as const;
 export type Role = (typeof ROLES)[number];
+export function isRole(value: unknown): value is Role {
+  return typeof value === "string" && (ROLES as readonly string[]).includes(value);
+}
+/** Most characters a search query may have; longer input is cut so URLs never hit HTTP 431 header limits. */
+export const MAX_SEARCH_QUERY_CHARS = 100;
 export const APPLICATION_STATUSES = ["in_progress", "rejection_pending", "rejected", "accepted", "unknown"] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -380,13 +385,33 @@ const FILTER_KEYS: (keyof Filters)[] = [
   "posting",
   "page",
 ];
-/** Collapses Next.js duplicate query values (string[]) into single strings so filters never receive an array. */
+const POSTING_SORTS = new Set(["deadline", "stipend", "latest"]);
+const WHEN_VALUES = new Set(["open", "soon", "new"]);
+const SAVED_VALUES = new Set(["true", "planner"]);
+const POSITIVE_INT = /^[1-9]\d*$/;
+
+/**
+ * Collapses Next.js duplicate query values (string[]) into single strings, caps search length, and drops malformed
+ * enum/numeric filter values before they can become invisible filters or arbitrary headings.
+ */
 export function normalizeFilters(raw: Record<string, string | string[] | undefined>): Filters {
   const filters: Filters = {};
   for (const key of FILTER_KEYS) {
     const value = raw[key];
     const first = Array.isArray(value) ? value[0] : value;
-    if (typeof first === "string" && first) filters[key] = first;
+    if (typeof first !== "string" || !first) continue;
+    if (key === "q") {
+      const clipped = first.slice(0, MAX_SEARCH_QUERY_CHARS);
+      if (clipped) filters.q = clipped;
+      continue;
+    }
+    if (key === "role" && !isRole(first)) continue;
+    if (key === "sort" && !POSTING_SORTS.has(first)) continue;
+    if (key === "when" && !WHEN_VALUES.has(first)) continue;
+    if (key === "saved" && !SAVED_VALUES.has(first)) continue;
+    if ((key === "mine" || key === "others") && first !== "true") continue;
+    if ((key === "duration" || key === "stipend" || key === "page") && !POSITIVE_INT.test(first)) continue;
+    filters[key] = first;
   }
   return filters;
 }

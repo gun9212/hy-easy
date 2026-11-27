@@ -6,14 +6,17 @@ import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { isNewPosting, type Application, type Filters, type Posting } from "@/lib/domain";
+import { sanitizeFiltersForPostings } from "@/lib/filter-options";
 import { nextDeadline } from "@/lib/posting-format";
-import { DEFAULT_POSTING_SORT, queryPostings } from "@/lib/posting-query";
+import { DEFAULT_POSTING_SORT, listTitle, queryPostings } from "@/lib/posting-query";
 import type { Major } from "@/lib/majors";
 import { DeadlineGroups } from "./deadline-groups";
 import { ListFilters } from "./list-filters";
 import { PostingResults } from "./posting-results";
 import type { RowProps } from "./posting-row-parts";
 import { SummaryCards, type Stats } from "./summary-cards";
+
+export { listTitle };
 
 type Props = {
   postings: Posting[];
@@ -36,18 +39,11 @@ type Props = {
   onPlanner: () => void;
 };
 
-const WHEN_TITLES: Record<string, string> = { open: "모집 중인 공고", soon: "마감 임박", new: "신규 공고" };
-
-/** The page title for the list: 관심 공고, a side-nav shortcut, the chosen role, or 전체 공고 (as in the demo). */
-export function listTitle(filters: Filters): string {
-  if (filters.saved === "true") return "관심 공고";
-  return WHEN_TITLES[filters.when ?? ""] ?? (filters.role || "전체 공고");
-}
-
 export function PostingsView(props: Props): React.ReactElement {
   const { postings, favoriteIds, now, textMatchIds } = props;
-  // Deadline order is the default, as in the demo: the list opens on the deadline groups.
-  const filters: Filters = { ...props.filters, sort: props.filters.sort || DEFAULT_POSTING_SORT };
+  // Ignore URL filter values absent from the loaded options, and default to deadline order as in the demo.
+  const sanitized = sanitizeFiltersForPostings(props.filters, postings);
+  const filters: Filters = { ...sanitized, sort: sanitized.sort || DEFAULT_POSTING_SORT };
   const filtered = queryPostings(postings, filters, { favoriteIds, major: props.major, now, textMatchIds });
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major

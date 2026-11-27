@@ -1,5 +1,5 @@
 // Filter choices derived from the postings actually loaded, instead of hard-coded sample values.
-import type { Posting } from "./domain";
+import { isRole, type Filters, type Posting } from "./domain";
 
 export type Option = readonly [value: string, label: string];
 
@@ -89,4 +89,19 @@ export function stipendOptions(postings: readonly Posting[]): Option[] {
     const count = monthly.filter(amount => amount >= step).length;
     return [String(step), `월 ${step / 10_000}만원 이상 (${count})`] as const;
   });
+}
+
+/**
+ * Drops selector filter values that are absent from the loaded postings' options so stale or hand-edited URLs
+ * (?stipend=abc, ?duration=999, ?term=missing) never leave an invisible filter that zeroes out the list.
+ */
+export function sanitizeFiltersForPostings(filters: Filters, postings: readonly Posting[]): Filters {
+  const next: Filters = { ...filters };
+  if (next.role && !isRole(next.role)) delete next.role;
+  if (postings.length === 0) return next;
+  if (next.term && !termOptions(postings).some(([v]) => v === next.term)) delete next.term;
+  if (next.location && !regionOptions(postings).some(([v]) => v === next.location)) delete next.location;
+  if (next.duration && !durationOptions(postings).some(([v]) => v === next.duration)) delete next.duration;
+  if (next.stipend && !stipendOptions(postings).some(([v]) => v === next.stipend)) delete next.stipend;
+  return next;
 }

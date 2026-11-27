@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -13,6 +13,7 @@ import { ToastViewport, useToast } from "@astryxdesign/core/Toast";
 import { Theme } from "@astryxdesign/core/theme";
 import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import { formatDate, isBlocking, type Application, type Filters, type Posting } from "@/lib/domain";
+import { sanitizeFiltersForPostings } from "@/lib/filter-options";
 import { isClosingSoon, isOpenPosting, isUnknownRecruitment } from "@/lib/posting-format";
 import { filtersFromSearchParams } from "@/lib/posting-query";
 import { searchOfFilters, shouldPushHistory, viewOfFilters } from "@/lib/workspace-history";
@@ -159,7 +160,11 @@ function WorkspaceInner({
       notify(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.", "error");
     }
   }
-  const view = viewOfFilters(filters);
+  const activeFilters = useMemo(
+    () => (ready && postings.length > 0 ? sanitizeFiltersForPostings(filters, postings) : filters),
+    [ready, postings, filters],
+  );
+  const view = viewOfFilters(activeFilters);
   const prevFiltersRef = useRef<Filters>(initialFilters);
   const poppingRef = useRef(false);
 
@@ -179,18 +184,18 @@ function WorkspaceInner({
       poppingRef.current = false;
       return;
     }
-    const nextSearch = searchOfFilters(filters);
+    const nextSearch = searchOfFilters(activeFilters);
     const prev = prevFiltersRef.current;
-    prevFiltersRef.current = filters;
+    prevFiltersRef.current = activeFilters;
     if (nextSearch !== window.location.search) {
       const nextUrl = `${window.location.pathname}${nextSearch}`;
-      if (shouldPushHistory(prev, filters)) {
+      if (shouldPushHistory(prev, activeFilters)) {
         window.history.pushState(null, "", nextUrl);
       } else {
         window.history.replaceState(null, "", nextUrl);
       }
     }
-  }, [filters]);
+  }, [activeFilters]);
 
   function updateFilters(patch: Filters) {
     setFilters(prev => {
@@ -265,7 +270,7 @@ function WorkspaceInner({
       sideNav={
         <AppSideNav
           view={view}
-          filters={filters}
+          filters={activeFilters}
           postings={postings}
           openCount={stats.open}
           favoriteCount={personal.favoriteIds.length}
@@ -286,7 +291,7 @@ function WorkspaceInner({
             setMobileMenu(false);
           }}
           selectRole={role => {
-            updateFilters({ role: filters.role === role ? "" : role, when: "", saved: "", q: "" });
+            updateFilters({ role: activeFilters.role === role ? "" : role, when: "", saved: "", q: "" });
             setMobileMenu(false);
           }}
         />
@@ -303,7 +308,7 @@ function WorkspaceInner({
         )}
         <HStack gap={3} align="end" justify="between" wrap="wrap">
           <VStack gap={1}>
-            <Heading level={1}>{view === "planner" ? heading.title : listTitle(filters)}</Heading>
+            <Heading level={1}>{view === "planner" ? heading.title : listTitle(activeFilters)}</Heading>
             <Text type="supporting">{view === "planner" ? heading.text : sourceLine(mode, lastChecked)}</Text>
           </VStack>
           <Button variant="primary" label="HY-WEP 바로가기" href={HYWEP_URL} target="_blank" rel="noreferrer" />
@@ -327,13 +332,13 @@ function WorkspaceInner({
             record={record}
             remove={remove}
             now={now}
-            initialPostingId={filters.posting ?? null}
+            initialPostingId={activeFilters.posting ?? null}
           />
         ) : (
           <PostingsView
             postings={postings}
             textMatchIds={textMatchIds}
-            filters={filters}
+            filters={activeFilters}
             major={major}
             onMajor={changeMajor}
             updateFilters={updateFilters}

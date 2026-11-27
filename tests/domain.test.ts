@@ -5,6 +5,7 @@ import {
   eligibility,
   simulate,
   filterPostings,
+  MAX_SEARCH_QUERY_CHARS,
   normalizeFilters,
   assertEvidence,
   majorFit,
@@ -84,6 +85,22 @@ describe("원문 정규화와 비교", () => {
     });
     assert.deepEqual(normalized, { q: "데이터", role: "개발", saved: "planner", posting: "p-1" });
     assert.doesNotThrow(() => filterPostings(samplePostings, normalized, []));
+  });
+  it("긴 검색어를 최대 길이로 자르고 허용되지 않은 필터 값은 무시", () => {
+    const normalized = normalizeFilters({
+      q: "가".repeat(2000),
+      role: "없는직무",
+      sort: "bogus",
+      when: "zzz",
+      saved: "invalid",
+      mine: "no",
+      others: "0",
+      stipend: "abc",
+      duration: "-3",
+      page: "abc",
+    });
+    assert.deepEqual(normalized, { q: "가".repeat(MAX_SEARCH_QUERY_CHARS) });
+    assert.equal(normalized.q?.length, 100);
   });
   it("잘못된 날짜·시각을 임의 보정하지 않음", () => {
     assert.equal(parseDeadline("2026-02-30 18:00").precision, "unknown");

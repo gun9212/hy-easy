@@ -1,4 +1,4 @@
-import type { Filters } from "./domain";
+import { MAX_SEARCH_QUERY_CHARS, type Filters } from "./domain";
 
 export type WorkspaceView = "postings" | "saved" | "planner";
 
@@ -10,7 +10,9 @@ export function viewOfFilters(filters: Filters): WorkspaceView {
 export function searchOfFilters(filters: Filters): string {
   const params = new URLSearchParams();
   Object.entries(filters).forEach(([key, value]) => {
-    if (value) params.set(key, value);
+    if (!value) return;
+    const bounded = key === "q" ? value.slice(0, MAX_SEARCH_QUERY_CHARS) : value;
+    if (bounded) params.set(key, bounded);
   });
   return params.size ? `?${params}` : "";
 }
