@@ -1,4 +1,7 @@
 "use client";
+
+import Link from "next/link";
+
 export default function ErrorPage({ reset }: { reset: () => void }) {
   return (
     <main className="error-page">
@@ -7,7 +10,8 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
       <button className="primary-button" onClick={reset}>
         다시 시도
       </button>
-      <a href="/login">로그인으로 돌아가기</a>
+      {/* "/" sends a signed-in student to the postings and anyone else to the login page. */}
+      <Link href="/">처음으로</Link>
     </main>
   );
 }

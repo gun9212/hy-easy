@@ -103,5 +103,6 @@ export function sanitizeFiltersForPostings(filters: Filters, postings: readonly 
   if (next.location && !regionOptions(postings).some(([v]) => v === next.location)) delete next.location;
   if (next.duration && !durationOptions(postings).some(([v]) => v === next.duration)) delete next.duration;
   if (next.stipend && !stipendOptions(postings).some(([v]) => v === next.stipend)) delete next.stipend;
+  if (next.open && !postings.some(p => p.id === next.open)) delete next.open;
   return next;
 }

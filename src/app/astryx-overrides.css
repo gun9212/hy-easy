@@ -69,6 +69,35 @@
 dialog .astryx-layout-content {
   overscroll-behavior: contain;
 }
+/* A role with no postings stays clickable but reads as empty, so the eye skips it. */
+.astryx-side-nav-item:has(.side-count[data-empty]),
+.astryx-side-nav-item:has(.side-count[data-empty]) * {
+  color: var(--color-muted);
+}
+/* The side nav scrolls inside itself above the 다음 마감 card (a 1440×900 window shows about 9 of 13 roles) and
+   nothing said there was more. Fade its bottom edge while more is below; the fade goes as the list reaches its end.
+   Astryx gives the scroll area no class of its own: it is the side nav's first child. Browsers without scroll-driven
+   animations keep the plain list. */
+@property --side-nav-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes side-nav-fade {
+  from {
+    --side-nav-fade: 40px;
+  }
+  to {
+    --side-nav-fade: 0px;
+  }
+}
+@supports (animation-timeline: scroll()) {
+  .astryx-side-nav > div:first-child {
+    animation: side-nav-fade linear both;
+    animation-timeline: scroll(self);
+    mask-image: linear-gradient(to bottom, black calc(100% - var(--side-nav-fade)), transparent);
+  }
+}
 .summary-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

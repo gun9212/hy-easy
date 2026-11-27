@@ -51,6 +51,12 @@
   white-space: nowrap;
   cursor: pointer;
 }
+/* A finger needs a taller target than a pointer: 44px on touch screens, the compact 30px elsewhere. */
+@media (pointer: coarse) {
+  .landing-theme-switch button {
+    min-height: 44px;
+  }
+}
 .landing-theme-switch button:hover {
   color: var(--color-ink);
 }

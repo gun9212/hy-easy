@@ -18,12 +18,14 @@ export function searchOfFilters(filters: Filters): string {
 }
 
 /**
- * Primary view transitions (postings <-> saved <-> planner) and top-level "when" shortcuts push a browser
+ * Primary view transitions (postings <-> saved <-> planner), opening a posting detail and top-level "when" shortcuts push a browser
  * history entry so Back returns to the previous screen; incremental search typing and filter tweaks replace
  * the current entry instead of flooding the history stack.
  */
 export function shouldPushHistory(prev: Filters, next: Filters): boolean {
   if (viewOfFilters(prev) !== viewOfFilters(next)) return true;
+  // Opening a posting detail is a step Back should undo; closing it goes back instead (see Workspace).
+  if (!prev.open && next.open) return true;
   if ((prev.q ?? "") !== (next.q ?? "")) return false;
   if ((prev.when ?? "") !== (next.when ?? "")) return true;
   return false;
