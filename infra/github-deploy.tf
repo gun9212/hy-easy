@@ -52,9 +52,29 @@ resource "google_project_iam_member" "deployer_project" {
   member   = "serviceAccount:${google_service_account.deployer.email}"
 }
 
-# Upload the build source to the bucket gcloud builds submit uses (created by Cloud Build on the first build).
+# Staging bucket for `gcloud builds submit` source archives: private, uniform IAM, purged after 14 days.
+resource "google_storage_bucket" "cloudbuild" {
+  name                        = "${var.project_id}_cloudbuild"
+  location                    = "US"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = false
+  soft_delete_policy {
+    retention_duration_seconds = 7 * 86400
+  }
+  lifecycle_rule {
+    condition {
+      age = 14
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+# Upload the build source to the Cloud Build staging bucket.
 resource "google_storage_bucket_iam_member" "deployer_build_source" {
-  bucket = "${var.project_id}_cloudbuild"
+  bucket = google_storage_bucket.cloudbuild.name
   role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.deployer.email}"
 }
@@ -110,7 +130,7 @@ resource "google_project_iam_member" "builder_logs" {
 }
 
 resource "google_storage_bucket_iam_member" "builder_source" {
-  bucket = "${var.project_id}_cloudbuild"
+  bucket = google_storage_bucket.cloudbuild.name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.builder.email}"
 }

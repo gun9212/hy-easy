@@ -207,7 +207,7 @@ resource "google_cloud_scheduler_job" "poll" {
   time_zone = "Asia/Seoul"
   paused    = var.schedules_paused
   retry_config {
-    retry_count = 0
+    retry_count = 1
   }
   http_target {
     uri         = "https://run.googleapis.com/v2/projects/${var.project_id}/locations/${var.region}/jobs/${google_cloud_run_v2_job.collector.name}:run"
