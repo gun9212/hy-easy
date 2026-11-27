@@ -102,7 +102,7 @@ function buildColumns(props: RowProps): TableColumn<Posting>[] {
     },
     {
       key: "role",
-      header: "직무",
+      header: "직군",
       width: proportional(1, { minWidth: 96 }),
       renderCell: p => <RoleCell posting={p} />,
     },

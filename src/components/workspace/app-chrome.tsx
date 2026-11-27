@@ -163,7 +163,7 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
           endContent={<Count value={postings.filter(p => isClosingSoon(p, now)).length} isStrong />}
         />
         <SideNavItem
-          label="새로 올라온 공고"
+          label="신규 공고"
           isSelected={listView && when === "new"}
           onClick={() => props.selectWhen("new")}
           endContent={<Count value={postings.filter(p => isNewPosting(p, now)).length} />}

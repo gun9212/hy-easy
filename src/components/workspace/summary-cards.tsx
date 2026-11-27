@@ -25,7 +25,7 @@ type StatProps = {
   onSelect: () => void;
 };
 
-/** A count that opens its list, like the side navigation's 모집 중 / 마감 임박 / 새로 올라온 공고. */
+/** A count that opens its list, like the side navigation's 모집 중 / 마감 임박 / 신규 공고. */
 function Stat(props: StatProps): React.ReactElement {
   return (
     <ClickableCard
@@ -88,9 +88,9 @@ export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): 
         onSelect={() => onSelect("soon")}
       />
       <Stat
-        label="새로 올라옴"
+        label="신규 공고"
         value={newCount}
-        note="최근 3영업일 동안 올라온 공고"
+        note="최근 3영업일 안에 등록"
         isSelected={when === "new"}
         onSelect={() => onSelect("new")}
       />

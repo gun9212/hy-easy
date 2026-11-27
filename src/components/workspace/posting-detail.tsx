@@ -134,7 +134,7 @@ export function PostingDetail(props: Props) {
               {(p.classification?.needsReview || p.classificationStale) && (
                 <Banner
                   status="warning"
-                  title="직무 분류 확인 필요"
+                  title="직군 분류 확인 필요"
                   description="원문과 분류가 다를 수 있어 관리자가 검토 중입니다."
                   collapsible={false}
                 />
