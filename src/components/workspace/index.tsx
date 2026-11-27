@@ -357,13 +357,11 @@ function WorkspaceInner({
             onPlanner={() => navigate("planner")}
           />
         )}
-        <HStack gap={3} wrap="wrap">
+        <HStack gap={3} wrap="wrap" align="center">
           <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
           <Text type="supporting">한양대학교 비공식 서비스</Text>
-          <Link href="/privacy">개인정보처리방침</Link>
-          <button type="button" className="text-link" onClick={() => setFeedbackOpen(true)}>
-            피드백 보내기
-          </button>
+          <Button variant="ghost" size="sm" label="개인정보처리방침" href="/privacy" as={Link} />
+          <Button variant="ghost" size="sm" label="피드백 보내기" onClick={() => setFeedbackOpen(true)} />
         </HStack>
       </VStack>
       <CompareDock

@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { Typeahead } from "@astryxdesign/core/Typeahead";
 import type { Posting } from "@/lib/domain";
 import { postingOptionLabel, searchPostings } from "@/lib/posting-picker";
 
@@ -13,41 +14,38 @@ type Props = {
   required?: boolean;
 };
 
-const MAX_OPTIONS = 80;
+type Item = { id: string; label: string };
 
-/** A posting select with a search field above it: the list holds 190+ postings, too many to scroll through. */
+const MAX_OPTIONS = 20;
+
+/**
+ * A posting field that is searched by typing: the list holds 190+ postings, too many to scroll through. Focusing it
+ * shows the first postings; typing narrows them by company, title or team (every word must match).
+ */
 export function PostingPicker({ label, placeholder, postings, value, onChange, required }: Props) {
-  const searchId = useId();
-  const [query, setQuery] = useState("");
-  const found = useMemo(() => searchPostings(postings, query), [postings, query]);
-  const shown = found.slice(0, MAX_OPTIONS);
-  const selected = postings.find(p => p.id === value);
-  const options = selected && !shown.includes(selected) ? [selected, ...shown] : shown;
-  const searching = query.trim().length > 0;
+  const items = useMemo(() => postings.map(p => ({ id: p.id, label: postingOptionLabel(p) })), [postings]);
+  const searchSource = useMemo(() => {
+    const byId = new Map(items.map(item => [item.id, item]));
+    const toItems = (found: readonly Posting[]) => found.flatMap(p => byId.get(p.id) ?? []);
+    return {
+      search: (query: string) => toItems(searchPostings(postings, query)),
+      bootstrap: () => items,
+    };
+  }, [items, postings]);
+  const selected: Item | null = items.find(item => item.id === value) ?? null;
   return (
-    <div className="form-field posting-picker">
-      <label htmlFor={searchId}>{label}</label>
-      <input
-        id={searchId}
-        type="search"
-        value={query}
-        onChange={e => setQuery(e.target.value)}
-        placeholder="회사나 공고명으로 찾기"
-        autoComplete="off"
-      />
-      <select aria-label={`${label} 선택`} required={required} value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{searching ? `검색 결과 ${found.length}개 · 선택하세요` : placeholder}</option>
-        {options.map(p => (
-          <option key={p.id} value={p.id}>
-            {postingOptionLabel(p)}
-          </option>
-        ))}
-      </select>
-      {found.length > MAX_OPTIONS && (
-        <small className="muted">
-          {found.length}개 중 {MAX_OPTIONS}개만 보여요. 검색어를 더 입력해 주세요.
-        </small>
-      )}
-    </div>
+    <Typeahead<Item>
+      label={label}
+      placeholder={placeholder}
+      searchSource={searchSource}
+      value={selected}
+      onChange={item => onChange(item?.id ?? "")}
+      hasEntriesOnFocus
+      maxMenuItems={MAX_OPTIONS}
+      debounceMs={0}
+      emptySearchText="맞는 공고가 없어요. 회사나 공고명으로 찾아 보세요."
+      isRequired={required}
+      width="100%"
+    />
   );
 }

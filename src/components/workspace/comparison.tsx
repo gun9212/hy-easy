@@ -2,6 +2,7 @@
 
 import { ChevronDown, X } from "lucide-react";
 import { useState, type CSSProperties, type ReactNode } from "react";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import { compareSections } from "@/lib/compare-text";
 import { deadlineLabel, eligibility, stipendLabel, type Application, type Posting } from "@/lib/domain";
 import { competitionRatio } from "@/lib/posting-format";
@@ -156,9 +157,7 @@ export function Comparison({ postings, close, applications, now }: Props) {
     <Modal close={close} label="선택 공고 비교" wide>
       <div className="modal-top">
         <h2>같은 기준으로, 나란히 비교</h2>
-        <button className="icon-button" aria-label="비교 닫기" onClick={close}>
-          <X size={21} />
-        </button>
+        <IconButton variant="ghost" label="비교 닫기" icon={<X size={20} />} onClick={close} />
       </div>
       <ComparisonTable postings={postings} applications={applications} now={now} />
     </Modal>

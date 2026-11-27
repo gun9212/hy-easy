@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { DateTimeInput, type ISODateTimeString } from "@astryxdesign/core/DateTimeInput";
+import { Selector } from "@astryxdesign/core/Selector";
+import { VStack } from "@astryxdesign/core/Stack";
 import { PostingPicker } from "./posting-picker";
 import { ArrowRight, CalendarClock, Check, Clock3, Info, Trash2 } from "lucide-react";
 import {
@@ -98,37 +103,38 @@ function StatusPanel({
             setConfirmed(false);
           }}
         />
-        <label className="form-field">
-          확인한 지원 상태
-          <select
-            value={status}
-            onChange={e => {
-              setStatus(e.target.value as ApplicationStatus);
-              setConfirmed(false);
-            }}
-          >
-            {APPLICATION_STATUSES.map(s => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Selector
+          label="확인한 지원 상태"
+          options={APPLICATION_STATUSES.map(s => ({ value: s, label: STATUS_LABELS[s] }))}
+          value={status}
+          onChange={value => {
+            setStatus(value as ApplicationStatus);
+            setConfirmed(false);
+          }}
+          width="100%"
+        />
         {status === "rejected" && (
-          <label className="confirmation-check">
-            <input required type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} />
-            HY-WEP에서 탈락 처리가 완료된 것을 확인했습니다.
-          </label>
+          <CheckboxInput
+            label="HY-WEP에서 탈락 처리가 완료된 것을 확인했습니다."
+            value={confirmed}
+            onChange={setConfirmed}
+            isRequired
+          />
         )}
         {error && (
           <div className="form-error" role="alert">
             {error}
           </div>
         )}
-        <button className="primary-button full-width" disabled={busy || !postingId}>
-          {busy ? "기록 중…" : "지원 상태 기록"}
-          <Check size={15} />
-        </button>
+        <Button
+          type="submit"
+          variant="primary"
+          label={busy ? "기록 중…" : "지원 상태 기록"}
+          icon={<Check size={15} />}
+          isLoading={busy}
+          isDisabled={!postingId || (status === "rejected" && !confirmed)}
+          width="100%"
+        />
       </form>
     </section>
   );
@@ -143,10 +149,11 @@ function ScenarioPanel({
   const active = applications.find(a => isBlocking(a.status));
   const defaultCandidateId = initialPostingId && initialPostingId !== active?.postingId ? initialPostingId : "";
   const [candidateId, setCandidateId] = useState(defaultCandidateId);
-  const [releaseAt, setReleaseAt] = useState("");
+  // Korean time as YYYY-MM-DDTHH:MM (the input may add :SS); the offset is added below.
+  const [releaseAt, setReleaseAt] = useState<ISODateTimeString | undefined>();
   const candidates = useMemo(() => postings.filter(p => p.id !== active?.postingId), [postings, active?.postingId]);
   const candidate = companyOf(postings, candidateId);
-  const releaseIso = releaseAt.length === 16 ? `${releaseAt}:00+09:00` : `${releaseAt}+09:00`;
+  const releaseIso = releaseAt?.length === 16 ? `${releaseAt}:00+09:00` : `${releaseAt}+09:00`;
   const result = candidate && releaseAt ? simulate(candidate, releaseIso, now) : null;
   return (
     <section className="planner-panel">
@@ -158,17 +165,22 @@ function ScenarioPanel({
         <ArrowRight size={15} />
         <span>다음 기업</span>
       </div>
-      <PostingPicker
-        label="다음에 지원하고 싶은 공고"
-        placeholder="후보 공고를 선택하세요"
-        postings={candidates}
-        value={candidateId}
-        onChange={setCandidateId}
-      />
-      <label className="form-field">
-        예상 탈락 처리 완료 시각 · 한국 시간
-        <input type="datetime-local" value={releaseAt} onChange={e => setReleaseAt(e.target.value)} />
-      </label>
+      <VStack gap={4}>
+        <PostingPicker
+          label="다음에 지원하고 싶은 공고"
+          placeholder="후보 공고를 선택하세요"
+          postings={candidates}
+          value={candidateId}
+          onChange={setCandidateId}
+        />
+        <DateTimeInput
+          label="예상 탈락 처리 완료 시각 · 한국 시간"
+          value={releaseAt}
+          onChange={setReleaseAt}
+          hasClear
+          width="100%"
+        />
+      </VStack>
       {candidate && (
         <p className="scenario-deadline">
           <Clock3 size={14} />
@@ -246,40 +258,38 @@ function History({ postings, applications, remove }: Pick<Props, "postings" | "a
                 <div className="history-actions">
                   {confirming ? (
                     <>
-                      <button
-                        type="button"
-                        className="history-delete-confirm"
-                        disabled={busyId !== null}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        label={busy ? "삭제 중…" : "삭제 확인"}
+                        isLoading={busy}
+                        isDisabled={busyId !== null && !busy}
                         onClick={() => confirmDelete(a.postingId)}
-                      >
-                        {busy ? "삭제 중…" : "삭제 확인"}
-                      </button>
-                      <button
-                        type="button"
-                        className="history-delete-cancel"
-                        disabled={busyId !== null}
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        label="취소"
+                        isDisabled={busyId !== null}
                         onClick={() => {
                           setConfirmId(null);
                           setError("");
                         }}
-                      >
-                        취소
-                      </button>
+                      />
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="history-delete"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      label="삭제"
+                      icon={<Trash2 size={14} />}
                       aria-label={`${name} 지원 기록 삭제`}
-                      disabled={busyId !== null}
+                      isDisabled={busyId !== null}
                       onClick={() => {
                         setError("");
                         setConfirmId(a.postingId);
                       }}
-                    >
-                      <Trash2 size={14} />
-                      삭제
-                    </button>
+                    />
                   )}
                 </div>
               </div>
