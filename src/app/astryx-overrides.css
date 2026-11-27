@@ -59,6 +59,16 @@
     display: block;
   }
 }
+/* The 직군별 side-nav items are size="sm" to keep 13 roles short, but sm also narrows the side padding to 4px, so
+   their labels and counts sat 4px off the md items above. Keep the short height, match the md padding. */
+.astryx-side-nav-item[data-size="sm"] {
+  padding-inline: var(--space-xs);
+}
+/* The posting detail drawer scrolls in its layout content; reaching its end must not scroll or pull-to-refresh the
+   page behind it. */
+dialog .astryx-layout-content {
+  overscroll-behavior: contain;
+}
 .summary-cards-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

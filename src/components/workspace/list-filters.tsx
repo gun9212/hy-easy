@@ -102,6 +102,7 @@ export function ListFilters(props: Props): React.ReactElement {
       <HStack gap={2} align="center" wrap="wrap">
         <TextInput
           type="search"
+          autoComplete="off"
           label="기업명, 직무, 기술 검색"
           isLabelHidden
           placeholder="회사, 공고명, 업무로 검색"

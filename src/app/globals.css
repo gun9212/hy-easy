@@ -1115,6 +1115,8 @@
   background: var(--color-surface);
   color: var(--color-ink);
   box-shadow: var(--shadow-float);
+  /* Scrolling past the end of a long modal must not move or pull-to-refresh the page behind it. */
+  overscroll-behavior: contain;
 }
 .modal.wide {
   width: min(1200px, calc(100% - var(--space-xl)));

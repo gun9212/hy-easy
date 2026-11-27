@@ -67,7 +67,8 @@ export function AppTopNav({ mode, userLabel, theme, onTheme, onHome }: TopNavPro
       endContent={
         <HStack gap={2} align="center">
           <ThemeToggle mode={theme} onChange={onTheme} />
-          <Avatar name={userLabel} size="sm" />
+          {/* No tooltip: it made this static avatar a Tab stop that does nothing. */}
+          <Avatar name={userLabel} size="sm" tooltip={false} />
           {mode === "live" && <LogoutButton />}
         </HStack>
       }

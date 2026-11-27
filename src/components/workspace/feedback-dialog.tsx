@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FEEDBACK_MAX_CHARS } from "@/lib/feedback";
 import { Modal } from "./modal";
 import type { Mode } from "./use-personal";
@@ -13,6 +13,13 @@ export function FeedbackDialog({ mode, close, onSent }: Props) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  // Start in the text box with a mouse or trackpad. Not on touch screens, where the keyboard would cover the
+  // explanation as soon as the dialog opens. This runs after Modal's own effect calls showModal(), which would
+  // otherwise move focus to the close button (React's autoFocus runs before it).
+  useEffect(() => {
+    if (window.matchMedia("(pointer: fine)").matches) textRef.current?.focus();
+  }, []);
   const demo = mode === "demo";
   const empty = !message.trim();
 
@@ -58,7 +65,7 @@ export function FeedbackDialog({ mode, close, onSent }: Props) {
             rows={6}
             placeholder="예) 마감 임박 공고를 알림으로 받고 싶어요"
             disabled={demo || busy}
-            autoFocus
+            ref={textRef}
           />
           <span className="feedback-count">
             {message.length} / {FEEDBACK_MAX_CHARS}

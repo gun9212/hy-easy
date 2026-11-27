@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { AstryxLocale } from "@/components/astryx-locale";
 import { SiteAnalytics } from "@/components/site-analytics";
 import { readThemeMode } from "@/lib/theme-cookie";
 import "./pretendard.css";
@@ -44,7 +45,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="ko" data-theme={theme === "system" ? undefined : theme} suppressHydrationWarning>
       <body>
-        {children}
+        <AstryxLocale>{children}</AstryxLocale>
         <SiteAnalytics />
       </body>
     </html>
