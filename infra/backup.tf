@@ -89,7 +89,7 @@ resource "google_artifact_registry_repository_iam_member" "backup_pull" {
 resource "google_cloud_run_v2_job" "backup" {
   name                = "hy-easy-backup"
   location            = var.backup_region
-  deletion_protection = false
+  deletion_protection = true
   template {
     task_count = 1
     template {
