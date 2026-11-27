@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { headers } from "next/headers";
+import { preconnect } from "react-dom";
 import { ClearPostingCache } from "@/components/clear-posting-cache";
 import { GoogleSignIn } from "@/components/google-sign-in";
 import { InAppNotice } from "@/components/in-app-notice";
 import { LandingShell } from "@/components/landing-shell";
+import { isPhoneRequest } from "@/lib/device";
 import { detectInAppBrowser, externalOpenUrl } from "@/lib/in-app-browser";
 import { demoEnabled, isConfigured } from "@/lib/supabase/server";
 import { readThemeMode } from "@/lib/theme-cookie";
@@ -73,9 +75,18 @@ function SignIn({ error, notice }: { error?: string; notice: React.ReactNode }) 
 }
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  if (isConfigured() && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+    preconnect("https://accounts.google.com");
+    preconnect("https://fonts.gstatic.com", { crossOrigin: "anonymous" });
+  }
   const { error } = await searchParams;
-  const [notice, theme] = await Promise.all([inAppNotice(), readThemeMode()]);
+  const [notice, theme, initialNarrow] = await Promise.all([inAppNotice(), readThemeMode(), isPhoneRequest()]);
   return (
-    <LandingShell initialTheme={theme} demoEnabled={demoEnabled()} signIn={<SignIn error={error} notice={notice} />} />
+    <LandingShell
+      initialTheme={theme}
+      initialNarrow={initialNarrow}
+      demoEnabled={demoEnabled()}
+      signIn={<SignIn error={error} notice={notice} />}
+    />
   );
 }

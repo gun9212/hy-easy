@@ -2,6 +2,7 @@
 
 // Page chrome on Astryx: the top bar and the side navigation (AppShell folds the side nav into a menu on phones).
 import Link from "next/link";
+import { memo } from "react";
 import { LogOut } from "lucide-react";
 import { Avatar } from "@astryxdesign/core/Avatar";
 import { Badge } from "@astryxdesign/core/Badge";
@@ -47,7 +48,13 @@ type TopNavProps = {
   onHome: () => void;
 };
 
-export function AppTopNav({ mode, userLabel, theme, onTheme, onHome }: TopNavProps): React.ReactElement {
+export const AppTopNav = memo(function AppTopNav({
+  mode,
+  userLabel,
+  theme,
+  onTheme,
+  onHome,
+}: TopNavProps): React.ReactElement {
   return (
     <TopNav
       label="HY-Easy"
@@ -74,7 +81,7 @@ export function AppTopNav({ mode, userLabel, theme, onTheme, onHome }: TopNavPro
       }
     />
   );
-}
+});
 
 export type When = "" | "open" | "soon" | "new";
 
@@ -124,7 +131,7 @@ function NextDeadline({ next, now, onOpen }: { next: Posting | null; now: Date; 
   );
 }
 
-export function AppSideNav(props: SideNavProps): React.ReactElement {
+export const AppSideNav = memo(function AppSideNav(props: SideNavProps): React.ReactElement {
   const { view, filters, postings, now, navigate } = props;
   // Same rule as the list: primary or secondary role, closed postings included.
   const roleCount = (role: string) => filterPostings(postings, { role }).length;
@@ -202,4 +209,4 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
       </SideNavSection>
     </SideNav>
   );
-}
+});

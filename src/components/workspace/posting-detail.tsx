@@ -1,5 +1,6 @@
 "use client";
 
+import { startTransition, useEffect, useState } from "react";
 import { ArrowUpRight, Bookmark } from "lucide-react";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
@@ -82,6 +83,16 @@ export function PostingDetail(props: Props) {
   // The list copy opens at once; the source texts and evidence quotes arrive with the full posting.
   const body = usePostingBodies([props.posting]);
   const p = body.postings[0];
+  // Paint the dialog/drawer shell, AI summary, and key facts on the click frame so INP stays low on mobile CPUs,
+  // then mount the below-the-fold template-parsed HY-WEP sections on the next animation frame.
+  const [sectionsReadyForId, setSectionsReadyForId] = useState<string | null>(null);
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => {
+      startTransition(() => setSectionsReadyForId(p.id));
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [p.id]);
+  const sectionsReady = sectionsReadyForId === p.id;
   const decision = eligibility(p, props.applications, props.now);
   const closed = decision.status === "closed";
   const sourceHref = safeHywepUrl(p.sourceUrl);
@@ -166,13 +177,17 @@ export function PostingDetail(props: Props) {
               <Classification posting={p} />
               <Facts posting={p} />
               <MoreDetails posting={p} decision={decision} props={props} />
-              <Divider />
-              {body.status === "ready" ? (
-                <OriginalTexts posting={p} />
-              ) : (
-                <BodyStatus status={body.status} retry={body.retry} />
+              {sectionsReady && (
+                <>
+                  <Divider />
+                  {body.status === "ready" ? (
+                    <OriginalTexts posting={p} />
+                  ) : (
+                    <BodyStatus status={body.status} retry={body.retry} />
+                  )}
+                  <Events posting={p} />
+                </>
               )}
-              <Events posting={p} />
             </VStack>
           </LayoutContent>
         </Layout>

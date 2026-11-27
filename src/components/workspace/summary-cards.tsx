@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
@@ -69,7 +70,13 @@ type Props = {
 };
 
 /** The three counts above the list, as in the demo: open, closing soon (with the first to close) and new today. */
-export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): React.ReactElement {
+export const SummaryCards = memo(function SummaryCards({
+  stats,
+  newCount,
+  next,
+  when,
+  onSelect,
+}: Props): React.ReactElement {
   return (
     <div className="summary-cards-grid">
       <Stat
@@ -96,4 +103,4 @@ export function SummaryCards({ stats, newCount, next, when, onSelect }: Props): 
       />
     </div>
   );
-}
+});

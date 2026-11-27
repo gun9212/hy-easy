@@ -34,7 +34,13 @@ const PREVIEW_NOW = new Date(DEMO_NOW);
 // Four fictional postings (A사–D사) sorted by deadline, matching the workspace's default view.
 const PREVIEW_POSTINGS: Posting[] = [samplePostings[2], samplePostings[0], samplePostings[1], samplePostings[3]];
 
-export function LandingPreview({ demoEnabled = false }: { demoEnabled?: boolean }) {
+export function LandingPreview({
+  demoEnabled = false,
+  initialNarrow = false,
+}: {
+  demoEnabled?: boolean;
+  initialNarrow?: boolean;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<"list" | "compare">("list");
   const [compared, setCompared] = useState<string[]>([PREVIEW_POSTINGS[0].id, PREVIEW_POSTINGS[1].id]);
@@ -59,7 +65,7 @@ export function LandingPreview({ demoEnabled = false }: { demoEnabled?: boolean 
   }
 
   return (
-    <LayoutProvider initialNarrow={false}>
+    <LayoutProvider initialNarrow={initialNarrow}>
       <section className="landing-preview" aria-label="실제 공고 목록과 비교 예시">
         <VStack gap={3}>
           <HStack gap={2} align="center" justify="between" wrap="wrap">
