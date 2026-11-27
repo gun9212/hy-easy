@@ -32,7 +32,7 @@ function factRows(applications: Application[], now: Date): Row[] {
     ["하는 일", p => p.classification?.summary ?? ""],
     ["마감", deadlineLabel],
     ["경쟁률", p => <Competition posting={p} />],
-    ["지원금", stipendLabel],
+    ["실습지원비", stipendLabel],
     ["실습 기간", p => p.period],
     ["지역", p => p.location],
     ["나의 지원 가능 여부", p => eligibility(p, applications, now).label],
@@ -145,7 +145,7 @@ export function ComparisonTable({ postings, applications, now }: TableProps) {
         </table>
       </div>
       <p className="muted small">
-        지원금은 지급 단위를 함께 확인하세요. 미기재·시급·총액은 월 지급액과 직접 비교하지 않습니다.
+        실습지원비는 지급 단위를 함께 확인하세요. 미기재·시급·총액은 월 지급액과 직접 비교하지 않습니다.
       </p>
     </>
   );

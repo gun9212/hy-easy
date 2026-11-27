@@ -36,7 +36,7 @@ type Props = {
   onPlanner: () => void;
 };
 
-const WHEN_TITLES: Record<string, string> = { open: "모집 중인 공고", soon: "마감 임박", new: "새로 올라온 공고" };
+const WHEN_TITLES: Record<string, string> = { open: "모집 중인 공고", soon: "마감 임박", new: "신규 공고" };
 
 /** The page title for the list: 관심 공고, a side-nav shortcut, the chosen role, or 전체 공고 (as in the demo). */
 export function listTitle(filters: Filters): string {

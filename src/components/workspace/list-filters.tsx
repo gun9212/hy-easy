@@ -28,7 +28,7 @@ type Props = {
 
 const SORTS = [
   ["deadline", "마감순"],
-  ["stipend", "지원비순"],
+  ["stipend", "실습지원비순"],
   ["latest", "최신순"],
 ] as const;
 const MAJOR_OPTIONS = SEOUL_COLLEGES.map(c => ({
@@ -103,7 +103,7 @@ export function ListFilters(props: Props): React.ReactElement {
         <TextInput
           type="search"
           autoComplete="off"
-          label="기업명, 직무, 기술 검색"
+          label="회사, 공고명, 업무로 검색"
           isLabelHidden
           placeholder="회사, 공고명, 업무로 검색"
           value={filters.q ?? ""}
@@ -123,7 +123,7 @@ export function ListFilters(props: Props): React.ReactElement {
           hasClear
         />
         <Filter
-          label="직무"
+          label="직군"
           value={filters.role ?? ""}
           options={ROLES.map(r => [r, r] as const)}
           onChange={role => updateFilters({ role })}
@@ -168,7 +168,7 @@ export function ListFilters(props: Props): React.ReactElement {
             onChange={duration => updateFilters({ duration })}
           />
           <Filter
-            label="지원금"
+            label="실습지원비"
             value={filters.stipend ?? ""}
             options={options.stipends}
             onChange={stipend => updateFilters({ stipend })}

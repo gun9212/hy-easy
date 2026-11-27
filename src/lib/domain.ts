@@ -197,7 +197,7 @@ export function newWindowStart(now = new Date()): string {
   }
 }
 
-/** 신규 badge and the "새로 올라온 공고" view: first seen by the collector within the last three KST business days. */
+/** 신규 badge and the "신규 공고" view: first seen by the collector within the last three KST business days. */
 export function isNewPosting(posting: Posting, now = new Date()) {
   const firstSeen = new Date(posting.firstSeenAt);
   return Number.isFinite(firstSeen.getTime()) && kstDate(firstSeen) >= newWindowStart(now);
