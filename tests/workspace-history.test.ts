@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { MAX_SEARCH_QUERY_CHARS } from "../src/lib/domain";
 import { searchOfFilters, shouldPushHistory, viewOfFilters } from "../src/lib/workspace-history";
 
 describe("workspace browser history transitions", () => {
@@ -29,8 +30,12 @@ describe("workspace browser history transitions", () => {
     assert.equal(shouldPushHistory({ role: "개발" }, { role: "개발", sort: "stipend" }), false);
   });
 
-  it("serializes only non-empty filter entries", () => {
+  it("serializes only non-empty filter entries and bounds search query length in URLs", () => {
     assert.equal(searchOfFilters({}), "");
     assert.equal(searchOfFilters({ saved: "planner", posting: "p-1", q: "" }), "?saved=planner&posting=p-1");
+    const longSearch = searchOfFilters({ q: "가".repeat(5000) });
+    const restored = new URLSearchParams(longSearch).get("q") ?? "";
+    assert.equal(restored.length, MAX_SEARCH_QUERY_CHARS);
+    assert.ok(longSearch.length < 1_000);
   });
 });

@@ -9,7 +9,7 @@ import { Selector } from "@astryxdesign/core/Selector";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
-import { ROLES, type Filters, type Posting } from "@/lib/domain";
+import { MAX_SEARCH_QUERY_CHARS, ROLES, type Filters, type Posting } from "@/lib/domain";
 import { durationOptions, regionOptions, stipendOptions, termOptions, type Option } from "@/lib/filter-options";
 import { SEOUL_COLLEGES, isMajor, type Major } from "@/lib/majors";
 
@@ -102,12 +102,16 @@ export function ListFilters(props: Props): React.ReactElement {
       <HStack gap={2} align="center" wrap="wrap">
         <TextInput
           type="search"
+          htmlName="q"
           autoComplete="off"
+          ref={el => {
+            if (el) el.maxLength = MAX_SEARCH_QUERY_CHARS;
+          }}
           label="회사, 공고명, 업무로 검색"
           isLabelHidden
           placeholder="회사, 공고명, 업무로 검색"
-          value={filters.q ?? ""}
-          onChange={q => updateFilters({ q })}
+          value={(filters.q ?? "").slice(0, MAX_SEARCH_QUERY_CHARS)}
+          onChange={q => updateFilters({ q: q.slice(0, MAX_SEARCH_QUERY_CHARS) })}
           hasClear
           width={280}
         />

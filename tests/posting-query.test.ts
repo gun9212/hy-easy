@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { filterPostings, type Posting } from "../src/lib/domain";
+import { filterPostings, ROLES, type Posting } from "../src/lib/domain";
+import { sanitizeFiltersForPostings } from "../src/lib/filter-options";
 import { matchesWhen } from "../src/lib/posting-format";
-import { DEFAULT_POSTING_SORT, filtersFromSearchParams, queryPostings } from "../src/lib/posting-query";
+import { DEFAULT_POSTING_SORT, filtersFromSearchParams, listTitle, queryPostings } from "../src/lib/posting-query";
 import { samplePostings } from "../src/lib/sample";
 
 const now = new Date("2026-11-10T13:00:00+09:00");
@@ -90,5 +91,29 @@ describe("queryPostings parity between /api/postings and PostingsView", () => {
       queryPostings(items, { when: "open", sort: "latest" }, { major: "컴퓨터소프트웨어학부", now }).map(p => p.id),
       ["p-later-open", "p-soon-open"],
     );
+  });
+
+  it("ignores URL filter values missing from selector options and accepts only ROLES for listTitle", () => {
+    const allIds = queryPostings(samplePostings, {}, { now }).map(p => p.id);
+    const bogusParams = new URLSearchParams(
+      "stipend=abc&duration=999&role=아무문자열이나제목이됩니다&term=없는학기&location=화성기지",
+    );
+    const parsed = filtersFromSearchParams(bogusParams);
+    assert.deepEqual(sanitizeFiltersForPostings(parsed, samplePostings), {});
+    assert.deepEqual(
+      queryPostings(samplePostings, parsed, { now }).map(p => p.id),
+      allIds,
+    );
+    // Empty postings (before live sync finishes) keep candidate option filters until options arrive.
+    assert.deepEqual(sanitizeFiltersForPostings({ duration: "2", role: "없는직무" }, []), { duration: "2" });
+
+    assert.equal(listTitle({ role: "아무문자열이나제목이됩니다" }), "전체 공고");
+    assert.equal(listTitle({ when: "__proto__" }), "전체 공고");
+    for (const role of ROLES) {
+      assert.equal(listTitle({ role }), role);
+    }
+    assert.equal(listTitle({ saved: "true", role: "개발" }), "관심 공고");
+    assert.equal(listTitle({ when: "soon", role: "개발" }), "마감 임박");
+    assert.equal(listTitle({ when: "new" }), "신규 공고");
   });
 });
