@@ -25,6 +25,8 @@ infra/*.tfvars
 docs/PLAN.md
 docs/TODO.md
 docs/classification-check.md
+# Pre-launch verification notes: security findings awaiting production checks and large perf traces.
+docs/verification/
 
 # Classification eval sets contain HY-WEP posting snapshots (login-only); keep them local.
 evals/classification-*.json
