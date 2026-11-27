@@ -1,10 +1,12 @@
 "use client";
 
+import { memo } from "react";
 import { ClickableCard } from "@astryxdesign/core/ClickableCard";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
-import { eligibility, isNewPosting, type Posting } from "@/lib/domain";
+import { eligibility, isNewPosting, type Application, type Posting } from "@/lib/domain";
+import type { Major } from "@/lib/majors";
 import { deadlineShort, postedShort } from "@/lib/posting-format";
 import {
   BookmarkButton,
@@ -16,14 +18,38 @@ import {
   type RowProps,
 } from "./posting-row-parts";
 
-function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps }): React.ReactElement {
-  const closed = eligibility(p, props.applications, props.now).status === "closed";
+type CardItemProps = {
+  posting: Posting;
+  applications: Application[];
+  now: Date;
+  major: Major | null;
+  checked: boolean;
+  saved: boolean;
+  hideBookmark?: boolean;
+  onCompare: RowProps["onCompare"];
+  onOpen: RowProps["onOpen"];
+  onFavorite: RowProps["onFavorite"];
+};
+
+const PostingCard = memo(function PostingCard({
+  posting: p,
+  applications,
+  now,
+  major,
+  checked,
+  saved,
+  hideBookmark,
+  onCompare,
+  onOpen,
+  onFavorite,
+}: CardItemProps): React.ReactElement {
+  const closed = eligibility(p, applications, now).status === "closed";
   return (
-    <ClickableCard label={`${p.title}, ${p.company}`} onClick={() => props.onOpen(p)} padding={4} className="lift-card">
+    <ClickableCard label={`${p.title}, ${p.company}`} onClick={() => onOpen(p)} padding={4} className="lift-card">
       <VStack gap={2}>
         <HStack gap={1.5} align="center" justify="between">
           <HStack gap={1.5} align="center" wrap="wrap">
-            <DeadlineBadge posting={p} applications={props.applications} now={props.now} />
+            <DeadlineBadge posting={p} applications={applications} now={now} />
             <Text type="supporting" hasTabularNumbers>
               {deadlineShort(p)} 마감
             </Text>
@@ -32,13 +58,11 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
                 · {postedShort(p)} 등록
               </Text>
             )}
-            {isNewPosting(p, props.now) && <span className="new-mark">신규</span>}
+            {isNewPosting(p, now) && <span className="new-mark">신규</span>}
           </HStack>
           <HStack gap={1} align="center">
-            <CompareBox posting={p} checked={props.compared.includes(p.id)} onCompare={props.onCompare} />
-            {!props.hideBookmark && (
-              <BookmarkButton posting={p} saved={props.favoriteIds.includes(p.id)} onFavorite={props.onFavorite} />
-            )}
+            <CompareBox posting={p} checked={checked} onCompare={onCompare} />
+            {!hideBookmark && <BookmarkButton posting={p} saved={saved} onFavorite={onFavorite} />}
           </HStack>
         </HStack>
         <VStack gap={0.5}>
@@ -52,7 +76,7 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
               </span>{" "}
               · {p.classification?.primaryRole ?? "분류 대기"}
             </Text>
-            <MajorFitBadge posting={p} major={props.major} />
+            <MajorFitBadge posting={p} major={major} />
           </HStack>
         </VStack>
         {p.classification?.summary && (
@@ -71,14 +95,26 @@ function PostingCard({ posting: p, props }: { posting: Posting; props: RowProps 
       </VStack>
     </ClickableCard>
   );
-}
+});
 
 /** The phone layout: one tappable card per posting instead of a table that scrolls sideways. */
 export function PostingCards(props: RowProps): React.ReactElement {
   return (
     <VStack gap={2}>
       {props.postings.map(p => (
-        <PostingCard key={p.id} posting={p} props={props} />
+        <PostingCard
+          key={p.id}
+          posting={p}
+          applications={props.applications}
+          now={props.now}
+          major={props.major}
+          checked={props.compared.includes(p.id)}
+          saved={props.favoriteIds.includes(p.id)}
+          hideBookmark={props.hideBookmark}
+          onCompare={props.onCompare}
+          onOpen={props.onOpen}
+          onFavorite={props.onFavorite}
+        />
       ))}
     </VStack>
   );

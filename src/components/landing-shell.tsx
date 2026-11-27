@@ -27,11 +27,12 @@ function usePrefersDark(): boolean {
 
 type Props = {
   initialTheme: ThemeMode;
+  initialNarrow: boolean;
   demoEnabled: boolean;
   signIn: React.ReactNode;
 };
 
-export function LandingShell({ initialTheme, demoEnabled, signIn }: Props) {
+export function LandingShell({ initialTheme, initialNarrow, demoEnabled, signIn }: Props) {
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
   const osDark = usePrefersDark();
   const activeMode: "light" | "dark" = theme === "system" ? (osDark ? "dark" : "light") : theme;
@@ -84,7 +85,7 @@ export function LandingShell({ initialTheme, demoEnabled, signIn }: Props) {
             <h1>하이웹을 더 쉽게</h1>
             {signIn}
           </section>
-          <LandingPreview demoEnabled={demoEnabled} />
+          <LandingPreview demoEnabled={demoEnabled} initialNarrow={initialNarrow} />
         </div>
         <footer className="landing-footer">
           <span>한양대 비공식 서비스 · 실제 지원은 HY-WEP</span>

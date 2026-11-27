@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback, useMemo } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
@@ -39,11 +40,20 @@ type Props = {
   onPlanner: () => void;
 };
 
-export function PostingsView(props: Props): React.ReactElement {
-  const { postings, favoriteIds, now, textMatchIds } = props;
+export const PostingsView = memo(function PostingsView(props: Props): React.ReactElement {
+  const { postings, favoriteIds, now, textMatchIds, updateFilters } = props;
   // Ignore URL filter values absent from the loaded options, and default to deadline order as in the demo.
   const sanitized = sanitizeFiltersForPostings(props.filters, postings);
   const filters: Filters = { ...sanitized, sort: sanitized.sort || DEFAULT_POSTING_SORT };
+  const resetKey = JSON.stringify(filters);
+  const newCount = useMemo(() => postings.filter(p => isNewPosting(p, now)).length, [postings, now]);
+  const next = useMemo(() => nextDeadline(postings, now), [postings, now]);
+  const currentWhen = filters.when;
+  const handleSelectSummary = useCallback(
+    (when: "open" | "soon" | "new") =>
+      updateFilters({ when: currentWhen === when ? "" : when, saved: "", role: "", q: "" }),
+    [currentWhen, updateFilters],
+  );
   const filtered = queryPostings(postings, filters, { favoriteIds, major: props.major, now, textMatchIds });
   // With a major chosen, postings only other majors can apply to are hidden; show how many, and the narrower count.
   const majorCounts = props.major
@@ -91,13 +101,11 @@ export function PostingsView(props: Props): React.ReactElement {
         <>
           <SummaryCards
             stats={props.stats}
-            newCount={postings.filter(p => isNewPosting(p, now)).length}
-            next={nextDeadline(postings, now)}
+            newCount={newCount}
+            next={next}
             when={filters.when}
             // Same as the side navigation: a count opens its list, and the open card closes it again.
-            onSelect={when =>
-              props.updateFilters({ when: filters.when === when ? "" : when, saved: "", role: "", q: "" })
-            }
+            onSelect={handleSelectSummary}
           />
           <Card padding={4}>
             <ListFilters
@@ -163,12 +171,12 @@ export function PostingsView(props: Props): React.ReactElement {
       ) : filters.sort === "deadline" ? (
         <DeadlineGroups {...rowProps} />
       ) : (
-        // Keyed by the filters so "더 보기" starts over at 20 whenever the list changes.
-        <PostingResults key={JSON.stringify(filters)} {...rowProps} />
+        // Reset "더 보기" back to 20 whenever filters change without unmounting existing card/row fibers.
+        <PostingResults resetKey={resetKey} {...rowProps} />
       )}
       <Text type="supporting">
         지원 전 원문의 모집 상태와 자격사항을 꼭 확인해 주세요. 일정상 지원 가능 여부는 실제 지원을 보장하지 않습니다.
       </Text>
     </VStack>
   );
-}
+});

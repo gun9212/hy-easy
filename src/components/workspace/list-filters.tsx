@@ -1,7 +1,7 @@
 "use client";
 
 // Search, filter selects, the major checkboxes and the sort control above the postings.
-import { useMemo, useState } from "react";
+import { memo, startTransition, useMemo, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
@@ -31,6 +31,7 @@ const SORTS = [
   ["stipend", "실습지원비순"],
   ["latest", "최신순"],
 ] as const;
+const ROLE_OPTIONS = ROLES.map(r => [r, r] as const);
 const MAJOR_OPTIONS = SEOUL_COLLEGES.map(c => ({
   type: "section" as const,
   title: c.college,
@@ -83,7 +84,7 @@ function extraCount(filters: Filters): number {
 }
 
 /** The demo's single row (search, major, role, sort, count); the rest opens under "필터 더보기". */
-export function ListFilters(props: Props): React.ReactElement {
+export const ListFilters = memo(function ListFilters(props: Props): React.ReactElement {
   const { postings, filters, updateFilters, majorCounts } = props;
   const options = useMemo(
     () => ({
@@ -96,6 +97,11 @@ export function ListFilters(props: Props): React.ReactElement {
   );
   const active = extraCount(filters);
   const [isOpen, setIsOpen] = useState(active > 0);
+  const currentSort = filters.sort || "deadline";
+  const [pendingSort, setPendingSort] = useState<string | null>(null);
+  if (pendingSort !== null && pendingSort === currentSort) {
+    setPendingSort(null);
+  }
   const hidden = majorCounts ? majorCounts.all - props.total : 0;
   return (
     <VStack gap={3}>
@@ -129,13 +135,16 @@ export function ListFilters(props: Props): React.ReactElement {
         <Filter
           label="직군"
           value={filters.role ?? ""}
-          options={ROLES.map(r => [r, r] as const)}
-          onChange={role => updateFilters({ role })}
+          options={ROLE_OPTIONS}
+          onChange={role => startTransition(() => updateFilters({ role }))}
         />
         <SegmentedControl
           label="공고 정렬"
-          value={filters.sort || "deadline"}
-          onChange={sort => updateFilters({ sort })}
+          value={pendingSort ?? currentSort}
+          onChange={sort => {
+            setPendingSort(sort);
+            startTransition(() => updateFilters({ sort }));
+          }}
         >
           {SORTS.map(([value, label]) => (
             <SegmentedControlItem key={value} value={value} label={label} />
@@ -157,29 +166,29 @@ export function ListFilters(props: Props): React.ReactElement {
             label="학기"
             value={filters.term ?? ""}
             options={options.terms}
-            onChange={term => updateFilters({ term })}
+            onChange={term => startTransition(() => updateFilters({ term }))}
           />
           <Filter
             label="지역"
             value={filters.location ?? ""}
             options={options.regions}
-            onChange={location => updateFilters({ location })}
+            onChange={location => startTransition(() => updateFilters({ location }))}
           />
           <Filter
             label="실습 기간"
             value={filters.duration ?? ""}
             options={options.durations}
-            onChange={duration => updateFilters({ duration })}
+            onChange={duration => startTransition(() => updateFilters({ duration }))}
           />
           <Filter
             label="실습지원비"
             value={filters.stipend ?? ""}
             options={options.stipends}
-            onChange={stipend => updateFilters({ stipend })}
+            onChange={stipend => startTransition(() => updateFilters({ stipend }))}
           />
           <Checks filters={filters} updateFilters={updateFilters} majorCounts={majorCounts} />
         </HStack>
       )}
     </VStack>
   );
-}
+});

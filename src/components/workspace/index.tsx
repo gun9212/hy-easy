@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@astryxdesign/core/AppShell";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
@@ -137,33 +137,47 @@ function WorkspaceInner({
   const [compareOpen, setCompareOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const showToast = useToast();
   const now = useClock(mode, initialNow);
   const { major, chooseMajor } = useMajor(mode, initialMajor);
-  const notify = (body: string, type: "info" | "error" = "info") =>
-    showToast({ body, type, isAutoHide: true, autoHideDuration: type === "error" ? 6_000 : TOAST_MS });
+  const notify = useCallback(
+    (body: string, type: "info" | "error" = "info") =>
+      showToast({ body, type, isAutoHide: true, autoHideDuration: type === "error" ? 6_000 : TOAST_MS }),
+    [showToast],
+  );
 
-  async function changeMajor(next: Major | null) {
-    try {
-      await chooseMajor(next);
-      if (!next) {
-        setFilters(prev => {
-          if (!prev.mine && !prev.others) return prev;
-          const { page: _page, ...rest } = prev;
-          void _page;
-          return { ...rest, mine: "", others: "" };
-        });
+  const changeMajor = useCallback(
+    async (next: Major | null) => {
+      try {
+        await chooseMajor(next);
+        if (!next) {
+          setFilters(prev => {
+            if (!prev.mine && !prev.others) return prev;
+            const { page: _page, ...rest } = prev;
+            void _page;
+            return { ...rest, mine: "", others: "" };
+          });
+        }
+      } catch (e) {
+        notify(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.", "error");
       }
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "전공을 저장하지 못했습니다.", "error");
-    }
-  }
+    },
+    [chooseMajor, notify],
+  );
   const activeFilters = useMemo(
     () => (ready && postings.length > 0 ? sanitizeFiltersForPostings(filters, postings) : filters),
     [ready, postings, filters],
   );
-  const view = viewOfFilters(activeFilters);
+  // Keep ?open=<id> out of the list/side-nav filter object so opening or closing PostingDetail skips re-rendering
+  // the entire postings list behind the modal.
+  const listFilters = useMemo(() => {
+    if (!activeFilters.open) return activeFilters;
+    const { open: _open, ...rest } = activeFilters;
+    void _open;
+    return rest;
+  }, [activeFilters]);
+  const view = viewOfFilters(listFilters);
   const prevFiltersRef = useRef<Filters>(initialFilters);
   const poppingRef = useRef(false);
   // Whether the open detail added its own history entry, so closing it can go Back to the list instead of leaving
@@ -201,17 +215,19 @@ function WorkspaceInner({
     }
   }, [activeFilters]);
 
-  function updateFilters(patch: Filters) {
+  const updateFilters = useCallback((patch: Filters) => {
     setFilters(prev => {
       const { page: _page, ...rest } = prev;
       void _page;
       return { ...rest, ...patch };
     });
-  }
-  function openDetail(id: string) {
-    setFilters(prev => ({ ...prev, open: id }));
-  }
-  function closeDetail() {
+  }, []);
+  const openDetail = useCallback((id: string) => {
+    startTransition(() => {
+      setFilters(prev => ({ ...prev, open: id }));
+    });
+  }, []);
+  const closeDetail = useCallback(() => {
     if (detailPushedRef.current) {
       detailPushedRef.current = false;
       window.history.back();
@@ -222,34 +238,39 @@ function WorkspaceInner({
       void _open;
       return rest;
     });
-  }
-  function resetFilters() {
+  }, []);
+  const resetFilters = useCallback(() => {
     setFilters({});
     setMobileMenu(false);
-  }
-  function navigate(next: View, postingId?: string) {
+  }, []);
+  const navigate = useCallback((next: View, postingId?: string) => {
     // A side-nav tab starts a fresh view so filters from the previous tab never hide saved postings.
     const saved = next === "saved" ? "true" : next === "planner" ? "planner" : "";
-    setFilters(prev => {
-      const base: Filters = {};
-      if (saved) base.saved = saved;
-      if (next === "planner" && postingId) base.posting = postingId;
-      if (prev.sort) base.sort = prev.sort;
-      return base;
-    });
     setMobileMenu(false);
-  }
-  async function favorite(id: string) {
-    if (saving) return;
-    setSaving(true);
-    try {
-      await toggleFavorite(id);
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "저장하지 못했습니다.", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
+    startTransition(() => {
+      setFilters(prev => {
+        const base: Filters = {};
+        if (saved) base.saved = saved;
+        if (next === "planner" && postingId) base.posting = postingId;
+        if (prev.sort) base.sort = prev.sort;
+        return base;
+      });
+    });
+  }, []);
+  const favorite = useCallback(
+    async (id: string) => {
+      if (savingRef.current) return;
+      savingRef.current = true;
+      try {
+        await toggleFavorite(id);
+      } catch (e) {
+        notify(e instanceof Error ? e.message : "저장하지 못했습니다.", "error");
+      } finally {
+        savingRef.current = false;
+      }
+    },
+    [toggleFavorite, notify],
+  );
   async function record(postingId: string, status: Parameters<typeof recordApplication>[1], confirmed: boolean) {
     await recordApplication(postingId, status, confirmed);
     notify("지원 상태를 기록했어요.");
@@ -258,21 +279,74 @@ function WorkspaceInner({
     await deleteApplication(postingId);
     notify("지원 기록을 삭제했어요.");
   }
-  function compare(id: string) {
-    if (compared.includes(id)) setCompared(compared.filter(v => v !== id));
-    else if (compared.length === MAX_COMPARE) notify(`공고는 최대 ${MAX_COMPARE}개까지 비교할 수 있어요.`);
-    else setCompared([...compared, id]);
-  }
+  const compare = useCallback(
+    (id: string) => {
+      let hitLimit = false;
+      setCompared(prev => {
+        if (prev.includes(id)) return prev.filter(v => v !== id);
+        if (prev.length === MAX_COMPARE) {
+          hitLimit = true;
+          return prev;
+        }
+        return [...prev, id];
+      });
+      if (hitLimit) notify(`공고는 최대 ${MAX_COMPARE}개까지 비교할 수 있어요.`);
+    },
+    [notify],
+  );
+  const comparedCount = compared.length;
+  const openCompareModal = useCallback(() => {
+    if (comparedCount) startTransition(() => setCompareOpen(true));
+    else notify("공고의 비교 체크박스를 선택해 주세요.");
+  }, [comparedCount, notify]);
+  const handleOpenPosting = useCallback((p: Posting) => openDetail(p.id), [openDetail]);
+  const handleOpenFromSideNav = useCallback(
+    (p: Posting) => {
+      openDetail(p.id);
+      setMobileMenu(false);
+    },
+    [openDetail],
+  );
+  const handleFeedbackFromSideNav = useCallback(() => {
+    setFeedbackOpen(true);
+    setMobileMenu(false);
+  }, []);
+  const handleSelectWhen = useCallback(
+    (when: "" | "open" | "soon" | "new") => {
+      updateFilters({ when, saved: "", role: "", q: "" });
+      setMobileMenu(false);
+    },
+    [updateFilters],
+  );
+  const handleSelectRole = useCallback((role: string) => {
+    setFilters(prev => {
+      const { page: _page, ...rest } = prev;
+      void _page;
+      return { ...rest, role: prev.role === role ? "" : role, when: "", saved: "", q: "" };
+    });
+    setMobileMenu(false);
+  }, []);
+  const handleOpenPlanner = useCallback(() => navigate("planner"), [navigate]);
+  const handleResetCompare = useCallback(() => setCompared([]), []);
+  const handleOpenCompareDock = useCallback(() => startTransition(() => setCompareOpen(true)), []);
+  const handleOpenFeedback = useCallback(() => setFeedbackOpen(true), []);
+  const mobileNav = useMemo(
+    () => ({ isOpen: mobileMenu, onOpenChange: setMobileMenu, defaultIsMobile: initialNarrow }),
+    [mobileMenu, initialNarrow],
+  );
 
-  const active = personal.applications.find(a => isBlocking(a.status));
-  const stats = {
-    open: postings.filter(p => isOpenPosting(p, now)).length,
-    unknown: postings.filter(p => isUnknownRecruitment(p, now)).length,
-    closingSoon: postings.filter(p => isClosingSoon(p, now)).length,
-    activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
-    activeStatus: active?.status ?? null,
-    hasActive: Boolean(active),
-  };
+  const active = useMemo(() => personal.applications.find(a => isBlocking(a.status)), [personal.applications]);
+  const stats = useMemo(
+    () => ({
+      open: postings.filter(p => isOpenPosting(p, now)).length,
+      unknown: postings.filter(p => isUnknownRecruitment(p, now)).length,
+      closingSoon: postings.filter(p => isClosingSoon(p, now)).length,
+      activeCompany: postings.find(p => p.id === active?.postingId)?.company ?? null,
+      activeStatus: active?.status ?? null,
+      hasActive: Boolean(active),
+    }),
+    [postings, now, active],
+  );
   const lastChecked =
     lastCheckedAt ??
     postings
@@ -289,7 +363,7 @@ function WorkspaceInner({
       sideNav={
         <AppSideNav
           view={view}
-          filters={activeFilters}
+          filters={listFilters}
           postings={postings}
           openCount={stats.open}
           favoriteCount={personal.favoriteIds.length}
@@ -297,25 +371,13 @@ function WorkspaceInner({
           isAdmin={isAdmin}
           navigate={navigate}
           now={now}
-          onOpen={p => {
-            openDetail(p.id);
-            setMobileMenu(false);
-          }}
-          onFeedback={() => {
-            setFeedbackOpen(true);
-            setMobileMenu(false);
-          }}
-          selectWhen={when => {
-            updateFilters({ when, saved: "", role: "", q: "" });
-            setMobileMenu(false);
-          }}
-          selectRole={role => {
-            updateFilters({ role: activeFilters.role === role ? "" : role, when: "", saved: "", q: "" });
-            setMobileMenu(false);
-          }}
+          onOpen={handleOpenFromSideNav}
+          onFeedback={handleFeedbackFromSideNav}
+          selectWhen={handleSelectWhen}
+          selectRole={handleSelectRole}
         />
       }
-      mobileNav={{ isOpen: mobileMenu, onOpenChange: setMobileMenu, defaultIsMobile: initialNarrow }}
+      mobileNav={mobileNav}
       contentPadding={5}
     >
       <VStack gap={4} className={selected.length ? "has-compare-dock" : undefined}>
@@ -327,7 +389,7 @@ function WorkspaceInner({
         )}
         <HStack gap={3} align="end" justify="between" wrap="wrap">
           <VStack gap={1}>
-            <Heading level={1}>{view === "planner" ? heading.title : listTitle(activeFilters)}</Heading>
+            <Heading level={1}>{view === "planner" ? heading.title : listTitle(listFilters)}</Heading>
             <Text type="supporting">{view === "planner" ? heading.text : sourceLine(mode, lastChecked)}</Text>
           </VStack>
           <Button variant="primary" label="HY-WEP 바로가기" href={HYWEP_URL} target="_blank" rel="noreferrer" />
@@ -351,13 +413,13 @@ function WorkspaceInner({
             record={record}
             remove={remove}
             now={now}
-            initialPostingId={activeFilters.posting ?? null}
+            initialPostingId={listFilters.posting ?? null}
           />
         ) : (
           <PostingsView
             postings={postings}
             textMatchIds={textMatchIds}
-            filters={activeFilters}
+            filters={listFilters}
             major={major}
             onMajor={changeMajor}
             updateFilters={updateFilters}
@@ -368,27 +430,20 @@ function WorkspaceInner({
             now={now}
             stats={stats}
             onCompare={compare}
-            onOpenCompare={() =>
-              compared.length ? setCompareOpen(true) : notify("공고의 비교 체크박스를 선택해 주세요.")
-            }
-            onOpen={p => openDetail(p.id)}
+            onOpenCompare={openCompareModal}
+            onOpen={handleOpenPosting}
             onFavorite={favorite}
-            onPlanner={() => navigate("planner")}
+            onPlanner={handleOpenPlanner}
           />
         )}
         <HStack gap={3} wrap="wrap" align="center">
           <Text type="supporting">HY-Easy · 한양인의 더 나은 선택</Text>
           <Text type="supporting">한양대학교 비공식 서비스</Text>
           <Button variant="ghost" size="sm" label="개인정보처리방침" href="/privacy" as={Link} />
-          <Button variant="ghost" size="sm" label="피드백 보내기" onClick={() => setFeedbackOpen(true)} />
+          <Button variant="ghost" size="sm" label="피드백 보내기" onClick={handleOpenFeedback} />
         </HStack>
       </VStack>
-      <CompareDock
-        selected={selected}
-        onRemove={compare}
-        onReset={() => setCompared([])}
-        onOpen={() => setCompareOpen(true)}
-      />
+      <CompareDock selected={selected} onRemove={compare} onReset={handleResetCompare} onOpen={handleOpenCompareDock} />
       {detail && (
         <PostingDetail
           posting={detail}

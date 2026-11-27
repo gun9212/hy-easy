@@ -173,11 +173,14 @@
   margin-bottom: var(--space-sm);
   text-align: left;
 }
-/* The Google button is an iframe with a light document; matching color-scheme keeps it from painting a white box
-   around the button on the dark theme. */
+/* The Google button is a 44px-tall iframe with a light document; locking height + overflow keeps its unstyled
+   wrapper from expanding for one frame before gsi/style arrives (CLS), and color-scheme avoids a white box on dark. */
 .landing-signin .google-button-slot {
+  align-items: center;
   justify-content: center;
+  height: 44px;
   margin-top: 0;
+  overflow: hidden;
   color-scheme: light;
 }
 .landing-signin .google-login,
@@ -285,22 +288,18 @@
   margin-left: auto;
 }
 
+/* Keep opacity at 1 on frame 1 so Blink paints the hero and preview at FCP instead of deferring LCP until hydration. */
 @keyframes landing-in {
   from {
-    opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(8px);
   }
   to {
-    opacity: 1;
     transform: none;
   }
 }
 .landing-hero,
 .landing-preview {
   animation: landing-in var(--dur-long) var(--ease-out) both;
-}
-.landing-preview {
-  animation-delay: 100ms;
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-hero,
