@@ -16,6 +16,7 @@ import { BodyStatus } from "./body-status";
 import { Classification, Events, Facts, Majors, OriginalTexts } from "./posting-detail-sections";
 import { DeadlineBadge } from "./posting-row-parts";
 import { DetailFrame } from "./detail-frame";
+import { useIsNarrow } from "./layout-context";
 import { usePostingBodies } from "./use-posting-bodies";
 
 // The posting page itself has no apply action; students apply from HY-WEP's search list.
@@ -84,6 +85,39 @@ export function PostingDetail(props: Props) {
   const decision = eligibility(p, props.applications, props.now);
   const closed = decision.status === "closed";
   const sourceHref = safeHywepUrl(p.sourceUrl);
+  const narrow = useIsNarrow();
+  const fill = narrow ? "100%" : undefined;
+  const sourceButton = sourceHref && (
+    <Button
+      variant="ghost"
+      label="원문 보기"
+      icon={<ArrowUpRight size={16} />}
+      href={sourceHref}
+      target="_blank"
+      rel="noreferrer"
+      width={fill}
+    />
+  );
+  const saveButton = (
+    <Button
+      variant="secondary"
+      label={saved ? "저장됨" : "관심 저장"}
+      icon={<Bookmark size={16} fill={saved ? "currentColor" : "none"} />}
+      onClick={onFavorite}
+      width={fill}
+    />
+  );
+  const applyButton = (
+    <Button
+      variant="primary"
+      label={closed ? "마감됨" : "HY-WEP 지원"}
+      isDisabled={closed}
+      href={HYWEP_APPLY_URL}
+      target="_blank"
+      rel="noreferrer"
+      width={fill}
+    />
+  );
   return (
     <DetailFrame
       label={`${p.company} 공고 상세`}
@@ -99,32 +133,22 @@ export function PostingDetail(props: Props) {
           }
           footer={
             <LayoutFooter hasDivider padding={4}>
-              <HStack gap={2} justify="end" wrap="wrap">
-                {sourceHref && (
-                  <Button
-                    variant="ghost"
-                    label="원문 보기"
-                    icon={<ArrowUpRight size={16} />}
-                    href={sourceHref}
-                    target="_blank"
-                    rel="noreferrer"
-                  />
-                )}
-                <Button
-                  variant="secondary"
-                  label={saved ? "저장됨" : "관심 저장"}
-                  icon={<Bookmark size={16} fill={saved ? "currentColor" : "none"} />}
-                  onClick={onFavorite}
-                />
-                <Button
-                  variant="primary"
-                  label={closed ? "마감됨" : "HY-WEP 지원"}
-                  isDisabled={closed}
-                  href={HYWEP_APPLY_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              </HStack>
+              {narrow ? (
+                // A phone fits three buttons only on two uneven lines; the apply action gets a line of its own.
+                <VStack gap={2}>
+                  {applyButton}
+                  <HStack gap={2}>
+                    {sourceButton}
+                    {saveButton}
+                  </HStack>
+                </VStack>
+              ) : (
+                <HStack gap={2} justify="end" wrap="wrap">
+                  {sourceButton}
+                  {saveButton}
+                  {applyButton}
+                </HStack>
+              )}
             </LayoutFooter>
           }
         >

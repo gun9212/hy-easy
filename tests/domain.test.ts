@@ -98,6 +98,8 @@ describe("원문 정규화와 비교", () => {
       stipend: "abc",
       duration: "-3",
       page: "abc",
+      open: "../admin",
+      posting: "x".repeat(65),
     });
     assert.deepEqual(normalized, { q: "가".repeat(MAX_SEARCH_QUERY_CHARS) });
     assert.equal(normalized.q?.length, 100);

@@ -368,6 +368,8 @@ export type Filters = {
   others?: string;
   /** Pre-selected posting id when opening the planner from a posting detail. */
   posting?: string;
+  /** The posting whose detail is open, so a detail can be linked to and closed with Back. */
+  open?: string;
   page?: string;
 };
 const FILTER_KEYS: (keyof Filters)[] = [
@@ -383,12 +385,15 @@ const FILTER_KEYS: (keyof Filters)[] = [
   "mine",
   "others",
   "posting",
+  "open",
   "page",
 ];
 const POSTING_SORTS = new Set(["deadline", "stipend", "latest"]);
 const WHEN_VALUES = new Set(["open", "soon", "new"]);
 const SAVED_VALUES = new Set(["true", "planner"]);
 const POSITIVE_INT = /^[1-9]\d*$/;
+/** Posting ids are UUIDs (live) or short slugs (demo); anything else in ?open= or ?posting= is not one. */
+const POSTING_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /**
  * Collapses Next.js duplicate query values (string[]) into single strings, caps search length, and drops malformed
@@ -411,6 +416,7 @@ export function normalizeFilters(raw: Record<string, string | string[] | undefin
     if (key === "saved" && !SAVED_VALUES.has(first)) continue;
     if ((key === "mine" || key === "others") && first !== "true") continue;
     if ((key === "duration" || key === "stipend" || key === "page") && !POSITIVE_INT.test(first)) continue;
+    if ((key === "open" || key === "posting") && !POSTING_ID.test(first)) continue;
     filters[key] = first;
   }
   return filters;

@@ -21,6 +21,14 @@ describe("workspace browser history transitions", () => {
     assert.equal(shouldPushHistory({ when: "soon" }, {}), true);
   });
 
+  it("pushes history when a posting detail opens, so Back closes it", () => {
+    assert.equal(shouldPushHistory({}, { open: "p-1" }), true);
+    assert.equal(shouldPushHistory({ role: "개발" }, { role: "개발", open: "p-1" }), true);
+    // Closing replaces: the workspace goes Back over the entry the opening pushed.
+    assert.equal(shouldPushHistory({ open: "p-1" }, {}), false);
+    assert.equal(searchOfFilters({ role: "개발", open: "p-1" }), `?role=${encodeURIComponent("개발")}&open=p-1`);
+  });
+
   it("uses replaceState when typing search queries or adjusting secondary filters on the same view", () => {
     assert.equal(shouldPushHistory({}, { q: "한" }), false);
     assert.equal(shouldPushHistory({ q: "한" }, { q: "한양" }), false);

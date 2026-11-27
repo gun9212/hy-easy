@@ -136,7 +136,6 @@ function WorkspaceInner({
   const [compared, setCompared] = useState<string[]>([]);
   const [compareOpen, setCompareOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const showToast = useToast();
@@ -167,10 +166,14 @@ function WorkspaceInner({
   const view = viewOfFilters(activeFilters);
   const prevFiltersRef = useRef<Filters>(initialFilters);
   const poppingRef = useRef(false);
+  // Whether the open detail added its own history entry, so closing it can go Back to the list instead of leaving
+  // a second copy of the list behind it. A detail opened from a shared link has no such entry.
+  const detailPushedRef = useRef(false);
 
   useEffect(() => {
     const onPop = () => {
       poppingRef.current = true;
+      detailPushedRef.current = false;
       const next = filtersFromSearchParams(new URLSearchParams(window.location.search));
       prevFiltersRef.current = next;
       setFilters(next);
@@ -190,6 +193,7 @@ function WorkspaceInner({
     if (nextSearch !== window.location.search) {
       const nextUrl = `${window.location.pathname}${nextSearch}`;
       if (shouldPushHistory(prev, activeFilters)) {
+        detailPushedRef.current = !prev.open && Boolean(activeFilters.open);
         window.history.pushState(null, "", nextUrl);
       } else {
         window.history.replaceState(null, "", nextUrl);
@@ -202,6 +206,21 @@ function WorkspaceInner({
       const { page: _page, ...rest } = prev;
       void _page;
       return { ...rest, ...patch };
+    });
+  }
+  function openDetail(id: string) {
+    setFilters(prev => ({ ...prev, open: id }));
+  }
+  function closeDetail() {
+    if (detailPushedRef.current) {
+      detailPushedRef.current = false;
+      window.history.back();
+      return;
+    }
+    setFilters(prev => {
+      const { open: _open, ...rest } = prev;
+      void _open;
+      return rest;
     });
   }
   function resetFilters() {
@@ -261,7 +280,7 @@ function WorkspaceInner({
       .sort()
       .at(-1);
   const selected = compared.map(id => postings.find(p => p.id === id)).filter((p): p is Posting => Boolean(p));
-  const detail = detailId ? (postings.find(p => p.id === detailId) ?? null) : null;
+  const detail = activeFilters.open ? (postings.find(p => p.id === activeFilters.open) ?? null) : null;
   const heading = HEADINGS[view];
 
   return (
@@ -279,7 +298,7 @@ function WorkspaceInner({
           navigate={navigate}
           now={now}
           onOpen={p => {
-            setDetailId(p.id);
+            openDetail(p.id);
             setMobileMenu(false);
           }}
           onFeedback={() => {
@@ -352,7 +371,7 @@ function WorkspaceInner({
             onOpenCompare={() =>
               compared.length ? setCompareOpen(true) : notify("공고의 비교 체크박스를 선택해 주세요.")
             }
-            onOpen={p => setDetailId(p.id)}
+            onOpen={p => openDetail(p.id)}
             onFavorite={favorite}
             onPlanner={() => navigate("planner")}
           />
@@ -378,11 +397,10 @@ function WorkspaceInner({
           now={now}
           saved={personal.favoriteIds.includes(detail.id)}
           onFavorite={() => favorite(detail.id)}
-          close={() => setDetailId(null)}
+          close={closeDetail}
           onPlan={() => {
-            const targetId = detail.id;
-            setDetailId(null);
-            navigate("planner", targetId);
+            detailPushedRef.current = false;
+            navigate("planner", detail.id);
           }}
         />
       )}

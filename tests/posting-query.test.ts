@@ -104,6 +104,10 @@ describe("queryPostings parity between /api/postings and PostingsView", () => {
       queryPostings(samplePostings, parsed, { now }).map(p => p.id),
       allIds,
     );
+    // An open detail for a posting that is not in the list (deleted, or a mistyped link) is dropped.
+    const firstId = samplePostings[0].id;
+    assert.deepEqual(sanitizeFiltersForPostings({ open: firstId }, samplePostings), { open: firstId });
+    assert.deepEqual(sanitizeFiltersForPostings({ open: "missing-id" }, samplePostings), {});
     // Empty postings (before live sync finishes) keep candidate option filters until options arrive.
     assert.deepEqual(sanitizeFiltersForPostings({ duration: "2", role: "없는직무" }, []), { duration: "2" });
 

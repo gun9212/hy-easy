@@ -136,7 +136,11 @@ export function CompareDock({ selected, onRemove, onReset, onOpen }: DockProps) 
   return (
     <div className="compare-dock">
       <GitCompareArrows size={20} />
-      <b>{selected.length}개 공고 선택</b>
+      <b>
+        {selected.length}개<span className="dock-wide"> 공고 선택</span>
+      </b>
+      {/* Compact screens hide the removable chips below; the names still say which postings are picked. */}
+      <span className="dock-names">{selected.map(p => p.company).join(" · ")}</span>
       <div className="dock-companies">
         {selected.map(p => (
           <span key={p.id}>

@@ -94,9 +94,13 @@ type SideNavProps = {
   onFeedback: () => void;
 };
 
-function Count({ value, isStrong }: { value: number; isStrong?: boolean }): React.ReactElement {
+function Count({ value, isStrong, isDimmedAtZero }: { value: number; isStrong?: boolean; isDimmedAtZero?: boolean }) {
   return (
-    <span className="side-count" data-strong={isStrong && value > 0 ? "" : undefined}>
+    <span
+      className="side-count"
+      data-strong={isStrong && value > 0 ? "" : undefined}
+      data-empty={isDimmedAtZero && value === 0 ? "" : undefined}
+    >
       {value}
     </span>
   );
@@ -192,7 +196,7 @@ export function AppSideNav(props: SideNavProps): React.ReactElement {
             size="sm"
             isSelected={listView && filters.role === role}
             onClick={() => props.selectRole(role)}
-            endContent={<Count value={roleCount(role)} />}
+            endContent={<Count value={roleCount(role)} isDimmedAtZero />}
           />
         ))}
       </SideNavSection>

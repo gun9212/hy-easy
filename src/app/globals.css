@@ -1021,6 +1021,9 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+.dock-names {
+  display: none;
+}
 .dock-companies {
   display: flex;
   flex-wrap: wrap;
@@ -2538,6 +2541,16 @@
   }
   .dock-companies {
     display: none;
+  }
+  .dock-names {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: color-mix(in oklab, var(--color-panel-ink) 75%, var(--color-panel));
+    font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   /* Compact screens have room for the count and both buttons on one line only without the icon and "나란히". */
   .compare-dock > svg,
